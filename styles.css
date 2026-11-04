@@ -859,3 +859,169 @@
   background:var(--readable-card);
  }
 }
+
+
+/* Unified non-linear motion (Safari/PWA). Every transition and keyframe uses
+ * curves with acceleration/deceleration, not constant-speed linear movement. */
+:root{
+ --motion-soft:cubic-bezier(.22,1,.36,1);
+ --motion-fluid:cubic-bezier(.16,1.14,.32,1);
+ --motion-press:cubic-bezier(.34,1.4,.44,1);
+ --motion-quiet:cubic-bezier(.65,0,.35,1);
+}
+*,*::before,*::after{
+ transition-timing-function:var(--motion-soft);
+ animation-timing-function:var(--motion-soft);
+}
+.page{animation:rise .48s var(--motion-soft) both;}
+.toast{animation:toastIn .34s var(--motion-soft) both;}
+.modal-card{animation-timing-function:var(--motion-soft);}
+.nav-item,.icon-btn,.language-switch,.theme-option,
+.day-tab,.month-cell,.month-event,.cal-event,
+.schedule-view-switch button,.safari-select{
+ transition-timing-function:var(--motion-soft);
+}
+
+/* Bottom tab bar: a true travelling frosted-glass capsule rather than
+ * five independently flashing backgrounds. Movement is on its own layer,
+ * keeping icons sharp and buttons fully accessible. */
+@media(max-width:900px){
+ .bottom-nav{
+  isolation:isolate;
+  overflow:visible;
+  --liquid-glow:rgba(255,255,255,.70);
+  --liquid-edge:rgba(255,255,255,.85);
+  --liquid-base:rgba(204,237,216,.43);
+  --liquid-color:rgba(87,163,116,.27);
+  --liquid-shadow:rgba(29,83,51,.15);
+ }
+ .bottom-liquid-indicator{
+  position:absolute;
+  left:0;
+  top:6px;
+  height:calc(100% - 12px);
+  width:0;
+  border-radius:19px;
+  z-index:0;
+  pointer-events:none;
+  will-change:transform;
+  transition:
+   transform .56s var(--motion-fluid),
+   width .52s var(--motion-soft);
+ }
+ .bottom-liquid-indicator.is-instant{
+  transition:none!important;
+ }
+ .bottom-liquid-surface{
+  position:absolute;
+  inset:0;
+  display:block;
+  border-radius:inherit;
+  transform-origin:center;
+  background:
+   radial-gradient(ellipse 72% 48% at 24% 6%,var(--liquid-glow),transparent 94%),
+   linear-gradient(151deg,rgba(255,255,255,.38),rgba(255,255,255,.02) 54%),
+   var(--liquid-base);
+  border:1px solid var(--liquid-edge);
+  box-shadow:
+   inset 0 1px 0 rgba(255,255,255,.80),
+   inset 1px 0 0 rgba(255,255,255,.30),
+   inset 0 -1px 0 rgba(255,255,255,.13),
+   0 5px 18px var(--liquid-shadow);
+  -webkit-backdrop-filter:blur(16px) saturate(1.56);
+  backdrop-filter:blur(16px) saturate(1.56);
+ }
+ .bottom-liquid-surface::before{
+  content:"";
+  position:absolute;
+  inset:1px;
+  border-radius:inherit;
+  pointer-events:none;
+  background:
+   linear-gradient(124deg,rgba(255,255,255,.48),transparent 43%),
+   radial-gradient(ellipse 65% 29% at 55% -4%,rgba(255,255,255,.45),transparent 95%);
+  opacity:.73;
+ }
+ .bottom-liquid-surface::after{
+  content:"";
+  position:absolute;
+  inset:1px;
+  border-radius:inherit;
+  pointer-events:none;
+  box-shadow:
+   inset 0 1px 0 rgba(255,255,255,.52),
+   inset 0 -1px 0 rgba(255,255,255,.06);
+ }
+ .bottom-liquid-indicator.is-moving .bottom-liquid-surface{
+  animation:liquidSnap .56s var(--motion-fluid) both;
+ }
+ .bottom-nav .bottom-item{
+  position:relative;
+  z-index:1;
+  isolation:isolate;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+  transition:color .3s var(--motion-soft),transform .36s var(--motion-press);
+  -webkit-tap-highlight-color:transparent;
+ }
+ .bottom-nav .bottom-item.active{
+  color:var(--accent)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-color:transparent!important;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+ }
+ .bottom-nav .bottom-item.active svg{color:var(--accent);}
+ .bottom-nav .bottom-item svg{
+  transform-origin:center;
+  transition:transform .4s var(--motion-press),color .25s var(--motion-soft);
+ }
+ .bottom-nav .bottom-item.active svg{transform:translateY(-1px) scale(1.08);}
+ .bottom-nav .bottom-item:not(.active):active{transform:scale(.94);}
+ .bottom-nav .bottom-item:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:-2px;
+ }
+}
+@keyframes liquidSnap{
+ 0%{transform:scaleX(1) scaleY(1);border-radius:19px;}
+ 26%{transform:scaleX(1.14) scaleY(.92);border-radius:23px;}
+ 64%{transform:scaleX(.965) scaleY(1.025);border-radius:17px;}
+ 100%{transform:scaleX(1) scaleY(1);border-radius:19px;}
+}
+:root[data-theme="dark"] .bottom-nav{
+ --liquid-glow:rgba(188,235,210,.23);
+ --liquid-edge:rgba(189,243,211,.29);
+ --liquid-base:rgba(52,110,82,.50);
+ --liquid-color:rgba(90,180,121,.24);
+ --liquid-shadow:rgba(0,0,0,.32);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]) .bottom-nav{
+  --liquid-glow:rgba(188,235,210,.23);
+  --liquid-edge:rgba(189,243,211,.29);
+  --liquid-base:rgba(52,110,82,.50);
+  --liquid-color:rgba(90,180,121,.24);
+  --liquid-shadow:rgba(0,0,0,.32);
+ }
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ .bottom-nav .bottom-liquid-surface{
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  background:var(--readable-active)!important;
+  border-color:var(--accent)!important;
+ }
+ .bottom-nav .bottom-liquid-surface::before,
+ .bottom-nav .bottom-liquid-surface::after{display:none;}
+}
+@media(prefers-reduced-motion:reduce){
+ .bottom-liquid-indicator,.bottom-liquid-surface,
+ .bottom-nav .bottom-item,.bottom-nav .bottom-item svg{
+  animation:none!important;
+  transition:none!important;
+  will-change:auto!important;
+ }
+}

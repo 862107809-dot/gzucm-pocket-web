@@ -44,3 +44,78 @@
 :root[lang="en"] .hero-title{font-size:clamp(25px,3vw,39px);line-height:1.22;overflow-wrap:anywhere}
 :root[lang="en"] .hero-desc,:root[lang="en"] .course-name,:root[lang="en"] .overview-name,:root[lang="en"] .course-tag{overflow-wrap:anywhere}
 :root[lang="en"] .hero-line{white-space:normal;text-align:right}
+
+/*
+ * Apple-style glass materials for web navigation.
+ * Uses native CSS -webkit-backdrop-filter / backdrop-filter in Safari.
+ * Optional Chromium optics are provided by the MIT-licensed liquid-glass.js.
+ * Content cards remain mostly opaque for readability and performance.
+ */
+:root{
+ --glass-rim:rgba(255,255,255,.80);
+ --glass-glow:rgba(255,255,255,.48);
+ --glass-tint:rgba(253,255,252,.42);
+ --glass-depth:rgba(28,69,47,.13);
+}
+.topbar,.bottom-nav,.sidebar,.modal-card{
+ border:1px solid var(--glass-rim);
+ background:
+  radial-gradient(ellipse 360px 115px at var(--glass-x,25%) var(--glass-y,0%),var(--glass-glow),transparent 75%),
+  linear-gradient(153deg,rgba(255,255,255,.44),rgba(255,255,255,.06) 65%,rgba(248,255,246,.16)),
+  var(--surface);
+ box-shadow:0 18px 48px var(--glass-depth),inset 0 1px 0 var(--glass-rim),
+  inset 1px 0 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(255,255,255,.20);
+ -webkit-backdrop-filter:blur(24px) saturate(1.75);
+ backdrop-filter:blur(24px) saturate(1.75);
+}
+.modal-card{
+ background:linear-gradient(155deg,rgba(255,255,255,.43),rgba(255,255,255,.10) 80%),var(--surface-strong);
+ box-shadow:0 30px 95px rgba(17,39,29,.20),inset 0 1px 0 var(--glass-rim);
+}
+.language-switch,.topbar .icon-btn,.segmented,.bottom-nav .bottom-item.active{
+ background:radial-gradient(circle at var(--glass-x,28%) var(--glass-y,0%),var(--glass-glow),transparent 82%),
+  linear-gradient(155deg,rgba(255,255,255,.38),rgba(255,255,255,.06));
+ border:1px solid rgba(255,255,255,.56);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.77),inset 0 -1px 0 rgba(255,255,255,.11),
+   0 5px 15px rgba(33,68,47,.08);
+ -webkit-backdrop-filter:blur(14px) saturate(1.5);
+ backdrop-filter:blur(14px) saturate(1.5);
+}
+.language-switch{position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.24);}
+.language-switch:hover{border-color:rgba(255,255,255,.85);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 7px 19px rgba(37,87,59,.14);}
+.top-left .language-switch{margin-left:6px;flex-shrink:0;}
+@media (max-width:600px){
+ .top-left .language-switch{margin-left:0;}
+ .topbar{gap:7px;}
+ .top-date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;}
+ .status-pill{max-width:90px;overflow:hidden;text-overflow:ellipsis;}
+}
+:root[data-theme="dark"]{
+ --glass-rim:rgba(206,242,224,.21);
+ --glass-glow:rgba(128,199,168,.16);
+ --glass-tint:rgba(34,54,43,.56);
+ --glass-depth:rgba(0,0,0,.22);
+}
+:root[data-theme="dark"] .topbar,:root[data-theme="dark"] .bottom-nav,
+:root[data-theme="dark"] .sidebar,:root[data-theme="dark"] .modal-card{
+ background:radial-gradient(ellipse 320px 100px at var(--glass-x,28%) var(--glass-y,0%),var(--glass-glow),transparent 75%),
+ linear-gradient(160deg,rgba(117,164,134,.10),rgba(20,44,34,.03) 80%),var(--surface);
+}
+:root[data-theme="dark"] .modal-card{background:var(--surface-strong);}
+@media (prefers-color-scheme:dark){
+ :root:not([data-theme="light"]) {
+  --glass-rim:rgba(206,242,224,.21);
+  --glass-glow:rgba(128,199,168,.16);
+  --glass-depth:rgba(0,0,0,.22);
+ }
+}
+@media (prefers-reduced-transparency: reduce),(prefers-contrast: more){
+ .topbar,.bottom-nav,.sidebar,.modal-card,.language-switch,.segmented{
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  background:var(--surface-strong)!important;
+  border-color:var(--line)!important;
+ }
+}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+ .topbar,.bottom-nav,.sidebar,.modal-card{background:var(--surface-strong);}
+}

@@ -23,7 +23,7 @@ test('password mode opens official school SSO without generating a QR',()=>{
   assert.doesNotMatch(result.body,/data-action="startQr"|id="qr-panel"/);
 });
 test('password mode explicitly says that school SSO alone does not sync the website',()=>{
-  assert.match(renderMode('password').body,/还需独立授权/);
+  assert.match(renderMode('password').body,/完成独立授权/);
   assert.match(renderMode('password').body,/本站不接收学校密码/);
 });
 test('QR mode keeps the existing explicit QR start action, not password login',()=>{

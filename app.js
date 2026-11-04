@@ -224,6 +224,7 @@ function snapshotLiquidSelectors(root){
    const lensRect=lens?.getBoundingClientRect?.();
    const groupRect=lensRect&&group.getBoundingClientRect();
    values.set(id,{value:liquidSelectorValue(active),
+    dragging:!!lens?.classList.contains('is-dragging'),
     x:lensRect?lensRect.left-groupRect.left:active.offsetLeft,
     y:lensRect?lensRect.top-groupRect.top:active.offsetTop,
     width:lensRect?.width||active.offsetWidth,
@@ -251,13 +252,15 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   const target={x:active.offsetLeft,y:active.offsetTop,
    width:active.offsetWidth,height:active.offsetHeight};
   const old=previous.get(id);
-  const changed=old&&old.value!==liquidSelectorValue(active)&&
-   !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const changed=!!(old&&(old.value!==liquidSelectorValue(active)||old.dragging)&&
+   !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   setSelectorGlass(glass,changed?old:target);
   if(changed){
+   // Force the starting transform to be committed before the destination;
+   // otherwise Safari coalesces the two styles and the lens flashes back.
+   void glass.offsetWidth;
    requestAnimationFrame(()=>{
     if(!glass.isConnected)return;
-    // Safari-style movement: a responsive start and softly damped landing.
     glass.classList.remove('is-instant');
     setSelectorGlass(glass,target);
    });
@@ -273,6 +276,28 @@ function liquidClosestButton(buttons,x,y,vertical){
  });
  return {button:best,index};
 }
+function liquidNearestCached(pointer,x,y){
+ if(!pointer?.centers?.length)return liquidClosestButton(pointer.buttons,x,y,pointer.vertical);
+ const axis=pointer.vertical?y:x;
+ let index=0,dist=Infinity;
+ pointer.centers.forEach((center,i)=>{
+  const n=Math.abs(axis-center);
+  if(n<dist){dist=n;index=i;}
+ });
+ return {button:pointer.buttons[index],index};
+}
+function placeLiquidPointerGlass(pointer,x,y){
+ const target=liquidNearestCached(pointer,x,y).button;
+ if(!target)return;
+ const base=pointer.vertical?pointer.firstTop:pointer.firstLeft;
+ const limit=pointer.vertical?pointer.lastTop:pointer.lastLeft;
+ const size=pointer.vertical?target.offsetHeight:target.offsetWidth;
+ const raw=(pointer.vertical?y-pointer.groupRect.top:x-pointer.groupRect.left)-size/2+
+  (pointer.vertical?pointer.group.scrollTop:0);
+ const pos=Math.max(base,Math.min(limit,raw));
+ setSelectorGlass(pointer.glass,{x:pointer.vertical?target.offsetLeft:pos,
+  y:pointer.vertical?pos:target.offsetTop,width:target.offsetWidth,height:target.offsetHeight});
+}
 function selectorGlassFor(group){
  return group.querySelector('.liquid-choice-highlight,.safari-menu-glider');
 }
@@ -287,9 +312,14 @@ function liquidPointerDown(event){
  const glass=selectorGlassFor(group);
  if(!glass)return;
  armLiquidSound();
+ const vertical=!!menu||group.matches('.sidebar nav');
+ const bounds=buttons.map(button=>button.getBoundingClientRect());
  liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
   x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
-  vertical:!!menu||group.matches('.sidebar nav'),dragging:false,scroll:false,
+  vertical,dragging:false,scroll:false,groupRect:group.getBoundingClientRect(),
+  centers:bounds.map(r=>vertical?r.top+r.height/2:r.left+r.width/2),
+  firstLeft:buttons[0].offsetLeft,lastLeft:buttons[buttons.length-1].offsetLeft,
+  firstTop:buttons[0].offsetTop,lastTop:buttons[buttons.length-1].offsetTop,
   index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu};
 }
 function liquidPointerMove(event){
@@ -308,7 +338,7 @@ function liquidPointerMove(event){
  }
  if(event.cancelable)event.preventDefault();
  p.lastX=event.clientX;p.lastY=event.clientY;
- const nearest=liquidClosestButton(p.buttons,event.clientX,event.clientY,p.vertical);
+ const nearest=liquidNearestCached(p,event.clientX,event.clientY);
  if(nearest.index!==p.index&&nearest.index>=0){
   p.index=nearest.index;
   p.buttons.forEach((button,i)=>button.classList.toggle('is-scrubbed',i===nearest.index));
@@ -317,19 +347,7 @@ function liquidPointerMove(event){
  if(p.raf)return;
  p.raf=requestAnimationFrame(()=>{
   p.raf=0;
-  if(!p.glass.isConnected)return;
-  const target=liquidClosestButton(p.buttons,p.lastX,p.lastY,p.vertical).button;
-  const start=p.buttons[0],end=p.buttons[p.buttons.length-1];
-  if(!target)return;
-  const size=p.vertical?target.offsetHeight:target.offsetWidth;
-  const base=p.vertical?start.offsetTop:start.offsetLeft;
-  const limit=p.vertical?end.offsetTop:end.offsetLeft;
-  const parentRect=p.group.getBoundingClientRect();
-  const raw=(p.vertical?p.lastY-parentRect.top:p.lastX-parentRect.left)-size/2+
-   (p.vertical?p.group.scrollTop:0);
-  const pos=Math.max(base,Math.min(limit,raw));
-  setSelectorGlass(p.glass,{x:p.vertical?target.offsetLeft:pos,
-   y:p.vertical?pos:target.offsetTop,width:target.offsetWidth,height:target.offsetHeight});
+  if(p.glass.isConnected)placeLiquidPointerGlass(p,p.lastX,p.lastY);
  });
 }
 function liquidPointerFinish(event,cancelled=false){
@@ -342,16 +360,24 @@ function liquidPointerFinish(event,cancelled=false){
  if(!p.dragging)return;
  if(event.cancelable)event.preventDefault();
  if(cancelled){
+  p.glass.classList.remove('is-instant','is-dragging');
   const selected=p.source||liquidSelectorActive(p.group);
   if(selected)setSelectorGlass(p.glass,{x:selected.offsetLeft,y:selected.offsetTop,
    width:selected.offsetWidth,height:selected.offsetHeight});
-  p.glass.classList.remove('is-dragging','is-instant');
   return;
  }
- const nearest=liquidClosestButton(p.buttons,event.clientX,event.clientY,p.vertical).button;
- p.glass.classList.remove('is-dragging','is-instant');
+ // Place the old lens at the actual finger-up coordinate BEFORE a click
+ // triggers render(), then FLIP the new lens from that point without a reset.
+ placeLiquidPointerGlass(p,event.clientX,event.clientY);
+ const nearest=liquidNearestCached(p,event.clientX,event.clientY).button;
  ignoreLiquidSelectorClickUntil=Date.now()+450;
  if(nearest?.isConnected)nearest.click();
+ if(p.glass.isConnected&&!p.group.classList.contains('is-closing')){
+  p.glass.classList.remove('is-instant','is-dragging');
+  const selected=liquidSelectorActive(p.group);
+  if(selected)setSelectorGlass(p.glass,{x:selected.offsetLeft,y:selected.offsetTop,
+   width:selected.offsetWidth,height:selected.offsetHeight});
+ }
 }
 /* The binary sound switch also supports dragging its thumb left/right;
  * tapping remains a native button action, and vertical page scroll is free. */

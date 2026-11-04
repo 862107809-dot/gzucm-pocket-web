@@ -278,6 +278,8 @@ function handleSubmit(event){if(event.target.id!=='power-form')return;event.prev
  if(usage!==''&&Number.isFinite(+usage)&&+usage>=0){const prior=state.data.demo&&!saved(POWER_DB,null)?[]:(state.data.powerDaily||[]);const daily=prior.filter(x=>x.date!==iso(today()));daily.push({date:iso(today()),usage:+usage,remain:balance});daily.sort((a,b)=>a.date.localeCompare(b.date));state.data.powerDaily=daily.slice(-120);}
  if(PUBLIC){try{localStorage.setItem(POWER_DB,JSON.stringify({power:state.data.power,powerDaily:state.data.powerDaily||[]}));}catch{toast('无法持久保存电量记录');}}store();closeModal();render();toast('已保存到当前浏览器');}
 window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==state.ssoPopup||event.data?.type!=='GZUCM_CAS_CALLBACK_RETURN')return;checkOfficialAuth();});
+// Follow system appearance without overriding the user's explicit choice.
+window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change',()=>{if(state.prefs.theme==='system'){applyTheme();render();}});
 window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
 document.addEventListener('click',handleClick);
 document.addEventListener('change',handleChange);

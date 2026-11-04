@@ -217,8 +217,16 @@ function snapshotLiquidSelectors(root){
  const values=new Map();
  for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
   const active=liquidSelectorActive(group),id=liquidSelectorId(group);
-  if(id&&active)values.set(id,{value:liquidSelectorValue(active),
-   x:active.offsetLeft,y:active.offsetTop,width:active.offsetWidth,height:active.offsetHeight});
+  if(id&&active){
+   const lens=group.querySelector('.liquid-choice-highlight');
+   const lensRect=lens?.getBoundingClientRect?.();
+   const groupRect=lensRect&&group.getBoundingClientRect();
+   values.set(id,{value:liquidSelectorValue(active),
+    x:lensRect?lensRect.left-groupRect.left:active.offsetLeft,
+    y:lensRect?lensRect.top-groupRect.top:active.offsetTop,
+    width:lensRect?.width||active.offsetWidth,
+    height:lensRect?.height||active.offsetHeight});
+  }
  }
  return values;
 }
@@ -982,6 +990,7 @@ function bottomSwipeClickCapture(event){
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
  if(target.dataset.view){if(target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
+ if(target.closest('.liquid-selector')&&target.matches('button')&&!target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}
  if(target.dataset.credit){state.creditMode=target.dataset.credit;render();return;}

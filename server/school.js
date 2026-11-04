@@ -69,9 +69,66 @@ class SchoolClient{
     throw err;
   }
 }
- async pollQR(){if(!this.qr)throw Error('请先获取学校二维码');if(Date.now()-this.qr.created>30*60_000)throw Error('二维码已过期，请重新获取');if(this.connected)return {status:'connected',connected:true};const raw=await this.request(JW+'/new/qrcodeLogin/qrcodeStatus',{qrcodeId:this.qr.id},JW+'/');const root=parseJSON(raw);if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'学校查询扫码状态失败');const detail=typeof root.data==='string'?parseJSON(root.data):root.data||{};const info=detail.scanInfo&&typeof detail.scanInfo==='object'?detail.scanInfo:detail;const code=String(info.status??detail.status??'0');if(code==='0'){this.qr.lastStatus='pending';return {status:'pending',connected:false};}if(code==='1'){this.qr.lastStatus='scanned';return {status:'scanned',connected:false};}if(code==='2'){
-  const target=info.url||detail.url;if(!target)throw Error('已确认扫码，但学校未返回可完成登录的 URL');const jump=new URL(String(target),JW);checkUrl(jump);await this.request(jump.href,null,JW+'/');const verified=await this.ping();this.connected=verified;if(!verified)throw Error('学校已确认扫码，但未取得有效教务会话；请重新扫码或检查接口变更');this.qr.lastStatus='connected';return {status:'connected',connected:true};}
- return {status:'pending',message:'学校返回未知扫码状态 '+code,connected:false};}
+ async pollQR(){
+  if(!this.qr)throw Error('请先获取学校二维码');
+  if(Date.now()-this.qr.created>30*60_000)throw Error('二维码已过期，请重新获取');
+  if(this.connected)return {status:'connected',connected:true};
+  let phase='request';
+  try{
+    const raw=await this.request(JW+'/new/qrcodeLogin/qrcodeStatus',{qrcodeId:this.qr.id},JW+'/');
+    phase='parse-response';
+    const root=parseJSON(raw);
+    if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'学校查询扫码状态失败');
+    const detail=typeof root.data==='string'?parseJSON(root.data):root.data||{};
+    phase='read-status';
+    // School versions have returned scanInfo either as an object or as JSON text.
+    // Prefer the nested status when available; do not silently turn missing status into "0".
+    let info=detail.scanInfo;
+    if(typeof info==='string'){
+      try{info=JSON.parse(info);}catch{info=null;}
+    }
+    if(!info||typeof info!=='object'||Array.isArray(info))info=detail;
+    const rawStatus=info.status??detail.status;
+    if(rawStatus===undefined||rawStatus===null){
+      const err=Error('学校返回的扫码状态缺少 status 字段');
+      err.code='GZQR_STATUS_MISSING';
+      throw err;
+    }
+    const code=String(rawStatus);
+    const known=code==='0'?'pending':code==='1'?'scanned':code==='2'?'confirmed':'other';
+    this.qr.pollCount=(this.qr.pollCount||0)+1;
+    if(known!==this.qr.lastStatus||this.qr.pollCount===1||this.qr.pollCount%6===0){
+      // No student details, IDs, QR links, tokens, Cookie or response bodies in logs.
+      console.warn('[GZUCM QR poll]', 'state='+known, 'nested='+String(info!==detail), 'attempt='+this.qr.pollCount);
+    }
+    if(code==='0'){this.qr.lastStatus='pending';return {status:'pending',connected:false};}
+    if(code==='1'){this.qr.lastStatus='scanned';return {status:'scanned',connected:false};}
+    if(code==='2'){
+      phase='finish-login';
+      this.qr.lastStatus='confirmed';
+      const target=info.url||detail.url;
+      if(!target){const err=Error('学校已确认扫码，但未返回登录完成地址');err.code='GZQR_FINAL_URL_MISSING';throw err;}
+      const jump=new URL(String(target),JW);
+      checkUrl(jump);
+      await this.request(jump.href,null,JW+'/');
+      phase='verify-session';
+      const verified=await this.ping();
+      this.connected=verified;
+      if(!verified){const err=Error('扫码已确认，但教务会话尚未生效');err.code='GZQR_SESSION_NOT_READY';throw err;}
+      this.qr.lastStatus='connected';
+      console.warn('[GZUCM QR poll]', 'state=connected');
+      return {status:'connected',connected:true};
+    }
+    console.warn('[GZUCM QR poll]', 'state=other');
+    return {status:'pending',message:'学校返回了未知的扫码状态，请刷新二维码重试',connected:false};
+  }catch(err){
+    const reason=String(err?.message||'');
+    const cat=reason.includes('未经允许的域名')?'URL_DENIED':reason.includes('超时')?'TIMEOUT':reason.includes('登录')?'AUTH_ERROR':'OTHER';
+    console.warn('[GZUCM QR poll error]', 'phase='+phase, 'category='+cat);
+    if(!err.code)err.code='GZQR_POLL_'+phase.toUpperCase().replaceAll('-','_')+'_'+cat;
+    throw err;
+  }
+}
  async ping(){try{const raw=await this.request(JW+'/new/student/xsgrkb/getCalendarWeekDatas',{xnxqdm:'',zc:'',d1:'',d2:''},JW+'/new/student/xsgrkb/main.page');const j=parseJSON(raw);requireLogin(j);return String(j.code)==='0';}catch{return false;}}
  ensure(){if(!this.connected)throw Error('尚未通过学校身份认证，请先扫码连接');}
  async getSemester(code){this.ensure();const d=new Date(),guess=code||`${d.getMonth()>=7?d.getFullYear():d.getFullYear()-1}${d.getMonth()>=7?'01':'02'}`;if(!/^20\d{4}$/.test(guess)||!['01','02'].includes(guess.slice(-2)))throw Error('学期编码格式无效');if(this.semester?.code===guess)return this.semester;const raw=await this.request(JW+'/new/xlxx/data',{xnxqdm:guess},JW+'/new/welcome.page?ui=new');this.semester=parseSemester(raw,guess);return this.semester;}

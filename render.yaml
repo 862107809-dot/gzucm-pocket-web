@@ -1,0 +1,18 @@
+# Deploy as a single Node.js Web Service.
+# Render terminates public TLS and forwards requests to the internal HTTP port.
+services:
+  - type: web
+    name: gzucm-pocket-safari
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PUBLIC_MODE
+        value: '1'
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production

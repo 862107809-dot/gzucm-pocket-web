@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict');
+const test=require('node:test');
+const P=require('../server/parsers');
+const {checkUrl,qrSvg,SchoolClient}=require('../server/school');
+test('校历周起点由周日移到周一',()=>{const data={code:0,data:[[[{type:'zc',value:'1'},{type:'day',fullText:'2026-08-30'},{type:'day',fullText:'2026-08-31'}],[{type:'zc',value:'19'}]]]};const s=P.parseSemester(data,'202601');assert.equal(s.firstMondayIso,'2026-08-31');assert.equal(s.totalWeeks,19);});
+test('真实日期决定课表周次，修复周日错位',()=>{const semester={firstMondayIso:'2026-08-31',totalWeeks:19};const d={code:0,data:[{kcmc:'示例课',xq:7,ps:1,pe:2,qsrq:'2026-11-01',zc:'9',jxcdmc:'教室A',sknrjj:'第10周示例'}]};const rows=P.parseWeek(d,semester,9);assert.equal(rows[0].week,9);assert.equal(rows[0].date,'2026-11-01');assert.equal(rows[0].content,'第10周示例');});
+test('学校字段和类别解析',()=>{const x=P.parseGrades({rows:[{kcmc:'课程A',zcjfs:'92',cjjd:'4.2',xf:'3',kcdlmc:'专业基础课',kcflmc:'美育类',ksxzmc:'限选'}]});assert.equal(x[0].credit,3);assert.equal(x[0].classify,'美育类');assert.equal(P.countedGrade(x[0]),true);assert.equal(P.countedGrade({category:'公共选修课'}),false);});
+test('额外校区信息不得意外进入学业解析',()=>{const data=P.parseGrades({rows:[{kcmc:'示例',zcjfs:'80',idCard:'***',phone:'123'}]});assert.equal(Object.hasOwn(data[0],'phone'),false);assert.equal(Object.hasOwn(data[0],'idCard'),false);});
+test('一卡通余额解析必须用首个有效 powerTips',()=>{const html='<p id="powerTips">剩余电量：11.63度</p><div id="powerTips"></div><input name="roomNum" value="123"><input id="roomChooseText" value="大学城宿舍 123">';assert.equal(P.parsePowerHtml(html).balance,11.63);assert.equal(P.parsePowerHtml(html).roomLabel,'大学城宿舍 123');});
+test('不允许 QR 服务器跨站重定向到恶意地址',()=>{assert.throws(()=>checkUrl('http://jw.gzucm.edu.cn/'),/阻止/);assert.throws(()=>checkUrl('https://jw.gzucm.edu.cn.evil.com/'),/阻止/);assert.throws(()=>checkUrl('https://authserver.gzucm.edu.cn/'),/阻止/);assert.equal(checkUrl('https://jw.gzucm.edu.cn/new/').hostname,'jw.gzucm.edu.cn');});
+test('二维码 SVG 纯本地生成',()=>{const code=qrSvg('https://jw.gzucm.edu.cn/#/qrcodeConfirm/showConfirm?qrcodeId=test');assert.match(code,/^<svg/);assert.match(code,/<path fill=/);assert.ok(code.length>1000);});
+test('同名 Cookie 按 Path 分开保存',()=>{const c=new SchoolClient();c.captureCookies('jw.gzucm.edu.cn',['JSESSIONID=foo; Path=/user; HttpOnly','JSESSIONID=bar; Path=/sso; HttpOnly']);assert.match(c.cookieHeader('https://jw.gzucm.edu.cn/user/a'),/foo/);assert.doesNotMatch(c.cookieHeader('https://jw.gzucm.edu.cn/user/a'),/bar/);});

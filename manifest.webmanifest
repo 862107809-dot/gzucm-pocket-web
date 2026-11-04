@@ -1,0 +1,15 @@
+{
+  "name": "广中医口袋 · 非官方网页版",
+  "short_name": "广中医口袋",
+  "description": "支持课表、成绩和宿舍电费记录的非官方校园工具",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#eef5ef",
+  "theme_color": "#eff5ef",
+  "icons": [
+    {"src":"/assets/icon.svg", "sizes":"any", "type":"image/svg+xml", "purpose":"any"},
+    {"src":"/assets/apple-touch-icon.png", "sizes":"180x180", "type":"image/png", "purpose":"any maskable"}
+  ]
+}

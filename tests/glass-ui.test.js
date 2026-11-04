@@ -130,3 +130,68 @@ test('top and settings choice menus open as small anchored Safari glass boxes',(
  assert.match(css,/\.safari-select\{/);
  assert.match(css,/prefers-reduced-motion:reduce/);
 });
+
+
+test('bottom navigation has a layered liquid-glass selection surface',()=>{
+ const app=read('app.js'),css=read('styles.css');
+ assert.match(app,/function bottomNav\(\)/);
+ assert.equal((app.match(/class="bottom-liquid-indicator is-instant"/g)||[]).length,1);
+ assert.match(app,/class="bottom-liquid-surface"/);
+ assert.match(css,/\.bottom-liquid-indicator\{/);
+ assert.match(css,/\.bottom-liquid-surface\{/);
+ assert.match(css,/-webkit-backdrop-filter:blur\(16px\) saturate\(1\.56\)/);
+ assert.match(css,/\.bottom-nav \.bottom-item\.active\{[\s\S]*?background:transparent!important/);
+ assert.match(css,/\.bottom-nav \.bottom-item\{[\s\S]*?z-index:1/);
+});
+test('CSS animations use nonlinear timing and spring snap with accessible fallback',()=>{
+ const css=read('styles.css');
+ assert.match(css,/--motion-soft:cubic-bezier\(\.22,1,\.36,1\)/);
+ assert.match(css,/--motion-fluid:cubic-bezier\(\.16,1\.14,\.32,1\)/);
+ assert.match(css,/transition-timing-function:var\(--motion-soft\)/);
+ assert.match(css,/animation-timing-function:var\(--motion-soft\)/);
+ assert.match(css,/@keyframes liquidSnap\{/);
+ assert.match(css,/scaleX\(1\.14\) scaleY\(\.92\)/);
+ assert.match(css,/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{/);
+ assert.match(css,/\.bottom-liquid-indicator,\.bottom-liquid-surface/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
+ assert.doesNotMatch(css,/(?:animation|transition)(?:-[\w-]+)?\s*:[^;}{]*\slinear(?:\s|;)/i);
+});
+test('glass highlight animates from previous tab and snaps immediately in reduced-motion mode',()=>{
+ const app=read('app.js');
+ const start=app.indexOf('let previousBottomTab=null;');
+ const end=app.indexOf('function render(){',start);
+ assert.ok(start>=0&&end>start);
+ let reduced=false,animFrame=null;
+ const classes=new Set();
+ const glass={
+  style:{},offsetWidth:58,isConnected:true,
+  classList:{add:c=>classes.add(c),remove:c=>classes.delete(c)},
+  getBoundingClientRect:()=>({left:100,width:60}),
+  addEventListener:()=>{}
+ };
+ const old={offsetLeft:80,offsetWidth:61};
+ const current={offsetLeft:178,offsetWidth:62};
+ const nav={
+  getBoundingClientRect:()=>({left:10,width:400}),
+  querySelector:q=>q==='.bottom-liquid-indicator'?glass:q==='.bottom-item.active'?current:q.includes('schedule')?old:null
+ };
+ const document={querySelector:()=>nav};
+ const window={matchMedia:()=>({matches:reduced})};
+ const state={view:'grades'};
+ const align=new Function('document','window','cancelAnimationFrame','requestAnimationFrame','state',
+  app.slice(start,end)+'return alignBottomLiquid;')(document,window,()=>{},cb=>{animFrame=cb;return 5},state);
+ align('schedule',{left:100,width:60});
+ assert.equal(glass.style.transform,'translate3d(90px,0,0)');
+ assert.equal(glass.style.width,'60px');
+ assert.ok(classes.has('is-moving'));
+ assert.ok(!classes.has('is-instant'));
+ assert.equal(typeof animFrame,'function');
+ animFrame();
+ assert.equal(glass.style.transform,'translate3d(181px,0,0)');
+ assert.equal(glass.style.width,'56px');
+ reduced=true;
+ align('schedule',{left:100,width:60});
+ assert.equal(glass.style.transform,'translate3d(181px,0,0)');
+ assert.ok(classes.has('is-instant'));
+});

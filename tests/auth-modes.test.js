@@ -4,39 +4,37 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
-const begin=source.indexOf("const SCHOOL_SSO_URL=");
-const end=source.indexOf("function powerHelp(",begin);
-assert.ok(begin>=0 && end>begin,'official password modal must exist');
+const start=source.indexOf("function connectModal(mode='qr')");
+const end=source.indexOf("function powerHelp(",start);
+assert.ok(start>=0&&end>start,'login modal function present');
 function renderMode(mode){
-  const state={},rendered=[];
-  const factory=new Function('state','openModal','I',source.slice(begin,end)+'\nreturn connectModal;');
-  const connect=factory(state,(title,body)=>rendered.push({title,body}),()=>'<svg/>');
-  connect(mode);
-  return {state,body:rendered.at(-1).body};
+ const state={};
+ const views=[];
+ const connect=new Function('state','openModal','I',source.slice(start,end)+'return connectModal;')(
+  state,(title,body)=>views.push({title,body}),()=>'<svg/>'
+ );
+ connect(mode);
+ return {mode:state.authMode,body:views.at(-1).body};
 }
-test('password mode opens official school SSO without generating a QR',()=>{
-  const result=renderMode('password');
-  assert.equal(result.state.authMode,'password');
-  assert.match(result.body,/data-action="openOfficialLogin"/);
-  assert.match(result.body,/学校官方认证窗口/);
-  assert.match(result.body,/统一身份认证/);
-  assert.doesNotMatch(result.body,/data-action="startQr"|id="qr-panel"/);
+test('password entry is visibly unsupported, with screenshot and WeChat instructions',()=>{
+ const r=renderMode('password');
+ assert.equal(r.mode,'password');
+ assert.match(r.body,/密码登录暂不支持/);
+ assert.match(r.body,/截图保存二维码/);
+ assert.match(r.body,/微信/);
+ assert.match(r.body,/相册/);
+ assert.match(r.body,/data-action="authQr"/);
+ assert.doesNotMatch(r.body,/id="qr-panel"|data-action="openOfficialLogin"/);
 });
-test('password mode explicitly says that school SSO alone does not sync the website',()=>{
-  assert.match(renderMode('password').body,/完成独立授权/);
-  assert.match(renderMode('password').body,/本站不接收学校密码/);
+test('QR login remains the default and contains the real QR start button',()=>{
+ const r=renderMode();
+ assert.equal(r.mode,'qr');
+ assert.match(r.body,/id="qr-panel"/);
+ assert.match(r.body,/data-action="startQr"/);
+ assert.match(r.body,/扫一扫/);
 });
-test('QR mode keeps the existing explicit QR start action, not password login',()=>{
-  const result=renderMode('qr');
-  assert.equal(result.state.authMode,'qr');
-  assert.match(result.body,/data-action="startQr"/);
-  assert.match(result.body,/id="qr-panel"/);
-  assert.doesNotMatch(result.body,/data-action="openOfficialLogin"/);
-});
-test('no password action calls the QR start routine',()=>{
-  assert.doesNotMatch(source,/case'startPassword':state\.authMode='password';startQr\(\)/);
-  assert.match(source,/case'authPassword':connectModal\('password'\)/);
-  assert.match(source,/case'authQr':connectModal\('qr'\)/);
-  assert.match(source,/case'openOfficialLogin':openOfficialLogin\(\)/);
-  assert.match(source,/state\.casAvailable\?'\/auth\/cas\/start':SCHOOL_SSO_URL/);
+test('password click is not routed to QR generation',()=>{
+ assert.match(source,/case'authPassword':connectModal\('password'\)/);
+ assert.match(source,/case'authQr':connectModal\('qr'\)/);
+ assert.doesNotMatch(source,/case'startPassword'/);
 });

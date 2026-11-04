@@ -15,7 +15,7 @@ function harness(){
  const names=['today','schedule','grades','power','settings'];
  const tabs=left.map((x,i)=>({
   offsetLeft:x,offsetWidth:100,dataset:{view:names[i]},
-  classList:{toggle:()=>{}},
+  classList:{toggle:()=>{},remove:()=>{}},
   getBoundingClientRect:()=>({left:x,width:100})
  }));
  const classes=new Set();

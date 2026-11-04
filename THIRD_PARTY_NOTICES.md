@@ -27,3 +27,17 @@ SOFTWARE.
 ---
 
 QR Code generator located in `server/vendor/QRCode/`: Kazuhiko Arase, copyright (c) 2009, https://www.d-project.com/ ; MIT License. See the MIT permission and disclaimer above. QR Code is a registered trademark of DENSO WAVE Incorporated.
+
+---
+
+## Liquid Glass (web optical effect)
+
+The file `vendor/liquid-glass.js` is based on the MIT-licensed original by **Deepika Rao**.
+
+- Source: https://github.com/deepika-builds/liquid-glass
+- Copyright © 2026 Deepika Rao
+- License: MIT — the full MIT permission notice and warranty disclaimer are reproduced above and apply to this component.
+- `glass-effects.js` and the site's material CSS are integration code for this project.
+- The web appearance is **not** Apple's native SwiftUI/UIKit `glassEffect` API. WebKit/Safari uses native CSS `-webkit-backdrop-filter`; Chromium can enhance it with SVG refraction.
+
+No third-party analytics, CDN, or external screenshot capture is required by the glass effect.

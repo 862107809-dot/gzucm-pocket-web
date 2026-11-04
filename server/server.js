@@ -41,7 +41,7 @@ function appendCookie(res,cookie){
 }
 function casResultPage(res,status){
  const ok=status==='ok';
- const message=ok?'学校统一身份认证已验证；请返回广中医口袋查看状态。教务课表同步仍可能需要独立授权。'
+ const message=ok?'学校认证窗口已返回。请回到原来的广中医口袋页面点击“检查官方认证状态”，以服务器验证结果为准。同步教务数据仍需独立授权。'
   :'学校身份认证未完成或回调无法验证；请返回广中医口袋使用扫码同步。';
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
  res.end('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>统一认证结果 · 广中医口袋</title></head><body style="margin:0;font:16px/1.7 system-ui;background:#153526;color:#eef8f0;display:grid;place-items:center;min-height:100vh"><main style="max-width:430px;padding:30px"><h1>官方认证结果</h1><p>'+message+'</p><p><a style="color:#ade7c0" href="/">返回广中医口袋</a></p></main><script src="/cas-complete.js" defer></script></body></html>');
@@ -109,12 +109,13 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
    catch{valid=false;}
   }
   // CAS authentication proves SSO identity, not an authorized JW academic session.
-  if(valid&&[...sessions.values()].includes(pending.session)){
+  const bound=valid&&[...sessions.values()].includes(pending.session);
+  if(bound){
    pending.session.casVerified=true;
    pending.session.casVerifiedAt=Date.now();
    pending.session.accessed=Date.now();
   }
-  return finishCasCallback(res,valid);
+  return finishCasCallback(res,bound);
  }
  if(url.pathname==='/favicon.ico'){res.writeHead(302,{Location:'/assets/icon.svg'});res.end();return;}
  if(!url.pathname.startsWith('/api/')){if(req.method!=='GET'&&req.method!=='HEAD'){reply(res,405,{error:'不支持的方法'});return;}const file=allowedFiles.get(url.pathname);if(!file){reply(res,404,{error:'页面不存在'});return;}sendFile(res,file);return;}

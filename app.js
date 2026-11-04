@@ -77,7 +77,7 @@ const isDemo=()=>!!state.data.demo;
 function applyLanguage(){window.GZUCM_I18N?.apply(document.body,state.prefs.language==='en'?'en':'zh');}
 function render(){
  const root=$('#app');
- root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page" id="page-content">${page()}</div></main>${bottomNav()}`;
+ root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view}" id="page-content">${page()}</div></main>${bottomNav()}`;
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
 }

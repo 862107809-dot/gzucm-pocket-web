@@ -13,7 +13,15 @@ class SchoolClient{
  async request(url,form=null,referer=null,redirects=0){const u=checkUrl(url);if(redirects>4)throw Error('学校认证跳转次数超出安全限制');const method=form===null?'GET':'POST';const body=form===null?null:new URLSearchParams(form).toString();const headers={'User-Agent':USER_AGENT,'Accept':'application/json, text/javascript, */*; q=0.01','X-Requested-With':'XMLHttpRequest','Accept-Language':'zh-CN,zh;q=0.9','Referer':referer||JW+'/new/welcome.page?ui=new'};if(body!==null){headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';headers['Content-Length']=Buffer.byteLength(body);}const cookie=this.cookieHeader(u.toString());if(cookie)headers.Cookie=cookie;
  const result=await new Promise((resolve,reject)=>{const req=https.request(u,{method,headers,timeout:15000,rejectUnauthorized:true},res=>{const chunks=[];let len=0;res.on('data',c=>{len+=c.length;if(len>3_000_000){req.destroy(Error('学校响应超过大小限制'));return;}chunks.push(c);});res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks).toString('utf8')}));res.on('error',reject);});req.on('timeout',()=>req.destroy(Error('学校接口连接超时，请检查网络或校园 VPN')));req.on('error',reject);if(body!==null)req.write(body);req.end();});
  this.captureCookies(u.hostname,result.headers['set-cookie']);
- if([301,302,303,307,308].includes(result.status)&&result.headers.location){const next=new URL(result.headers.location,u).toString();checkUrl(next);return this.request(next,null,url,redirects+1);}
+ if([301,302,303,307,308].includes(result.status)&&result.headers.location){
+    const nextUrl=new URL(result.headers.location,u);
+    // Safe production diagnostic: never log full URLs, query parameters, cookies, tickets or bodies.
+    const destination=nextUrl.hostname==='jw.gzucm.edu.cn'?'jw.gzucm.edu.cn':nextUrl.hostname==='authserver.gzucm.edu.cn'?'authserver.gzucm.edu.cn':'other-domain';
+    console.warn('[GZUCM auth redirect]', 'status='+result.status, 'from='+u.hostname, 'to='+destination);
+    const next=nextUrl.toString();
+    checkUrl(next);
+    return this.request(next,null,url,redirects+1);
+  }
  if(result.status>=500)throw Error('学校系统暂时不可用（HTTP '+result.status+'）');if(result.status===401||result.status===403)throw Error('学校拒绝访问，可能需要重新登录');return result.body;
  }
  async startQR(){this.connected=false;this.semester=null;this.cookies.clear();const raw=await this.request(JW+'/new/qrcodeLogin/qrcode',{},JW+'/');const root=parseJSON(raw);if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'无法向学校申请扫码登录');const detail=typeof root.data==='string'?parseJSON(root.data):root.data;if(!detail?.qrcodeId||!detail.confirmUrl)throw Error('学校二维码格式改变，缺少 qrcodeId / confirmUrl');const url=new URL(detail.confirmUrl,JW);checkUrl(url);this.qr={id:String(detail.qrcodeId),confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};return {confirmUrl:url.href};}

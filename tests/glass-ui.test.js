@@ -86,3 +86,28 @@ test('dark timetable keeps scoped glass and readable course rows',()=>{
  assert.match(css,/prefers-reduced-transparency:reduce/);
  assert.doesNotMatch(css,/\.page-schedule \.cal-event\{\s*filter:/);
 });
+
+test('timetable tiles keep Apple-inspired glass with distinct course tints',()=>{
+ const css=read('styles.css');
+ assert.match(css,/Apple-inspired liquid-glass course tiles/);
+ assert.match(css,/\.page-schedule \.calendar-visual \.cal-event\{/);
+ assert.match(css,/background:\s*radial-gradient\(ellipse 120% 115%/);
+ assert.match(css,/-webkit-backdrop-filter:blur\(12px\) saturate\(1\.28\)/);
+ assert.match(css,/\.page-schedule \.calendar-visual \.cal-event::before\{/);
+ assert.match(css,/\.page-schedule \.calendar-visual \.cal-event::after\{/);
+ const tones=['tone-1','tone-2','tone-3','tone-4','tone-5','tone-6','tone-7','tone-8'];
+ for(const tone of tones)assert.ok(css.includes('.cal-event.'+tone),'missing tint '+tone);
+});
+test('dark course tiles use readable text and transparent deep surfaces',()=>{
+ const css=read('styles.css');
+ assert.match(css,/:root\[data-theme="dark"\] \.page-schedule \.calendar-visual \.cal-event/);
+ assert.match(css,/--tile-fill:rgba\(24,45,37,\.85\)/);
+ assert.match(css,/--tile-ink:#f5faf6/);
+ assert.match(css,/--tile-secondary:rgba\(228,242,233,\.84\)/);
+ assert.match(css,/:root:not\(\[data-theme="light"\]\) \.page-schedule \.calendar-visual \.cal-event/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ const app=read('app.js');
+ assert.match(app,/class="cal-event tone-\$\{colorIndex\(s\)\}"/);
+ assert.match(app,/data-course="\$\{E\(courseKey\(s\)\)\}"/);
+});

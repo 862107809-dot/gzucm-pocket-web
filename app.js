@@ -8,7 +8,7 @@ const PREF = 'gzucm-pocket-web:prefs';
 const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const state = {
   data: window.GZUCM_DEMO,
-  view:'today', week:1, weekday:1, scheduleMode:'day',gradeTab:'course',gradeSearch:'',creditMode:'total',
+  view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
   connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',
   prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',...saved(PREF,{})}
 };
@@ -61,10 +61,15 @@ const iso = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(
 const addDays = (date,n) => {const d=new Date(date);d.setDate(d.getDate()+n);return d;};
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
 const dayNames=['周一','周二','周三','周四','周五','周六','周日'];
+const calendarDays=[['周日',0],['周一',1],['周二',2],['周三',3],['周四',4],['周五',5],['周六',6]];
 const term=()=>state.data.semester;
 const calcWeek = date => Math.floor((dt(iso(date))-dt(term().firstMondayIso))/86400000/7)+1;
 function weekNow(){return clamp(calcWeek(today()),1,Math.max(1,term().totalWeeks||19));}
 state.week=weekNow();
+if(today().getDay()===0){state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);state.weekday=0;}
+state.scheduleMode=state.prefs.calendarView==='month'?'month':'week';
+state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));
+state.monthSelected=iso(today());
 function isValidData(v){return !!(v&&typeof v==='object'&&v.semester&&/^\d{4}-\d{2}-\d{2}$/.test(v.semester.firstMondayIso)&&Array.isArray(v.sessions)&&Array.isArray(v.grades));}
 function store(){if(PUBLIC)return true;try{localStorage.setItem(DB,JSON.stringify(state.data));return true;}catch(e){toast('浏览器存储空间不足，请导出备份');return false;}}
 function storePrefs(){localStorage.setItem(PREF,JSON.stringify(state.prefs));}
@@ -110,13 +115,104 @@ function todayPage(){
 }
 function weeklyOverview(items){const countMap=new Map();items.forEach(s=>countMap.set(s.name,(countMap.get(s.name)||0)+1));const entries=[...countMap].sort((a,b)=>b[1]-a[1]).slice(0,5);return entries.length?`<div class="overview-list">${entries.map(([name,n],idx)=>`<div><div class="overview-item"><span class="overview-dot" style="background:${palette[idx]}"></span><span class="overview-name">${E(name)}</span><span class="overview-count">${n} 节</span></div><div class="progress-track"><div class="progress-fill" style="width:${n/Math.max(...entries.map(x=>x[1]))*100}%;background:${palette[idx]}"></div></div></div>`).join('')}</div>`:empty('本周暂无课程','可以在设置里导入课表');}
 function dayDate(week,day){return addDays(dt(term().firstMondayIso),(week-1)*7+day-1);}
-function selectedDaySessions(){return currentSessions(state.week,state.weekday);}
-function dayStrip(){return `<div class="day-strip">${dayNames.map((name,i)=>{const d=dayDate(state.week,i+1);const n=currentSessions(state.week,i+1).length;return `<button class="day-tab ${state.weekday===i+1?'active':''} ${iso(d)===iso(today())?'today':''} ${n?'has-class':''}" aria-label="${name} ${fmt(d,{month:'numeric',day:'numeric'})} ${n}节课" aria-pressed="${state.weekday===i+1}" data-day="${i+1}"><span>${name}</span><strong>${d.getDate()}</strong><i></i></button>`;}).join('')}</div>`;}
-function schedulePage(){const sessions=selectedDaySessions(),start=dayDate(state.week,1),end=dayDate(state.week,7);return `${heading('YOUR TIMETABLE','把每一周，过得从容有序。',`${E(term().name)} · 每节课程的时间、地点与授课内容`)}
- <div class="weekbar"><div class="week-pick"><button class="icon-btn" aria-label="上一周" data-action="prevWeek" ${state.week<=1?'disabled':''}>${I('chevronLeft')}</button><strong>第 ${state.week} 周</strong><button class="icon-btn" aria-label="下一周" data-action="nextWeek" ${state.week>=term().totalWeeks?'disabled':''}>${I('chevronRight')}</button></div><span class="muted tiny">${fmt(start,{month:'numeric',day:'numeric'})} — ${fmt(end,{month:'numeric',day:'numeric'})}</span><div class="inline"><button class="btn small" data-action="thisWeek">本周</button><button class="btn small" data-action="ics">${I('download',15)} 导出日历</button></div></div>
- ${dayStrip()}<div class="schedule-layout"><section class="card schedule-day" ${state.prefs.wallpaper?`style="background-image:linear-gradient(rgba(255,255,255,${1-state.prefs.wallOpacity}),rgba(255,255,255,${1-state.prefs.wallOpacity})),url('${state.prefs.wallpaper}');background-size:cover;background-position:center"`:''}><div class="card-heading"><span>${dayNames[state.weekday-1]} · ${fmt(dayDate(state.week,state.weekday),{month:'long',day:'numeric'})}</span><span class="badge">${sessions.length} 节课程</span></div><div class="agenda-list">${sessions.length?sessions.map(courseRow).join(''):empty('这一天没有安排课程','可以安排自习、运动或者出去走走。','sun')}</div></section><section class="card"><div class="card-heading">${I('calendar',18)} 本周课程分布</div><div class="overview-list">${dayNames.map((name,i)=>{const n=currentSessions(state.week,i+1).length;return `<button class="agenda-row" data-day="${i+1}" style="padding:10px 12px;align-items:center"><span class="tiny" style="width:38px">${name}</span><div class="progress-track" style="flex:1;margin:0"><div class="progress-fill" style="width:${Math.min(100,n/5*100)}%"></div></div><strong class="tiny">${n} 节</strong>${I('chevronRight',13)}</button>`}).join('')}</div><div class="note mt-20">左右切换教学周，点开课程查看「上课内容」「授课教师」「真实日期」。官方数据以学校教务系统为准。</div></section></div>
- ${sectionTitle('完整周视图',`<button class="small-action" data-action="appearance">${I('edit',13)} 外观设置</button>`)}${card(calendarGrid(),'calendar-card')}`;}
-function calendarGrid(){const slots=[[1,2],[3,4],[6,7],[8,9],[12,13]];return `<div class="calendar-visual" role="region" aria-label="完整周课表，可左右滚动" tabindex="0"><div class="calendar-grid"><div class="cal-head">节次</div>${dayNames.map((name,i)=>`<div class="cal-head">${name}<br><span class="tiny">${dayDate(state.week,i+1).getDate()}</span></div>`).join('')}${slots.map(([a,b])=>`<div class="cal-hour">${a}-${b}</div>${dayNames.map((_,day)=>{const courses=currentSessions(state.week,day+1).filter(s=>s.startUnit>=a&&s.startUnit<=b);return `<div class="cal-cell">${courses.map(s=>`<button data-course="${E(courseKey(s))}" class="cal-event tone-${colorIndex(s)}">${E(s.name)}<small>${E(s.room||'地点待定')}</small></button>`).join('')}</div>`;}).join('')}`).join('')}</div></div>`;}
+function displayDaySessions(week,day){return day===0?currentSessions(week-1,7):currentSessions(week,day);}
+function selectedDaySessions(){return displayDaySessions(state.week,state.weekday);}
+function dayStrip(){
+ return `<div class="day-strip">${calendarDays.map(([label,day])=>{
+  const date=dayDate(state.week,day),count=displayDaySessions(state.week,day).length;
+  return `<button class="day-tab ${state.weekday===day?'active':''} ${iso(date)===iso(today())?'today':''} ${count?'has-class':''}"
+  aria-label="${label} ${fmt(date,{month:'numeric',day:'numeric'})} ${count}节课"
+  aria-pressed="${state.weekday===day}" data-day="${day}"><span>${label}</span><strong>${date.getDate()}</strong><i></i></button>`;
+ }).join('')}</div>`;
+}
+function scheduleViewSwitch(){
+ return `<div class="schedule-view-switch" role="group" aria-label="课表显示方式">
+  <button type="button" class="${state.scheduleMode==='week'?'active':''}" data-action="scheduleView" data-mode="week" aria-pressed="${state.scheduleMode==='week'}">${I('calendar',15)} 周视图</button>
+  <button type="button" class="${state.scheduleMode==='month'?'active':''}" data-action="scheduleView" data-mode="month" aria-pressed="${state.scheduleMode==='month'}">${I('calendar',15)} 月视图</button>
+ </div>`;
+}
+function schedulePage(){
+ if(state.scheduleMode==='month')return monthPage();
+ const sessions=selectedDaySessions(),start=dayDate(state.week,0),end=dayDate(state.week,6);
+ return `${heading('YOUR TIMETABLE','把每一周，过得从容有序。',`${E(term().name)} · 每节课程的时间、地点与授课内容`)}
+ ${scheduleViewSwitch()}
+ <div class="weekbar"><div class="week-pick"><button class="icon-btn" aria-label="上一周" data-action="prevWeek" ${state.week<=1?'disabled':''}>${I('chevronLeft')}</button>
+ <strong>第 ${state.week} 周</strong>
+ <button class="icon-btn" aria-label="下一周" data-action="nextWeek" ${state.week>=(term().totalWeeks||19)+1?'disabled':''}>${I('chevronRight')}</button></div>
+ <span class="muted tiny">${fmt(start,{month:'numeric',day:'numeric'})} — ${fmt(end,{month:'numeric',day:'numeric'})}</span>
+ <div class="inline"><button class="btn small" data-action="thisWeek">本周</button><button class="btn small" data-action="ics">${I('download',15)} 导出日历</button></div></div>
+ ${dayStrip()}
+ <div class="schedule-layout"><section class="card schedule-day" ${state.prefs.wallpaper?`style="background-image:linear-gradient(rgba(255,255,255,${1-state.prefs.wallOpacity}),rgba(255,255,255,${1-state.prefs.wallOpacity})),url('${state.prefs.wallpaper}');background-size:cover;background-position:center"`:''}>
+ <div class="card-heading"><span>${calendarDays.find(x=>x[1]===state.weekday)?.[0]||'周一'} · ${fmt(dayDate(state.week,state.weekday),{month:'long',day:'numeric'})}</span><span class="badge">${sessions.length} 节课程</span></div>
+ <div class="agenda-list">${sessions.length?sessions.map(courseRow).join(''):empty('这一天没有安排课程','可以安排自习、运动或者出去走走。','sun')}</div></section>
+ <section class="card"><div class="card-heading">${I('calendar',18)} 本周课程分布</div>
+ <div class="overview-list">${calendarDays.map(([label,day])=>{const count=displayDaySessions(state.week,day).length;
+  return `<button class="agenda-row" data-day="${day}" style="padding:10px 12px;align-items:center"><span class="tiny" style="width:38px">${label}</span><div class="progress-track" style="flex:1;margin:0"><div class="progress-fill" style="width:${Math.min(100,count/5*100)}%"></div></div><strong class="tiny">${count} 节</strong>${I('chevronRight',13)}</button>`}).join('')}</div>
+ <div class="note mt-20">周日为每周第一天；学校的教学周编号仍按教务系统原始规则计算，课程日期不变。</div></section></div>
+ ${sectionTitle('完整周视图',`<button class="small-action" data-action="appearance">${I('edit',13)} 外观设置</button>`)}
+ ${card(calendarGrid(),'calendar-card')}`;
+}
+function calendarGrid(){
+ const slots=[[1,2],[3,4],[6,7],[8,9],[12,13]];
+ return `<div class="calendar-visual" role="region" aria-label="周日开始的完整周课表，可左右滚动" tabindex="0">
+ <div class="calendar-grid"><div class="cal-head">节次</div>
+ ${calendarDays.map(([label,day])=>`<div class="cal-head">${label}<br><span class="tiny">${dayDate(state.week,day).getDate()}</span></div>`).join('')}
+ ${slots.map(([from,to])=>`<div class="cal-hour">${from}-${to}</div>
+ ${calendarDays.map(([label,day])=>{
+ const courses=displayDaySessions(state.week,day).filter(s=>s.startUnit>=from&&s.startUnit<=to);
+ return `<div class="cal-cell">${courses.map(course=>`<button data-course="${E(courseKey(course))}" class="cal-event tone-${colorIndex(course)}">${E(course.name)}<small>${E(course.room||'地点待定')}</small></button>`).join('')}</div>`;
+ }).join('')}`).join('')}
+ </div></div>`;
+}
+function monthCoursesIndex(){
+ const map=new Map();
+ for(const course of state.data.sessions||[]){
+  const date=courseDate(course);
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))continue;
+  if(!map.has(date))map.set(date,[]);
+  map.get(date).push(course);
+ }
+ for(const courses of map.values())courses.sort((a,b)=>Number(a.startUnit)-Number(b.startUnit));
+ return map;
+}
+function monthPage(){
+ const first=dt(state.monthCursor),year=first.getFullYear(),month=first.getMonth();
+ const start=addDays(first,-first.getDay()); // Sunday is the first calendar column.
+ const daysInMonth=new Date(year,month+1,0).getDate();
+ const count=Math.ceil((first.getDay()+daysInMonth)/7)*7;
+ const byDate=monthCoursesIndex();
+ const en=state.prefs.language==='en';
+ const weekdayNames=en?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:calendarDays.map(x=>x[0]);
+ const selected=byDate.get(state.monthSelected)||[];
+ const grid=Array.from({length:count},(_,i)=>{
+  const date=addDays(start,i),key=iso(date),courses=byDate.get(key)||[];
+  const outside=date.getMonth()!==month;
+  return `<div class="month-cell ${outside?'outside':''} ${key===iso(today())?'is-today':''} ${state.monthSelected===key?'selected':''}">
+   <button class="month-day" type="button" data-action="selectMonthDay" data-date="${key}"
+    aria-label="${fmt(date,{month:'long',day:'numeric'})} · ${courses.length} 节课程"
+    aria-pressed="${state.monthSelected===key}">${date.getDate()}${courses.length?`<span class="month-count">${courses.length}</span>`:''}</button>
+   <div class="month-events">${courses.slice(0,2).map(course=>`<button type="button" class="month-event tone-${colorIndex(course)}" data-course="${E(courseKey(course))}" title="${E(course.name)}">${E(course.name)}</button>`).join('')}
+   ${courses.length>2?`<button type="button" class="month-more" data-action="selectMonthDay" data-date="${key}">+${courses.length-2}</button>`:''}
+   </div></div>`;
+ }).join('');
+ return `${heading('YOUR TIMETABLE','每个月的课程，一目了然。',`${E(term().name)} · 按月查看课程安排`)}
+ ${scheduleViewSwitch()}
+ <div class="month-toolbar"><div class="month-pick">
+  <button type="button" class="icon-btn" aria-label="上个月" data-action="prevMonth">${I('chevronLeft')}</button>
+  <strong>${fmt(first,{year:'numeric',month:'long'})}</strong>
+  <button type="button" class="icon-btn" aria-label="下个月" data-action="nextMonth">${I('chevronRight')}</button>
+  </div><div class="inline"><span class="tiny muted">${state.monthLoading?'正在加载本月课表…':''}</span>
+  <button type="button" class="btn small" data-action="thisMonth">本月</button>
+  <button type="button" class="btn small" data-action="ics">${I('download',14)} 导出日历</button></div></div>
+ <div class="card month-calendar" role="region" aria-label="周日为第一天的月课表">
+  <div class="month-grid">${weekdayNames.map((name,i)=>`<div class="month-weekday ${i===0?'sunday':''}">${name}</div>`).join('')}
+  ${grid}</div></div>
+ <section class="card month-day-detail">
+  <div class="card-heading"><span>${fmt(dt(state.monthSelected),{month:'long',day:'numeric',weekday:'long'})}</span>
+  <span class="badge">${selected.length} 节课程</span></div>
+  <div class="agenda-list">${selected.length?selected.map(courseRow).join(''):empty('当天暂无课程','选择其他日期查看课程安排。','calendar')}</div>
+ </section>`;
+}
 function countedGrade(g){const c=`${g.category||''} ${g.nature||''}`;if(c.includes('限选'))return true;return !c.includes('选修')&&!c.includes('任选');}
 function stats(){const grades=state.data.grades||[],count=grades.filter(g=>countedGrade(g)&&+g.credit>0);const credits=count.reduce((a,g)=>a+(+g.credit||0),0);const sum=count.reduce((a,g)=>a+(+g.credit||0)*(+g.gpa||0),0);const avg=count.reduce((a,g)=>a+(+g.credit||0)*(+g.score||0),0);const earned=grades.filter(g=>g.passed).reduce((a,g)=>a+(+g.credit||0),0);return {gpa:credits?sum/credits:null,avg:credits?avg/credits:null,earned,credits:grades.reduce((a,g)=>a+(+g.credit||0),0)};}
 function gradesPage(){const s=stats();return `${heading('ACADEMIC PROGRESS','看见每一份努力的积累。','课程成绩、考级成绩与体测记录。指标仅供参考，以教务系统口径为准。')}
@@ -296,14 +392,18 @@ async function syncAcademic(){if(state.loading)return;if(state.data.campus==='gr
 async function loadWeek(week){if(!state.connected||state.data.campus==='graduate')return;try{const result=await api('academic/week?week='+week);state.data.sessions=[...(state.data.sessions||[]).filter(s=>Number(s.week)!==week),...result.sessions];store();render();}catch(e){toast('本周课表同步失败：'+e.message);}}
 async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}state.connected=false;if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
- if(target.dataset.view){state.view=target.dataset.view;closeModal();render();window.scrollTo({top:0,behavior:'smooth'});return;}
+ if(target.dataset.view){state.view=target.dataset.view;closeModal();render();if(state.view==='schedule')state.scheduleMode==='month'?loadMonth():loadSundayWeek();window.scrollTo({top:0,behavior:'smooth'});return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
- if(target.dataset.day){state.weekday=Number(target.dataset.day);render();return;}
+ if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}
  if(target.dataset.credit){state.creditMode=target.dataset.credit;render();return;}
  const act=target.dataset.action;
- switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,term().totalWeeks);render();loadWeek(state.week);break;}
- case'thisWeek':state.week=weekNow();state.weekday=((today().getDay()+6)%7)+1;render();loadWeek(state.week);break;
+ switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;}
+ case'thisWeek':state.week=weekNow();state.weekday=today().getDay();if(state.weekday===0)state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;
+ case'scheduleView':state.scheduleMode=target.dataset.mode==='month'?'month':'week';state.prefs.calendarView=state.scheduleMode;storePrefs();if(state.scheduleMode==='week'){const chosen=dt(state.monthSelected);state.weekday=chosen.getDay();state.week=clamp(calcWeek(state.weekday===0?addDays(chosen,1):chosen),1,(term().totalWeeks||19)+1);}render();if(state.scheduleMode==='month')loadMonth();else{if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();}break;
+ case'prevMonth':case'nextMonth':{const d=dt(state.monthCursor);d.setDate(1);d.setMonth(d.getMonth()+(act==='nextMonth'?1:-1));state.monthCursor=iso(d);state.monthSelected=iso(d);render();loadMonth();break;}
+ case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());render();loadMonth();break;
+ case'selectMonthDay':{const raw=target.dataset.date;if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))break;state.monthSelected=raw;const d=dt(raw);if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));render();loadMonth();}else render();break;}
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;

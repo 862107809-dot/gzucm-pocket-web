@@ -180,21 +180,10 @@ const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();
 const SKIP=new Set(['SCRIPT','STYLE','NOSCRIPT','CODE','PRE','TEXTAREA']);
-function transliterate(source){
- const han=/[\u3400-\u9fff\uF900-\uFAFF]/;
- const pinyinFn=(typeof window!=='undefined'&&window.pinyinPro&&typeof window.pinyinPro.pinyin==='function')
-   ?window.pinyinPro.pinyin:null;
- return source.replace(/[\u3400-\u9fff\uF900-\uFAFF]+/g,run=>{
-   if(pinyinFn){
-     try{
-       const romanized=pinyinFn(run,{toneType:'none',type:'string'});
-       if(typeof romanized==='string'&&!han.test(romanized))return romanized;
-     }catch{}
-   }
-   // An explicit placeholder is safer than inventing an English name or showing
-   // Chinese when transliteration is unavailable. The source is intact in state.
-   return '[Original title available in Chinese mode]';
- });
+function englishFallback(source){
+ // An untranslated school name must not be guessed or romanized.
+ // Preserve the exact original only in data/state, visible again in Chinese mode.
+ return String(source).replace(/[\u3400-\u9fff\uF900-\uFAFF]+/g,'[Translation unavailable]');
 }
 function translate(text){
  if(typeof text!=='string'||!/[\u3400-\u9fff\uF900-\uFAFF]/.test(text))return text;
@@ -209,9 +198,9 @@ function translate(text){
  out=out.replace(/(\d+(?:\.\d+)?)\s*度/g,'$1 kWh');
  out=out.replace(/(\d+(?:\.\d+)?)\s*天/g,'$1 days');
  for(const [zh,en] of dictionary)if(out.includes(zh))out=out.split(zh).join(en);
- // Every remaining Chinese sequence is romanized locally, never sent to
- // an online translator. If the library fails, use an explicit English placeholder.
- return transliterate(out);
+ // Unknown school-origin text is not translated to pinyin or guessed.
+ // Show an English placeholder, with the original retained for Chinese mode.
+ return englishFallback(out);
 }
 
 function apply(root,language='zh'){

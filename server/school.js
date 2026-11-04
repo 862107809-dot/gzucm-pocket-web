@@ -57,20 +57,27 @@ class SchoolClient{
       'route='+routeClass,
       'fallback='+String(fallbackNeeded),
       'school_cookie='+String(hasSchoolSessionCookie));
-    // QR confirmation is a link for the USER to open. It is not an HTTP request
-    // by this server. Never forward users to a domain returned unchecked by a
-    // remote response. The Android project's verified school H5 route is
-    // https://jw.gzucm.edu.cn/#/qrcodeConfirm/showConfirm?qrcodeId=...
-    if(url.protocol!=='https:'||url.hostname!=='jw.gzucm.edu.cn'||url.port){
-      if(!/^qrcodeLogin_[A-Za-z0-9_-]{4,240}$/.test(qrId)){
-        throw Error('学校二维码确认地址不受信任，且二维码标识格式不符合预期');
-      }
-      // Rebuild the documented on-campus route from the school's QR identifier,
-      // rather than whitelisting an unknown host or forwarding untrusted links.
-      url=new URL('/#/qrcodeConfirm/showConfirm?qrcodeId='+encodeURIComponent(qrId),JW);
-      console.warn('[GZUCM QR canonical fallback]', 'reconstructed_on_school_domain=true');
+    // QR confirmation is opened on the USER's device, not requested from
+    // our server. The QR issuer may point to another official school subdomain.
+    // Preserve the original school host rather than substituting jw.gzucm.edu.cn.
+    // Require HTTPS, the documented QR fragment route, and an exact matching ID.
+    if(!/^qrcodeLogin_[A-Za-z0-9_-]{4,240}$/.test(qrId)){
+      throw Error('学校二维码标识格式不符合预期');
     }
-    checkUrl(url);
+    if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.port
+      ||!(url.hostname==='gzucm.edu.cn'||url.hostname.endsWith('.gzucm.edu.cn'))){
+      throw Error('学校二维码确认地址不是受信任的学校域名');
+    }
+    const hashUrl=new URL(url.hash.slice(1),JW);
+    if(hashUrl.pathname!=='/qrcodeConfirm/showConfirm'
+      ||hashUrl.searchParams.get('qrcodeId')!==qrId){
+      throw Error('学校二维码确认地址的路径或标识不匹配');
+    }
+    // The school's legacy URL can use plain HTTP. Never send the user to an
+    // unencrypted authentication page: upgrade to HTTPS on the SAME host.
+    const insecure=url.protocol==='http:';
+    url=new URL('https://'+url.hostname+'/#/qrcodeConfirm/showConfirm?qrcodeId='+encodeURIComponent(qrId));
+    console.warn('[GZUCM QR link]', 'school_host_preserved=true', 'https_upgraded='+String(insecure));
     this.qr={id:qrId,confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};
     return {confirmUrl:url.href};
   } catch(err) {

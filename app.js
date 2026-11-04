@@ -983,6 +983,27 @@ function navigateBottomModule(view){
  */
 let bottomSwipe=null;
 let ignoreBottomClickUntil=0;
+function bottomSwipeLayout(nav){
+ const tabs=[...nav.querySelectorAll('.bottom-item')];
+ const rect=nav.getBoundingClientRect();
+ if(!tabs.length)return null;
+ return {tabs,rect,
+  width:Math.max(12,tabs[0].offsetWidth-6),
+  first:tabs[0].offsetLeft+3,last:tabs[tabs.length-1].offsetLeft+3,
+  centers:tabs.map(tab=>{const r=tab.getBoundingClientRect();return r.left+r.width/2;})};
+}
+function bottomSwipeNearest(sw,x){
+ const centers=sw.layout.centers;
+ let index=0,best=Infinity;
+ centers.forEach((center,i)=>{const n=Math.abs(x-center);if(n<best){index=i;best=n;}});
+ return index;
+}
+function placeBottomSwipeGlass(sw,x){
+ const l=sw.layout;
+ const pos=Math.max(l.first,Math.min(l.last,x-l.rect.left-l.width/2));
+ sw.glass.style.width=l.width+'px';
+ sw.glass.style.transform='translate3d('+pos+'px,0,0)';
+}
 function bottomSwipeDown(event){
  const nav=event.target.closest?.('.bottom-nav');
  if(!nav||event.isPrimary===false||event.button>0||!nav.getClientRects().length)return;
@@ -990,8 +1011,10 @@ function bottomSwipeDown(event){
  const glass=nav.querySelector('.bottom-liquid-indicator');
  const active=nav.querySelector('.bottom-item.active');
  if(!glass||!active)return;
+ const layout=bottomSwipeLayout(nav);
+ if(!layout)return;
  armLiquidSound();
- bottomSwipe={pointerId:event.pointerId,nav,glass,
+ bottomSwipe={pointerId:event.pointerId,nav,glass,layout,
   startX:event.clientX,startY:event.clientY,
   dragging:false,vertical:false,frame:0,lastX:event.clientX,lastTab:-1};
 }
@@ -1009,29 +1032,16 @@ function bottomSwipeMove(event){
  }
  if(event.cancelable)event.preventDefault();
  sw.lastX=event.clientX;
- const tabs=[...sw.nav.querySelectorAll('.bottom-item')];
- const index=tabs.reduce((best,tab,i)=>{
-  const r=tab.getBoundingClientRect(),distance=Math.abs(event.clientX-(r.left+r.width/2));
-  return distance<best.distance?{index:i,distance}:best;
- },{index:-1,distance:Infinity}).index;
+ const index=bottomSwipeNearest(sw,event.clientX);
  if(index!==sw.lastTab&&index>=0){
   sw.lastTab=index;
-  tabs.forEach((tab,i)=>tab.classList.toggle('is-scrubbed',i===index));
+  sw.layout.tabs.forEach((tab,i)=>tab.classList.toggle('is-scrubbed',i===index));
   playLiquidTick(index);
  }
  if(sw.frame)return;
  sw.frame=requestAnimationFrame(()=>{
   sw.frame=0;
-  if(!sw.glass.isConnected)return;
-  const navBounds=sw.nav.getBoundingClientRect();
-  const tabs=[...sw.nav.querySelectorAll('.bottom-item')];
-  if(!tabs.length)return;
-  const width=Math.max(12,tabs[0].offsetWidth-6);
-  const first=tabs[0].offsetLeft+3;
-  const last=tabs[tabs.length-1].offsetLeft+3;
-  const pos=Math.max(first,Math.min(last,sw.lastX-navBounds.left-width/2));
-  sw.glass.style.width=width+'px';
-  sw.glass.style.transform='translate3d('+pos+'px,0,0)';
+  if(sw.glass.isConnected)placeBottomSwipeGlass(sw,sw.lastX);
  });
 }
 function bottomSwipeFinish(event,cancelled=false){
@@ -1039,26 +1049,24 @@ function bottomSwipeFinish(event,cancelled=false){
  if(!sw||sw.pointerId!==event.pointerId)return;
  bottomSwipe=null;
  if(sw.frame)cancelAnimationFrame(sw.frame);
- sw.nav.querySelectorAll('.bottom-item').forEach(tab=>tab.classList.remove('is-scrubbed'));
+ sw.layout.tabs.forEach(tab=>tab.classList.remove('is-scrubbed'));
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
- if(!sw.dragging){return;}
+ if(!sw.dragging)return;
  if(event.cancelable)event.preventDefault();
  ignoreBottomClickUntil=Date.now()+420;
- if(cancelled){
-  liquidGestureSnap=true;
-  render();
+ // Commit the final finger position before the navigation re-renders.
+ placeBottomSwipeGlass(sw,event.clientX);
+ const index=bottomSwipeNearest(sw,event.clientX);
+ const next=sw.layout.tabs[index]?.dataset.view;
+ if(cancelled||!next||next===state.view){
+  sw.glass.classList.remove('is-instant','is-dragging');
+  const active=sw.nav.querySelector('.bottom-item.active');
+  if(active){
+   sw.glass.style.width=Math.max(12,active.offsetWidth-6)+'px';
+   sw.glass.style.transform='translate3d('+(active.offsetLeft+3)+'px,0,0)';
+  }
   return;
  }
- const tabs=[...sw.nav.querySelectorAll('.bottom-item')];
- if(!tabs.length)return;
- const x=event.clientX;
- const nearest=tabs.reduce((best,tab)=>{
-  const r=tab.getBoundingClientRect();
-  const distance=Math.abs(x-(r.left+r.width/2));
-  return !best||distance<best.distance?{tab,distance}:best;
- },null)?.tab;
- const next=nearest?.dataset.view;
- if(!next)return;
  liquidGestureSnap=true;
  navigateBottomModule(next);
 }

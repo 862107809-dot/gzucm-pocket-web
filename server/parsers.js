@@ -44,7 +44,7 @@ function parsePowerBalanceJson(raw,room){
  catch{throw Error('一卡通余额接口返回非 JSON 数据');}
  if(root?.ret!==true&&String(root?.ret)!=='true')throw Error('一卡通余额接口未返回成功状态');
  const value=root?.obj?.powerBalance;
- if(value===undefined||value===null||!/^\\d+(?:\\.\\d+)?$/.test(String(value).trim()))throw Error('一卡通余额接口未返回有效电量');
+ if(value===undefined||value===null||!/^\d+(?:\.\d+)?$/.test(String(value).trim()))throw Error('一卡通余额接口未返回有效电量');
  const balance=Number(value);
  if(!Number.isFinite(balance)||balance<0||balance>1000000)throw Error('一卡通电量数值超出合理范围');
  const respRoom=String(root?.obj?.roomNum??'');

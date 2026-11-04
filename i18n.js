@@ -168,7 +168,7 @@ pairs.push(...[
  ['第1学期','Semester 1'],['第2学期','Semester 2'],['第3学期','Semester 3'],
  ['教学周','teaching weeks'],['学年','academic year'],['学期','semester'],
  ['节','periods'],['度','kWh'],['周','week'],
- ['中文','Chinese'],['中','G'],
+ ['中文','Chinese'],
  ['第 10 / 19 教学周','Teaching week 10 of 19'],
  ['第 9 / 20 教学周','Teaching week 9 of 20'],
  ['今天有','There are'],['接下来的每一步都有方向。','Every step ahead has a purpose.'],
@@ -181,7 +181,7 @@ const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();
 const SKIP=new Set(['SCRIPT','STYLE','NOSCRIPT','CODE','PRE','TEXTAREA']);
 function transliterate(source){
- const han=/[\u3400-\u9fff\uF900-\uFAFF]/g;
+ const han=/[\u3400-\u9fff\uF900-\uFAFF]/;
  const pinyinFn=(typeof window!=='undefined'&&window.pinyinPro&&typeof window.pinyinPro.pinyin==='function')
    ?window.pinyinPro.pinyin:null;
  return source.replace(/[\u3400-\u9fff\uF900-\uFAFF]+/g,run=>{

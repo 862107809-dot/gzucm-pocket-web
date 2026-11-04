@@ -1,17 +1,30 @@
-const CACHE = 'gzucm-pocket-web-v4';
-const ASSETS = ['/', '/index.html', '/styles.css', '/data.js', '/app.js', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
+/* Cache namespace v5: old cache-first app.js caused a permanent boot screen. */
+const CACHE = 'gzucm-pocket-web-v5-20261104-fix2';
+const ASSETS = ['/', '/index.html', '/styles.css?v=20261104-fix2', '/data.js?v=20261104-fix2', '/app.js?v=20261104-fix2', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+ event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+ event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
-  const req = event.request;
-  if (req.method !== 'GET' || !req.url.startsWith(self.location.origin) || new URL(req.url).pathname.startsWith('/api/')) return;
-  if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(() => caches.match('/index.html')));
-  } else {
-    event.respondWith(caches.match(req).then(hit => hit || fetch(req)));
-  }
+ const req = event.request;
+ const url = new URL(req.url);
+ if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname === '/deployment-config.js' || url.pathname === '/health') return;
+ if (req.mode === 'navigate') {
+  event.respondWith(fetch(req).catch(() => caches.match('/index.html')));
+  return;
+ }
+ // The UI always prefers freshly deployed JavaScript/CSS; cached copies are offline fallbacks only.
+ if (/\.(?:js|css)$/.test(url.pathname)) {
+  event.respondWith(fetch(req).then(response => {
+   if (response.ok) {
+    const backup = response.clone();
+    caches.open(CACHE).then(cache => cache.put(req, backup)).catch(() => {});
+   }
+   return response;
+  }).catch(() => caches.match(req)));
+  return;
+ }
+ event.respondWith(caches.match(req).then(hit => hit || fetch(req)));
 });

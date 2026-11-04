@@ -82,6 +82,31 @@ const isDemo=()=>!!state.data.demo;
 function applyLanguage(){window.GZUCM_I18N?.apply(document.body,state.prefs.language==='en'?'en':'zh');}
 let previousBottomTab=null;
 let liquidMoveFrame=0;
+let liquidGestureSnap=false;
+/* Damped harmonic spring: responsive start, smooth velocity decay and a tiny
+ * natural settle. Keyframed via Web Animations (available in modern Safari).
+ * CSS cubic-bezier remains a fully functional fallback. */
+function safariSpringProgress(time,damping=.83,frequency=17){
+ const z=Math.min(.98,Math.max(.1,damping));
+ const w=frequency*Math.sqrt(1-z*z);
+ return 1-Math.exp(-z*frequency*time)*
+   (Math.cos(w*time)+(z/Math.sqrt(1-z*z))*Math.sin(w*time));
+}
+function liquidSpringFrames(startX,startW,endX,endW,duration=540){
+ const frames=[];
+ const total=48;
+ const ratio=endW?startW/endW:1;
+ const distance=endX-startX;
+ for(let i=0;i<=total;i++){
+  const offset=i/total;
+  const p=i===total?1:safariSpringProgress(offset*duration/1000);
+  const x=startX+distance*p;
+  // Width stretch travels only with the glass, never with text or icons.
+  const scale=Math.max(.85,Math.min(1.2,ratio+(1-ratio)*p));
+  frames.push({offset,transform:'translate3d('+x.toFixed(2)+'px,0,0) scaleX('+scale.toFixed(4)+')'});
+ }
+ return frames;
+}
 function alignBottomLiquid(previousTab,previousRect){
  const nav=document.querySelector('#app .bottom-nav');
  const glass=nav?.querySelector('.bottom-liquid-indicator');
@@ -95,7 +120,8 @@ function alignBottomLiquid(previousTab,previousRect){
  const targetX=current.offsetLeft+inset;
  const targetW=Math.max(12,current.offsetWidth-inset*2);
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
- const changed=previousTab&&previousTab!==state.view&&!motionReduced;
+ const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
+ liquidGestureSnap=false;
  const oldX=previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
  const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
@@ -105,18 +131,31 @@ function alignBottomLiquid(previousTab,previousRect){
  glass.style.width=(changed?startW:targetW)+'px';
  glass.style.transform='translate3d('+(changed?startX:targetX)+'px,0,0)';
  if(!changed)return;
- // Commit the previous geometry before the next animation frame.
- void glass.offsetWidth;
+ void glass.offsetWidth; // Ensure fallback CSS starts at previous location.
  glass.classList.remove('is-instant');
  glass.classList.add('is-moving');
  glass.addEventListener('animationend',()=>glass.classList.remove('is-moving'),{once:true});
  liquidMoveFrame=requestAnimationFrame(()=>{
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
+  if(typeof glass.animate==='function'){
+   const duration=540;
+   const frames=liquidSpringFrames(startX,startW,targetX,targetW,duration);
+   glass.classList.add('is-instant');
+   glass.style.width=targetW+'px';
+   glass.style.transform='translate3d('+targetX+'px,0,0)';
+   try{
+    // Physically nonlinear sample positions. WAAPI is only the time clock.
+    glass.animate(frames,{duration,fill:'none'}).finished.catch(()=>{});
+    return;
+   }catch{glass.classList.remove('is-instant');}
+  }
+  // Browser fallback: non-linear CSS transition (no third-party runtime).
   glass.style.width=targetW+'px';
   glass.style.transform='translate3d('+targetX+'px,0,0)';
  });
 }
+
 function render(){
  hideSafariMenu();
  const root=$('#app');

@@ -988,9 +988,9 @@ function bottomSwipeClickCapture(event){
  event.stopImmediatePropagation();
 }
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
+ if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
  if(target.dataset.view){if(target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
- if(target.closest('.liquid-selector')&&target.matches('button')&&!target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}
  if(target.dataset.credit){state.creditMode=target.dataset.credit;render();return;}

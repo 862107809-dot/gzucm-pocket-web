@@ -10,10 +10,10 @@
 (function(global){
  'use strict';
  const active=new Map();
- const limited='.topbar,.bottom-nav,.modal-card,.segmented';
- const maxArea=420000;
- const maxWidth=800;
- const maxCount=4;
+ const limited='.language-switch,.theme-trigger';
+ const maxArea=10000;
+ const maxWidth=120;
+ const maxCount=2;
  let raf=0;
 
  function allowed(){
@@ -37,11 +37,9 @@
    const r=el.getBoundingClientRect();
    if(!r.width||!r.height||r.width>maxWidth||r.width*r.height>maxArea)continue;
    // Prefer the real native browser compositing path for all Safari users.
-   // Library does Chromium refraction, Safari retains CSS gradient/frost.
+   // Decorative buttons only: cards, navigation, and text never refract.
    try{
-    const opts=el.matches('.segmented')
-      ?{scale:-36,chroma:2,border:.12,mapBlur:5,blur:7,saturate:1.3,fallbackBlur:18}
-      :{scale:-54,chroma:3,border:.08,mapBlur:9,blur:10,saturate:1.5,fallbackBlur:20};
+    const opts={scale:-18,chroma:1,border:.15,mapBlur:8,blur:10,saturate:1.18,fallbackBlur:17};
     const instance=global.liquidGlass(el,opts);
     if(instance?.supported){active.set(el,instance);count++;}
     else if(instance)instance.destroy();
@@ -59,7 +57,7 @@
 
  // Specular highlight stays on the outer CSS layer, no per-frame SVG redraw.
  function light(event){
-  const target=event.target?.closest?.('.topbar,.bottom-nav,.language-switch,.segmented');
+  const target=event.target?.closest?.('.topbar,.bottom-nav,.language-switch,.theme-trigger');
   if(!target)return;
   const r=target.getBoundingClientRect();
   if(!r.width||!r.height)return;

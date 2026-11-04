@@ -57,8 +57,9 @@ test('glass contrast and appearance picker are readable in both themes',()=>{
  assert.match(css,/\.card,\.agenda-row,\.calendar-visual,\.power-mini/);
  assert.match(css,/\.theme-picker\{display:flex/);
  assert.match(app,/data-action="themeMenu"/);
- assert.match(app,/case'themeMenu':themeModal\(\);break/);
- assert.match(app,/case'selectTheme':selectTheme\(target\.dataset\.themeValue\);break/);
+ assert.match(app,/case'themeMenu':toggleSafariMenu\(target,'theme'\);break/);
+ assert.match(app,/case'settingsMenu':toggleSafariMenu\(target,'settings'\);break/);
+ assert.match(app,/case'selectTheme':selectTheme\(target\.dataset\.value\);break/);
  assert.match(app,/state\.prefs\.theme=value;\s*storePrefs\(\);\s*applyTheme\(\);/);
  assert.match(app,/\{key:'light'/);
  assert.match(app,/\{key:'dark'/);
@@ -110,4 +111,22 @@ test('dark course tiles use readable text and transparent deep surfaces',()=>{
  const app=read('app.js');
  assert.match(app,/class="cal-event tone-\$\{colorIndex\(s\)\}"/);
  assert.match(app,/data-course="\$\{E\(courseKey\(s\)\)\}"/);
+});
+
+test('top and settings choice menus open as small anchored Safari glass boxes',()=>{
+ const app=read('app.js'),html=read('index.html'),css=read('styles.css');
+ assert.match(html,/id="popover-root"/);
+ assert.match(app,/function toggleSafariMenu\(anchor,kind\)/);
+ assert.match(app,/class="safari-floating-menu"/);
+ assert.match(app,/getBoundingClientRect\(\)/);
+ assert.match(app,/case'settingChoice':toggleSafariMenu\(target,target\.dataset\.choice\);break/);
+ assert.match(app,/data-action="settingsMenu"/);
+ assert.match(app,/data-action="settingChoice" data-choice="start"/);
+ assert.match(app,/data-action="settingChoice" data-choice="campus"/);
+ assert.doesNotMatch(app,/<select id="theme-select"/);
+ assert.doesNotMatch(app,/<select id="start-select"/);
+ assert.doesNotMatch(app,/<select id="campus-select"/);
+ assert.match(css,/\.safari-floating-menu\{/);
+ assert.match(css,/\.safari-select\{/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
 });

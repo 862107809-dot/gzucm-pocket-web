@@ -61,9 +61,9 @@ test('glass contrast and appearance picker are readable in both themes',()=>{
  assert.match(app,/case'settingsMenu':toggleSafariMenu\(target,'settings'\);break/);
  assert.match(app,/case'selectTheme':selectTheme\(target\.dataset\.value\);break/);
  assert.match(app,/state\.prefs\.theme=value;\s*storePrefs\(\);\s*applyTheme\(\);/);
- assert.match(app,/\{key:'light'/);
- assert.match(app,/\{key:'dark'/);
- assert.match(app,/\{key:'system'/);
+ assert.match(app,/\{value:'light'/);
+ assert.match(app,/\{value:'dark'/);
+ assert.match(app,/\{value:'system'/);
  assert.doesNotMatch(app,/class="avatar"/);
 });
 

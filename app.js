@@ -206,8 +206,10 @@ function liquidSelectorButtons(group){
  return [...group.children].filter(el=>el.tagName==='BUTTON');
 }
 function liquidSelectorActive(group){
- return liquidSelectorButtons(group).find(el=>el.classList.contains('active')||
-  el.getAttribute('aria-pressed')==='true'||el.getAttribute('aria-current')==='page');
+ const buttons=liquidSelectorButtons(group);
+ return buttons.find(el=>el.classList.contains('active')||el.classList.contains('selected')||
+  el.getAttribute('aria-pressed')==='true'||el.getAttribute('aria-current')==='page')||
+  (group.classList.contains('safari-floating-menu')?buttons[0]:null);
 }
 function liquidSelectorValue(button){
  return String(button?.dataset.mode??button?.dataset.day??button?.dataset.gradeTab??

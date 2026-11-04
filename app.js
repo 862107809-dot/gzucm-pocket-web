@@ -68,7 +68,7 @@ state.week=weekNow();
 function isValidData(v){return !!(v&&typeof v==='object'&&v.semester&&/^\d{4}-\d{2}-\d{2}$/.test(v.semester.firstMondayIso)&&Array.isArray(v.sessions)&&Array.isArray(v.grades));}
 function store(){if(PUBLIC)return true;try{localStorage.setItem(DB,JSON.stringify(state.data));return true;}catch(e){toast('浏览器存储空间不足，请导出备份');return false;}}
 function storePrefs(){localStorage.setItem(PREF,JSON.stringify(state.prefs));}
-function applyTheme(){document.documentElement.dataset.theme=state.prefs.theme==='system'?'':state.prefs.theme; $('meta[name="theme-color"]').content=state.prefs.theme==='dark'?'#10251a':'#eff5ef';}
+function applyTheme(){document.documentElement.dataset.theme=state.prefs.theme==='system'?'':state.prefs.theme;const dark=state.prefs.theme==='dark'||(state.prefs.theme==='system'&&window.matchMedia?.('(prefers-color-scheme: dark)').matches);const meta=$('meta[name="theme-color"]');if(meta)meta.content=dark?'#101d19':'#edf2eb';}
 function currentSessions(week=state.week,weekday=null){return (state.data.sessions||[]).filter(s=>Number(s.week)===Number(week)&&(weekday===null||Number(s.weekday)===weekday)).sort((a,b)=>Number(a.startUnit)-Number(b.startUnit));}
 const colorIndex = s => Number.isFinite(+s.tone)?(+s.tone)%9:Math.abs([...(s.name||'')].reduce((a,c)=>a+c.charCodeAt(0),0))%9;
 const palette=['#81bca1','#85a8d0','#dfba88','#b5a1d5','#d9979a','#7ebdb3','#85a8d0','#dfba88','#b5a1d5'];
@@ -83,7 +83,7 @@ function render(){
 }
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav>${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
-function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn" title="偏好设置" aria-label="偏好设置" data-view="settings">${I('settings')}</button></div></header>`;}
+function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn theme-trigger" type="button" title="${state.prefs.language==='en'?'Appearance':'外观模式'}" aria-label="${state.prefs.language==='en'?'Choose light or dark appearance':'选择浅色或深色模式'}" data-action="themeMenu">${I(state.prefs.theme==='dark'?'moon':state.prefs.theme==='light'?'sun':(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'moon':'sun'))}</button><button class="icon-btn" title="偏好设置" aria-label="偏好设置" data-view="settings">${I('settings')}</button></div></header>`;}
 function bottomNav(){return `<nav class="bottom-nav" aria-label="手机底部导航">${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
 function heading(eyebrow,title,sub){return `<div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-sub">${sub}</p>`;}
 function sectionTitle(title,btn=''){return `<div class="section-heading"><h2>${title}</h2>${btn}</div>`;}
@@ -145,6 +145,32 @@ let toastTimer=null;
 function toast(text){const root=$('#toast-root');root.innerHTML=`<div class="toast">${E(text)}</div>`;applyLanguage();clearTimeout(toastTimer);toastTimer=setTimeout(()=>root.innerHTML='',2800);}
 function showCourse(key){const s=(state.data.sessions||[]).find(x=>matchesKey(x,key));if(!s)return;openModal('课程详情',`<div class="course-detail-hero"><div class="tiny muted">${E(s.category||'课程')} · 第 ${s.week} 周</div><strong>${E(s.name)}</strong><p>${E(s.content||'教务系统暂无具体授课内容')}</p></div>${[['时间',`${courseDate(s)} ${dayNames[(s.weekday||1)-1]} · ${s.startTime||'--:--'}—${s.endTime||'--:--'}`],['授课教师',s.teachers||'未提供'],['上课地点',s.room||'未提供'],['教学环节',s.category||'未提供'],['教学模式',s.teachingMode||'未提供'],['课程代码',s.code||'未提供']].map(([k,v])=>`<div class="detail-line"><span class="detail-key">${k}</span><span class="detail-value">${E(v)}</span></div>`).join('')}`);}
 function editPowerModal(){const p=state.data.power||{};openModal('记录宿舍电量',`<form id="power-form" class="grid-gap"><label class="setting-label">宿舍名称<input name="room" class="text-input mt-12" value="${E(p.roomLabel||'')}" placeholder="例如：大学城某宿舍" maxlength="64"/></label><label class="setting-label">剩余电量（度）<input name="balance" class="text-input mt-12" type="number" min="0" max="999999" step="0.01" required value="${Number.isFinite(+p.balance)?E(p.balance):''}" /></label><label class="setting-label">今日用电量（度，可选）<input name="usage" class="text-input mt-12" type="number" min="0" max="99999" step="0.01" placeholder="例如 3.20" /></label><button type="submit" class="btn primary block">保存本地记录</button></form><div class="note mt-12">仅记录您从学校官网查询到的电量，不会向学校发送密码或写入学校系统。公开网站的手动记录保存在当前浏览器，不包含教务成绩。</div>`);}
+function themeModal(){
+ const en=state.prefs.language==='en';
+ const options=[
+  {key:'light',icon:'sun',title:en?'Light':'浅色模式',note:en?'A bright, crisp appearance':'清晰明亮的浅色界面'},
+  {key:'dark',icon:'moon',title:en?'Dark':'深色模式',note:en?'Deeper surfaces with readable text':'更深的背景，清晰的文字'},
+  {key:'system',icon:'settings',title:en?'System':'跟随系统',note:en?'Match your device appearance':'根据设备外观自动切换'}
+ ];
+ const cards=options.map(o=>
+  '<button type="button" class="theme-option '+(state.prefs.theme===o.key?'selected':'')+
+  '" data-action="selectTheme" data-theme-value="'+o.key+'" aria-pressed="'+String(state.prefs.theme===o.key)+'">'+
+  '<span class="theme-option-icon">'+I(o.icon,20)+'</span>'+
+  '<span class="theme-option-copy"><strong>'+o.title+'</strong><small>'+o.note+'</small></span>'+
+  '<span class="theme-option-check" aria-hidden="true">'+(state.prefs.theme===o.key?I('check',18):'')+'</span></button>'
+ ).join('');
+ openModal(en?'Appearance':'选择外观模式',
+  '<p>'+(en?'Choose Light, Dark or System. Your preference is saved.':'请选择浅色、深色或跟随系统；选择后自动保存。')+'</p>'+
+  '<div class="theme-picker" role="group" aria-label="'+(en?'Choose appearance':'选择外观模式')+'">'+cards+'</div>');
+}
+function selectTheme(value){
+ if(!['light','dark','system'].includes(value))return;
+ state.prefs.theme=value;
+ storePrefs();
+ applyTheme();
+ render();
+ themeModal();
+}
 function appearanceModal(){openModal('课表外观',`<p>可以在「偏好与设置」中上传背景并调整显示强度，适配 iPhone、iPad 和 Mac。</p><div class="modal-actions"><button class="btn primary" data-view="settings">前往设置 ${I('arrow',14)}</button></div>`);}
 function resetModal(){openModal('清除本地数据？',`<p>本操作将清除浏览器保存的课表、成绩和电量记录并恢复演示数据。学校账号与官方系统不受影响。</p>`,`<button class="btn danger" data-action="resetConfirm">清除并恢复演示数据</button><button class="btn" data-action="close">取消</button>`);}
 const SCHOOL_SSO_URL='https://jw.gzucm.edu.cn/new/ssoLogin';
@@ -232,7 +258,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  const act=target.dataset.action;
  switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,term().totalWeeks);render();loadWeek(state.week);break;}
  case'thisWeek':state.week=weekNow();state.weekday=((today().getDay()+6)%7)+1;render();loadWeek(state.week);break;
- case'ics':exportICS();break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
+ case'ics':exportICS();break;case'themeMenu':themeModal();break;case'selectTheme':selectTheme(target.dataset.themeValue);break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'toggleLanguage':toggleLanguage();break;

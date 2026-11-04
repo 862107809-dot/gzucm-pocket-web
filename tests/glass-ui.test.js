@@ -146,11 +146,11 @@ test('bottom navigation has a layered liquid-glass selection surface',()=>{
 test('CSS animations use nonlinear timing and spring snap with accessible fallback',()=>{
  const css=read('styles.css');
  assert.match(css,/--motion-soft:cubic-bezier\(\.22,1,\.36,1\)/);
- assert.match(css,/--motion-fluid:cubic-bezier\(\.16,1\.14,\.32,1\)/);
+ assert.match(css,/--motion-fluid:cubic-bezier\(\.20,\.96,\.32,1\)/);
  assert.match(css,/transition-timing-function:var\(--motion-soft\)/);
  assert.match(css,/animation-timing-function:var\(--motion-soft\)/);
  assert.match(css,/@keyframes liquidSnap\{/);
- assert.match(css,/scaleX\(1\.14\) scaleY\(\.92\)/);
+ assert.match(css,/scaleX\(1\.045\) scaleY\(\.982\)/);
  assert.match(css,/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{/);
  assert.match(css,/\.bottom-liquid-indicator,\.bottom-liquid-surface/);
@@ -194,4 +194,28 @@ test('glass highlight animates from previous tab and snaps immediately in reduce
  align('schedule',{left:100,width:60});
  assert.equal(glass.style.transform,'translate3d(181px,0,0)');
  assert.ok(classes.has('is-instant'));
+});
+
+test('Safari-style damping is physically nonlinear with a subtle overshoot',()=>{
+ const app=read('app.js');
+ const start=app.indexOf('let previousBottomTab=null;');
+ const end=app.indexOf('function render(){',start);
+ const f=new Function(app.slice(start,end)+'return {safariSpringProgress,liquidSpringFrames};')();
+ assert.equal(f.safariSpringProgress(0),0);
+ const early=f.safariSpringProgress(.065);
+ const middle=f.safariSpringProgress(.16);
+ const late=f.safariSpringProgress(.42);
+ assert.ok(early>0&&middle>early);
+ assert.ok(late>.96&&late<1.07);
+ const frames=f.liquidSpringFrames(18,62,260,66,540);
+ assert.equal(frames.length,49);
+ assert.equal(frames[0].offset,0);
+ assert.equal(frames.at(-1).offset,1);
+ assert.match(frames[0].transform,/translate3d\(18\.00px/);
+ assert.match(frames.at(-1).transform,/translate3d\(260\.00px/);
+ const travel=frames.map(x=>parseFloat(x.transform.match(/translate3d\(([\d.]+)px/)[1]));
+ const increments=travel.slice(1).map((x,i)=>x-travel[i]);
+ assert.ok(Math.abs(increments[2]-increments[10])>.5,'Spring must not move at constant speed');
+ assert.match(app,/typeof glass\.animate==='function'/);
+ assert.match(app,/glass\.animate\(frames,\{duration,fill:'none'\}\)/);
 });

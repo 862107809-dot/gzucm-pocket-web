@@ -15,7 +15,7 @@ const PUBLIC=window.GZUCM_PUBLIC===true;
 const persisted=PUBLIC?null:saved(DB,null);
 if (isValidData(persisted)) state.data={...window.GZUCM_DEMO,...persisted,demo:false};
 state.view=['today','schedule','grades','power','settings'].includes(state.prefs.start)?state.prefs.start:'today';
-state.week=weekNow();state.weekday=((new Date().getDay()+6)%7)+1;
+state.weekday=((new Date().getDay()+6)%7)+1;
 applyTheme();
 const icons={
  home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/>',
@@ -58,6 +58,7 @@ const dayNames=['周一','周二','周三','周四','周五','周六','周日'];
 const term=()=>state.data.semester;
 const calcWeek = date => Math.floor((dt(iso(date))-dt(term().firstMondayIso))/86400000/7)+1;
 function weekNow(){return clamp(calcWeek(today()),1,Math.max(1,term().totalWeeks||19));}
+state.week=weekNow();
 function isValidData(v){return !!(v&&typeof v==='object'&&v.semester&&/^\d{4}-\d{2}-\d{2}$/.test(v.semester.firstMondayIso)&&Array.isArray(v.sessions)&&Array.isArray(v.grades));}
 function store(){if(PUBLIC)return true;try{localStorage.setItem(DB,JSON.stringify(state.data));return true;}catch(e){toast('浏览器存储空间不足，请导出备份');return false;}}
 function storePrefs(){localStorage.setItem(PREF,JSON.stringify(state.prefs));}

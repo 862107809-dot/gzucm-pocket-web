@@ -82,12 +82,12 @@ const pairs=[
 ['总学分','Total credits'],['加权绩点','Weighted GPA'],['平均分','Average grade'],['专业课','Major courses'],
 ['必修','Required'],['选修','Elective'],['未分类','Unclassified'],['合格','Pass'],['良好','Good'],
 ['中国时间','China time'],['全部课程','All courses'],['我的成绩','My grades'],
-['第','Week '],['周',' week'],['节课程',' classes'],['节',' classes'],
-['天',' days'],['度',' kWh'],['演示',' Demo'],
+['节课程',' classes'],
+
 ['周一','Mon'],['周二','Tue'],['周三','Wed'],['周四','Thu'],['周五','Fri'],['周六','Sat'],['周日','Sun'],
 ['星期一','Monday'],['星期二','Tuesday'],['星期三','Wednesday'],['星期四','Thursday'],['星期五','Friday'],['星期六','Saturday'],['星期日','Sunday'],
 ['上一周','Previous week'],['下一周','Next week'],['本周','This week'],
-['月','month'],['学年','academic year'],['学期','term'],
+
 ['官方','Official'],['返回','Back'],
 ['中文','中文'],['语言','Language'],['界面语言','Interface language']
 ];
@@ -98,6 +98,11 @@ const SKIP=new Set(['SCRIPT','STYLE','NOSCRIPT','CODE','PRE','TEXTAREA']);
 function translate(text){
  if(typeof text!=='string'||!/[\u3400-\u9fff]/.test(text))return text;
  let out=text;
+ // Translate predictable numerical labels without changing raw course names.
+ out=out.replace(/第\\s*(\d+)\s*周/g,'Week $1');
+ out=out.replace(/共\\s*(\d+)\s*节/g,'$1 classes');
+ out=out.replace(/(\d+(?:\.\d+)?)\s*度/g,'$1 kWh');
+ out=out.replace(/(\d+(?:\.\d+)?)\s*天/g,'$1 days');
  // Longest fixed UI strings first. Do not machine translate official academic records.
  for(const [zh,en] of dictionary)if(out.includes(zh))out=out.split(zh).join(en);
  out=out.replace(/星期([一二三四五六日])/g,(_,d)=>({一:'Monday',二:'Tuesday',三:'Wednesday',四:'Thursday',五:'Friday',六:'Saturday',日:'Sunday'})[d]);

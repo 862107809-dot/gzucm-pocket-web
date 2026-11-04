@@ -8,7 +8,7 @@ const PREF = 'gzucm-pocket-web:prefs';
 const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const state = {
   data: window.GZUCM_DEMO,
-  view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
+  view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthLoadError:0,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
   connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',
   prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',...saved(PREF,{})}
 };
@@ -184,6 +184,13 @@ function monthPage(){
  const en=state.prefs.language==='en';
  const weekdayNames=en?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:calendarDays.map(x=>x[0]);
  const selected=byDate.get(state.monthSelected)||[];
+ const monthDates=Array.from({length:daysInMonth},(_,i)=>addDays(first,i));
+ const dailyClasses=monthDates.map(date=>({date,key:iso(date),courses:byDate.get(iso(date))||[]})).filter(item=>item.courses.length);
+ const monthlyTotal=dailyClasses.reduce((sum,item)=>sum+item.courses.length,0);
+ const fullMonthList=dailyClasses.map(item=>`<section class="month-agenda-date">
+  <div class="month-agenda-date-heading"><strong>${fmt(item.date,{month:'long',day:'numeric',weekday:'long'})}</strong><span class="badge">${item.courses.length} 节课程</span></div>
+  <div class="agenda-list">${item.courses.map(courseRow).join('')}</div>
+ </section>`).join('');
  const grid=Array.from({length:count},(_,i)=>{
   const date=addDays(start,i),key=iso(date),courses=byDate.get(key)||[];
   const outside=date.getMonth()!==month;
@@ -191,9 +198,10 @@ function monthPage(){
    <button class="month-day" type="button" data-action="selectMonthDay" data-date="${key}"
     aria-label="${fmt(date,{month:'long',day:'numeric'})} · ${courses.length} 节课程"
     aria-pressed="${state.monthSelected===key}">${date.getDate()}${courses.length?`<span class="month-count">${courses.length}</span>`:''}</button>
-   <div class="month-events">${courses.slice(0,2).map(course=>`<button type="button" class="month-event tone-${colorIndex(course)}" data-course="${E(courseKey(course))}" title="${E(course.name)}">${E(course.name)}</button>`).join('')}
-   ${courses.length>2?`<button type="button" class="month-more" data-action="selectMonthDay" data-date="${key}">+${courses.length-2}</button>`:''}
-   </div></div>`;
+   <div class="month-events">${courses.map(course=>`<button type="button" class="month-event tone-${colorIndex(course)}" data-course="${E(courseKey(course))}" title="${E(course.name)} · ${E(course.startTime||'')} ${E(course.room||'')}">
+     <span class="month-event-name">${E(course.name||'未命名课程')}</span>
+     <span class="month-event-meta">${E([course.startTime&&course.endTime?course.startTime+'–'+course.endTime:course.startTime||'',course.room||'地点待定'].filter(Boolean).join(' · '))}</span>
+    </button>`).join('')}</div></div>`;
  }).join('');
  return `${heading('YOUR TIMETABLE','每个月的课程，一目了然。',`${E(term().name)} · 按月查看课程安排`)}
  ${scheduleViewSwitch()}
@@ -201,16 +209,22 @@ function monthPage(){
   <button type="button" class="icon-btn" aria-label="上个月" data-action="prevMonth">${I('chevronLeft')}</button>
   <strong>${fmt(first,{year:'numeric',month:'long'})}</strong>
   <button type="button" class="icon-btn" aria-label="下个月" data-action="nextMonth">${I('chevronRight')}</button>
-  </div><div class="inline"><span class="tiny muted">${state.monthLoading?'正在加载本月课表…':''}</span>
+  </div><div class="inline"><span class="tiny muted" role="status">${state.monthLoading?'正在加载本月课表…':state.monthLoadError?'部分课程加载失败，可重新加载':''}</span>
   <button type="button" class="btn small" data-action="thisMonth">本月</button>
   <button type="button" class="btn small" data-action="ics">${I('download',14)} 导出日历</button></div></div>
- <div class="card month-calendar" role="region" aria-label="周日为第一天的月课表">
+ <div class="month-summary"><strong>本月已获取 ${monthlyTotal} 节课程</strong><span class="tiny muted">${dailyClasses.length} 天有课 · ${state.monthLoading?'仍在加载其余教学周':'已获取的课程全部显示，不折叠'}</span></div>
+ <div class="month-scroll-hint tiny muted">月历可左右滑动查看所有课程；下方还有按日期排列的完整课程清单。</div>
+ <div class="card month-calendar" role="region" aria-label="周日为第一天的完整月课表，可横向滚动" tabindex="0">
   <div class="month-grid">${weekdayNames.map((name,i)=>`<div class="month-weekday ${i===0?'sunday':''}">${name}</div>`).join('')}
   ${grid}</div></div>
  <section class="card month-day-detail">
   <div class="card-heading"><span>${fmt(dt(state.monthSelected),{month:'long',day:'numeric',weekday:'long'})}</span>
   <span class="badge">${selected.length} 节课程</span></div>
   <div class="agenda-list">${selected.length?selected.map(courseRow).join(''):empty('当天暂无课程','选择其他日期查看课程安排。','calendar')}</div>
+ </section>
+ <section class="month-all-courses" aria-label="本月全部课程">
+  <div class="card-heading month-all-heading"><span>${I('calendar',18)} 本月全部课程 · ${monthlyTotal} 节</span><span class="tiny muted">按日期与上课时间排列</span></div>
+  ${dailyClasses.length?fullMonthList:`<div class="card"><div class="note">${state.monthLoading?'正在读取当月全部课程，请等待加载完成。':'当前月份暂无已获取的课程。已连接教务时可尝试重新加载。'}</div></div>`}
  </section>`;
 }
 function countedGrade(g){const c=`${g.category||''} ${g.nature||''}`;if(c.includes('限选'))return true;return !c.includes('选修')&&!c.includes('任选');}
@@ -410,15 +424,21 @@ async function loadMonth(){
  const key=state.monthCursor;
  if(state.monthLoading&&state.monthFetchKey===key)return;
  state.monthFetchKey=key;
+ const serial=++state.monthSerial;
  const first=dt(key),last=new Date(first.getFullYear(),first.getMonth()+1,0,12);
  const weeks=new Set();
  for(let d=first;d<=last;d=addDays(d,1)){
   const week=calcWeek(d);
   if(week>=1&&week<=(term().totalWeeks||19)&&!state.loadedWeeks.has(week))weeks.add(week);
  }
- if(!weeks.size)return;
+ if(!weeks.size){
+  state.monthLoading=false;
+  state.monthLoadError=0;
+  if(state.view==='schedule'&&state.scheduleMode==='month')render();
+  return;
+ }
  state.monthLoading=true;
- const serial=++state.monthSerial;
+ state.monthLoadError=0;
  if(state.view==='schedule'&&state.scheduleMode==='month')render();
  let failures=0;
  const toFetch=[...weeks].sort((a,b)=>a-b);
@@ -435,8 +455,9 @@ async function loadMonth(){
  store();
  if(serial===state.monthSerial){
   state.monthLoading=false;
+  state.monthLoadError=failures;
   if(state.view==='schedule'&&state.scheduleMode==='month')render();
-  if(failures)toast('部分教学周加载失败，可稍后重新打开本月');
+  if(failures)toast('部分教学周加载失败，可重新切换月份或重试');
  }
 }
 async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}state.connected=false;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}

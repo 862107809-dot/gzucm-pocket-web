@@ -178,6 +178,26 @@ pairs.push(...[
  ['记录','records'],['实验','laboratory'],['理论','theory'],
  ['专业','Major'],['健康','Health'],['药学','Pharmacy']
 ]);
+pairs.push(...[
+ ['周视图','Week view'],['月视图','Month view'],
+ ['课表显示方式','Timetable view'],['周日为每周第一天','Sunday is the first day of the week'],
+ ['上个月','Previous month'],['下个月','Next month'],['本月','This month'],
+ ['默认启动页','Default start page'],
+ ['每个月的课程，一目了然。','See your classes across the month.'],
+ ['按月查看课程安排','Monthly class schedule'],['周日为第一天的月课表','Monthly timetable starting on Sunday'],
+ ['当天暂无课程','No classes on this day'],['选择其他日期查看课程安排。','Select another date to see classes.'],
+ ['正在加载本月课表…','Loading this month’s classes…'],
+ ['月课表','Monthly timetable'],['周课表','Weekly timetable'],
+ ['外观模式','Appearance'],['设置选项','Settings menu'],['全部设置','All settings'],
+ ['明亮、清晰','Bright and clear'],['柔和深色玻璃','Soft dark glass'],
+ ['与设备外观同步','Match device appearance'],
+ ['偏好与数据管理','Preferences and data'],['扫码授权登录','Authorize with a QR code'],
+ ['启动页','Start page'],['学习阶段','Program level'],
+ ['周日开始的完整周课表，可左右滚动','Weekly timetable starting on Sunday; scroll horizontally'],
+ ['周日为每周第一天；学校的教学周编号仍按教务系统原始规则计算，课程日期不变。','Sunday appears first; academic teaching weeks follow the school’s official numbering and class dates remain unchanged.'],
+ ['部分教学周加载失败，可稍后重新打开本月','Some teaching weeks could not load. Please retry this month.'],
+ ['显示方式','View mode'],['周视图','Week view'],['月视图','Month view']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

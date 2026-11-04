@@ -38,12 +38,30 @@ test('native browser glass material has a clear reduced transparency fallback',(
 });
 test('glass enhancements are limited and cannot interfere with QR or academics',()=>{
  const code=read('glass-effects.js');
- assert.match(code,/maxArea=420000/);
- assert.match(code,/maxCount=4/);
- assert.match(code,/\.topbar,\.bottom-nav,\.modal-card,\.segmented/);
+ assert.match(code,/maxArea=10000/);
+ assert.match(code,/maxCount=2/);
+ assert.match(code,/\.language-switch,\.theme-trigger/);
+ assert.doesNotMatch(code,/const limited='\.topbar/);
  assert.match(code,/pointer: coarse/);
  assert.doesNotMatch(code,/fetch\(|XMLHttpRequest|https?:\/\//);
  const app=read('app.js');
  assert.match(app,/case'startQr':state\.authMode='qr';startQr\(\)/);
  assert.match(app,/case'connect':connectModal\('qr'\)/);
+});
+
+test('glass contrast and appearance picker are readable in both themes',()=>{
+ const css=read('styles.css'),app=read('app.js');
+ assert.match(css,/Readability-first glass/);
+ assert.match(css,/--readable-glass:rgba\(17,34,28,\.96\)/);
+ assert.match(css,/\.agenda-row\{color:var\(--ink\)!important/);
+ assert.match(css,/\.card,\.agenda-row,\.calendar-visual,\.power-mini/);
+ assert.match(css,/\.theme-picker\{display:flex/);
+ assert.match(app,/data-action="themeMenu"/);
+ assert.match(app,/case'themeMenu':themeModal\(\);break/);
+ assert.match(app,/case'selectTheme':selectTheme\(target\.dataset\.themeValue\);break/);
+ assert.match(app,/state\.prefs\.theme=value;\s*storePrefs\(\);\s*applyTheme\(\);/);
+ assert.match(app,/\{key:'light'/);
+ assert.match(app,/\{key:'dark'/);
+ assert.match(app,/\{key:'system'/);
+ assert.doesNotMatch(app,/class="avatar"/);
 });

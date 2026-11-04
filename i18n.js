@@ -216,6 +216,13 @@ pairs.push(...[
  ['未命名课程','Unnamed class'],
  ['已获取的课程全部显示','Every loaded class is shown']
 ]);
+pairs.push(...[
+ ['玻璃交互音效','Glass interaction sounds'],
+ ['滑过导航选项播放轻柔反馈音；不加载外部音频','Play soft feedback when sliding across choices; no external audio files'],
+ ['轻柔反馈音','Soft feedback tone'],
+ ['滑动选择','Slide to select'],
+ ['选项滑动','Sliding selection']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

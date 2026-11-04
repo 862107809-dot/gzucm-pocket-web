@@ -338,3 +338,152 @@
   backdrop-filter:none!important;
  }
 }
+
+
+/* Apple-inspired liquid-glass course tiles: native CSS on web, not SwiftUI.
+ * Scope strictly to the weekly timetable grid; each course keeps a subtle
+ * category tint without sacrificing readable names and classroom labels. */
+.page-schedule .calendar-visual .cal-event{
+  --tile-rgb:102,183,144;
+  --tile-fill:rgba(247,252,248,.80);
+  --tile-tint-alpha:.35;
+  --tile-ink:#173a2b;
+  --tile-secondary:#355d4b;
+  --tile-rim:rgba(255,255,255,.83);
+  --tile-shine:rgba(255,255,255,.52);
+  --tile-shadow:rgba(26,73,48,.12);
+  --tile-stripe-alpha:.65;
+  position:relative;
+  isolation:isolate;
+  display:block;
+  border-radius:13px;
+  min-height:64px;
+  padding:9px 8px;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.3;
+  color:var(--tile-ink)!important;
+  border:1px solid var(--tile-rim)!important;
+  background:
+    radial-gradient(ellipse 120% 115% at 0% 0%,rgba(var(--tile-rgb),var(--tile-tint-alpha)),transparent 80%),
+    linear-gradient(155deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,.055) 42%,transparent 75%),
+    var(--tile-fill)!important;
+  box-shadow:
+    inset 2px 0 0 rgba(var(--tile-rgb),var(--tile-stripe-alpha)),
+    inset 0 1px 0 var(--tile-shine),
+    inset 0 -1px 0 rgba(255,255,255,.065),
+    0 6px 16px var(--tile-shadow)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(1.28);
+  backdrop-filter:blur(12px) saturate(1.28);
+  transform:translateZ(0);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.page-schedule .calendar-visual .cal-event::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:
+    linear-gradient(125deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.06) 20%,transparent 52%),
+    radial-gradient(ellipse 82% 25% at 48% -6%,rgba(255,255,255,.29),transparent 88%);
+  opacity:.62;
+}
+.page-schedule .calendar-visual .cal-event::after{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+  inset:1px;
+  border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(255,255,255,.035);
+}
+.page-schedule .calendar-visual .cal-event small{
+  color:var(--tile-secondary)!important;
+  opacity:1!important;
+  font-size:9px;
+  font-weight:570;
+  line-height:1.35;
+  margin-top:5px;
+  text-shadow:none;
+  overflow-wrap:anywhere;
+}
+.page-schedule .calendar-visual .cal-event.tone-1,
+.page-schedule .calendar-visual .cal-event.tone-6{--tile-rgb:114,158,219;}
+.page-schedule .calendar-visual .cal-event.tone-2,
+.page-schedule .calendar-visual .cal-event.tone-7{--tile-rgb:215,167,103;}
+.page-schedule .calendar-visual .cal-event.tone-3,
+.page-schedule .calendar-visual .cal-event.tone-8{--tile-rgb:171,143,216;}
+.page-schedule .calendar-visual .cal-event.tone-4{--tile-rgb:210,132,143;}
+.page-schedule .calendar-visual .cal-event.tone-5{--tile-rgb:102,182,179;}
+
+/* Dark glass: tinted translucent forest-green instead of bright pastel paper.
+ * These custom properties are also applied when the operating system controls
+ * appearance, provided the user did not explicitly choose light mode. */
+:root[data-theme="dark"] .page-schedule .calendar-visual .cal-event{
+  --tile-fill:rgba(24,45,37,.85);
+  --tile-tint-alpha:.34;
+  --tile-ink:#f5faf6;
+  --tile-secondary:rgba(228,242,233,.84);
+  --tile-rim:rgba(230,250,238,.31);
+  --tile-shine:rgba(255,255,255,.25);
+  --tile-shadow:rgba(0,0,0,.24);
+  --tile-stripe-alpha:.88;
+  text-shadow:0 1px 2px rgba(0,0,0,.14);
+}
+:root[data-theme="dark"] .page-schedule .calendar-visual .cal-event::before{opacity:.48;}
+:root[data-theme="dark"] .page-schedule .calendar-visual .cal-event small{
+  color:var(--tile-secondary)!important;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .page-schedule .calendar-visual .cal-event{
+    --tile-fill:rgba(24,45,37,.85);
+    --tile-tint-alpha:.34;
+    --tile-ink:#f5faf6;
+    --tile-secondary:rgba(228,242,233,.84);
+    --tile-rim:rgba(230,250,238,.31);
+    --tile-shine:rgba(255,255,255,.25);
+    --tile-shadow:rgba(0,0,0,.24);
+    --tile-stripe-alpha:.88;
+    text-shadow:0 1px 2px rgba(0,0,0,.14);
+  }
+}
+@media(hover:hover) and (pointer:fine){
+ .page-schedule .calendar-visual .cal-event:hover{
+   transform:translateY(-2px) translateZ(0);
+   border-color:rgba(255,255,255,.64)!important;
+   box-shadow:inset 2px 0 0 rgba(var(--tile-rgb),.95),
+     inset 0 1px 0 rgba(255,255,255,.40),
+     0 12px 24px var(--tile-shadow)!important;
+ }
+}
+.page-schedule .calendar-visual .cal-event:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  z-index:2;
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ .page-schedule .calendar-visual .cal-event{
+   --tile-fill:#ecf4ee;
+   --tile-ink:#173a2b;
+   --tile-secondary:#355d4b;
+   --tile-rim:#57836b;
+   --tile-tint-alpha:.10;
+   -webkit-backdrop-filter:none!important;
+   backdrop-filter:none!important;
+ }
+ :root[data-theme="dark"] .page-schedule .calendar-visual .cal-event{
+   --tile-fill:#284737;
+   --tile-ink:#fff;
+   --tile-secondary:#e3efe7;
+   --tile-rim:#a2cdb2;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .page-schedule .calendar-visual .cal-event{
+   transform:none!important;
+   transition:none!important;
+ }
+}

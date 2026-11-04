@@ -351,6 +351,58 @@ function liquidPointerFinish(event,cancelled=false){
  ignoreLiquidSelectorClickUntil=Date.now()+450;
  if(nearest?.isConnected)nearest.click();
 }
+/* The binary sound switch also supports dragging its thumb left/right;
+ * tapping remains a native button action, and vertical page scroll is free. */
+let liquidSwitchPointer=null;
+let ignoreLiquidSwitchClickUntil=0;
+function liquidSwitchDown(event){
+ const button=event.target.closest?.('.switch[role="switch"]');
+ if(!button||event.isPrimary===false||event.button>0)return;
+ liquidSwitchPointer={button,id:event.pointerId,x:event.clientX,y:event.clientY,
+  dragging:false,scroll:false};
+}
+function liquidSwitchMove(event){
+ const p=liquidSwitchPointer;
+ if(!p||p.id!==event.pointerId||p.scroll)return;
+ const dx=event.clientX-p.x,dy=event.clientY-p.y;
+ if(!p.dragging){
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.1){p.scroll=true;return;}
+  if(Math.abs(dx)<7)return;
+  p.dragging=true;
+  try{p.button.setPointerCapture(event.pointerId);}catch{}
+ }
+ if(event.cancelable)event.preventDefault();
+ const r=p.button.getBoundingClientRect();
+ const on=event.clientX>=r.left+r.width/2;
+ p.button.classList.toggle('preview-on',on);
+ p.button.classList.toggle('preview-off',!on);
+}
+function liquidSwitchFinish(event,cancelled=false){
+ const p=liquidSwitchPointer;
+ if(!p||p.id!==event.pointerId)return;
+ liquidSwitchPointer=null;
+ try{if(p.button.hasPointerCapture?.(event.pointerId))p.button.releasePointerCapture(event.pointerId);}catch{}
+ if(!p.dragging)return;
+ if(event.cancelable)event.preventDefault();
+ ignoreLiquidSwitchClickUntil=Date.now()+400;
+ p.button.classList.remove('preview-on','preview-off');
+ if(cancelled)return;
+ const r=p.button.getBoundingClientRect();
+ const on=event.clientX>=r.left+r.width/2;
+ if(on!==state.prefs.soundEffects){
+  state.prefs.soundEffects=on;
+  storePrefs();
+  if(on){armLiquidSound();playLiquidTick();}
+  render();
+ }
+}
+function guardLiquidSwitchClick(event){
+ if(!event.isTrusted||Date.now()>ignoreLiquidSwitchClickUntil)return;
+ if(!event.target.closest?.('.switch[role="switch"]'))return;
+ ignoreLiquidSwitchClickUntil=0;
+ event.preventDefault();
+ event.stopImmediatePropagation();
+}
 function guardLiquidSelectorClick(event){
  if(!event.isTrusted||Date.now()>ignoreLiquidSelectorClickUntil)return;
  if(!event.target.closest?.('.liquid-selector,.safari-floating-menu'))return;
@@ -1028,6 +1080,11 @@ window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change'
 window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
 window.addEventListener('resize',()=>{hideSafariMenu();alignBottomLiquid(null,null);});
 window.addEventListener('scroll',e=>{if(!e.target?.closest?.('#popover-root'))hideSafariMenu();},true);
+document.addEventListener('pointerdown',liquidSwitchDown,{passive:true});
+document.addEventListener('pointermove',liquidSwitchMove,{passive:false});
+document.addEventListener('pointerup',event=>liquidSwitchFinish(event),{passive:false});
+document.addEventListener('pointercancel',event=>liquidSwitchFinish(event,true),{passive:false});
+document.addEventListener('click',guardLiquidSwitchClick,true);
 document.addEventListener('pointerdown',liquidPointerDown,{passive:true});
 document.addEventListener('pointermove',liquidPointerMove,{passive:false});
 document.addEventListener('pointerup',event=>liquidPointerFinish(event),{passive:false});

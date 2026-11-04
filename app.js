@@ -549,7 +549,7 @@ function navigateBottomModule(view){
  closeModal();
  render();
  if(view==='schedule')state.scheduleMode==='month'?loadMonth():loadSundayWeek();
- window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+ window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }
 
 /* Touch / pen / mouse drag along bottom navigation:

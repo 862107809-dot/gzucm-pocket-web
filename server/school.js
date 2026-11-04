@@ -37,7 +37,26 @@ class SchoolClient{
     if(!detail?.qrcodeId||!detail.confirmUrl)throw Error('学校二维码响应缺少必要字段');
     phase='verify-confirm-url';
     const qrId=String(detail.qrcodeId);
-    let url=new URL(detail.confirmUrl,JW);
+    const original=String(detail.confirmUrl);
+    let url=new URL(original,JW);
+    // Diagnostics reveal only public origin classification; never log QR identifiers,
+    // link path/query/fragment, student details, Cookie values or CAS tickets.
+    const hostClass=url.hostname==='jw.gzucm.edu.cn'?'jw'
+      :url.hostname==='authserver.gzucm.edu.cn'?'sso'
+      :url.hostname.endsWith('.gzucm.edu.cn')?'other-school':'external';
+    const routeClass=url.hash.startsWith('#/qrcodeConfirm/showConfirm')?'school-qr-fragment'
+      :url.pathname.includes('/qrcodeConfirm/')?'school-qr-path':'other';
+    const sourceClass=original.startsWith('/')&&!original.startsWith('//')?'relative':'absolute';
+    const schemeClass=url.protocol==='https:'?'https':url.protocol==='http:'?'http':'other';
+    const fallbackNeeded=url.protocol!=='https:'||url.hostname!=='jw.gzucm.edu.cn'||!!url.port;
+    const hasSchoolSessionCookie=!!this.cookieHeader(JW+'/new/qrcodeLogin/qrcodeStatus');
+    console.warn('[GZUCM QR origin]',
+      'source='+sourceClass,
+      'scheme='+schemeClass,
+      'host='+hostClass,
+      'route='+routeClass,
+      'fallback='+String(fallbackNeeded),
+      'school_cookie='+String(hasSchoolSessionCookie));
     // QR confirmation is a link for the USER to open. It is not an HTTP request
     // by this server. Never forward users to a domain returned unchecked by a
     // remote response. The Android project's verified school H5 route is

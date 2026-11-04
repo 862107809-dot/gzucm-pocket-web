@@ -1033,3 +1033,239 @@
   will-change:auto!important;
  }
 }
+
+
+/* Shared Safari-inspired sliding Liquid Glass for every choice group.
+ * All label text remains unscaled while the decorative frosted lens moves. */
+.liquid-selector{
+ position:relative;
+ isolation:isolate;
+ touch-action:pan-y;
+ -webkit-user-select:none;
+ user-select:none;
+}
+.liquid-selector > .liquid-choice-highlight{
+ position:absolute;
+ left:0;
+ top:0;
+ z-index:0;
+ display:block;
+ border-radius:16px;
+ pointer-events:none;
+ overflow:hidden;
+ background:
+  radial-gradient(ellipse 88% 40% at 30% 0%,rgba(255,255,255,.58),transparent 95%),
+  linear-gradient(148deg,rgba(255,255,255,.31),rgba(255,255,255,.035) 62%),
+  var(--readable-active);
+ border:1px solid rgba(249,255,250,.76);
+ box-shadow:
+  inset 0 1px 0 rgba(255,255,255,.72),
+  inset 0 -1px 0 rgba(255,255,255,.11),
+  0 6px 17px var(--readable-shadow);
+ -webkit-backdrop-filter:blur(15px) saturate(1.5);
+ backdrop-filter:blur(15px) saturate(1.5);
+ transition:
+  transform .42s cubic-bezier(.20,.96,.32,1),
+  width .42s cubic-bezier(.22,1,.36,1),
+  height .42s cubic-bezier(.22,1,.36,1);
+ will-change:transform;
+}
+.liquid-selector > .liquid-choice-highlight::before{
+ content:"";
+ position:absolute;
+ inset:1px;
+ border-radius:inherit;
+ pointer-events:none;
+ background:linear-gradient(135deg,rgba(255,255,255,.33),transparent 45%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+}
+.liquid-selector > .liquid-choice-highlight.is-instant,
+.liquid-selector > .liquid-choice-highlight.is-dragging{
+ transition:none!important;
+}
+.liquid-selector > .liquid-choice-highlight.is-dragging{
+ border-color:rgba(255,255,255,.98);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.89),
+   inset 0 0 11px rgba(255,255,255,.20),
+   0 0 0 1px rgba(183,244,202,.47),
+   0 9px 22px var(--readable-shadow);
+ filter:brightness(1.08);
+}
+.liquid-selector > button,
+.liquid-selector > .nav-item{
+ position:relative;
+ z-index:1;
+ cursor:pointer;
+ -webkit-tap-highlight-color:transparent;
+ transition:color .22s var(--motion-soft),transform .33s var(--motion-press);
+}
+.liquid-selector > button.active,
+.liquid-selector > button.is-scrubbed,
+.liquid-selector > .nav-item.active,
+.liquid-selector > .nav-item.is-scrubbed{
+ background:transparent!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+ color:var(--ink)!important;
+}
+.liquid-selector > button.is-scrubbed,
+.sidebar .liquid-selector > button.is-scrubbed{
+ transform:scale(1.045);
+ color:var(--accent)!important;
+}
+.liquid-selector > .day-tab.active{
+ color:var(--ink)!important;
+}
+.liquid-selector.day-strip > .liquid-choice-highlight{border-radius:17px;}
+.liquid-selector.schedule-view-switch > .liquid-choice-highlight{border-radius:12px;}
+.liquid-selector.segmented > .liquid-choice-highlight{border-radius:11px;}
+.sidebar .liquid-selector{
+ display:flex;
+ flex-direction:column;
+ position:relative;
+}
+.sidebar .liquid-selector > .liquid-choice-highlight{border-radius:15px;}
+
+/* Dragging across the bottom bar enlarges the optical lens and specular rim. */
+@media(max-width:900px){
+ .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  transform:scale(1.055);
+  border-color:rgba(255,255,255,.97);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 0 14px rgba(255,255,255,.23),
+    0 0 0 1px rgba(175,242,199,.50),
+    0 9px 24px var(--liquid-shadow);
+  filter:brightness(1.075);
+  transition:transform .22s var(--motion-press),filter .24s var(--motion-soft);
+ }
+ .bottom-nav .bottom-item.is-scrubbed{
+  color:var(--accent)!important;
+ }
+ .bottom-nav .bottom-item.is-scrubbed svg{
+  transform:translateY(-2px) scale(1.13);
+  filter:drop-shadow(0 1px 3px rgba(118,204,151,.44));
+ }
+}
+
+/* Floating menu: both opening and closing move toward the actual trigger,
+ * rather than fading at the screen center. Menu choices can be scrubbed. */
+.safari-floating-menu{
+ transform-origin:var(--popover-origin-x,50%) var(--popover-origin-y,0%);
+ animation:glassPopoverBloom .28s cubic-bezier(.20,.90,.30,1) both;
+}
+.safari-floating-menu.is-closing{
+ animation:glassPopoverReturn .25s cubic-bezier(.40,0,.75,.50) both!important;
+ pointer-events:none;
+}
+.safari-floating-menu.can-scrub{touch-action:none;}
+.safari-floating-menu .safari-menu-glider{
+ position:absolute;
+ z-index:0;
+ left:0;
+ top:0;
+ pointer-events:none;
+ display:block;
+ border-radius:12px;
+ background:linear-gradient(140deg,rgba(255,255,255,.22),transparent 64%),var(--readable-active);
+ border:1px solid var(--readable-border);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.39),0 4px 11px var(--readable-shadow);
+ -webkit-backdrop-filter:blur(10px) saturate(1.35);
+ backdrop-filter:blur(10px) saturate(1.35);
+ transition:transform .38s var(--motion-fluid),height .38s var(--motion-soft);
+}
+.safari-floating-menu .safari-menu-glider.is-instant,
+.safari-floating-menu .safari-menu-glider.is-dragging{transition:none!important;}
+.safari-floating-menu .safari-menu-glider.is-dragging{
+ border-color:rgba(250,255,250,.79);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.68),0 0 0 1px rgba(167,227,186,.26),
+   0 8px 17px var(--readable-shadow);
+ filter:brightness(1.07);
+}
+.safari-floating-menu .safari-menu-option{
+ position:relative;
+ z-index:1;
+ background:transparent!important;
+ transition:transform .25s var(--motion-press),color .2s var(--motion-soft);
+}
+.safari-floating-menu .safari-menu-option.is-scrubbed{
+ transform:scale(1.025);
+ color:var(--accent);
+}
+@keyframes glassPopoverBloom{
+ from{opacity:.10;transform:scale(.16);filter:blur(2px);}
+ 60%{opacity:1;filter:blur(0);}
+ to{opacity:1;transform:scale(1);filter:none;}
+}
+@keyframes glassPopoverReturn{
+ from{opacity:1;transform:scale(1);}
+ to{opacity:0;transform:scale(.16);filter:blur(2px);}
+}
+
+/* All modal sheets grow out of the pressed control and shrink back toward it.
+ * No text is animated separately, retaining Safari's crisp readable layers. */
+.modal-backdrop .modal-card{animation:none;}
+.modal-backdrop.liquid-backdrop-opening{
+ animation:glassVeilIn .29s var(--motion-soft) both;
+}
+.modal-backdrop.is-closing{
+ pointer-events:none;
+ animation:glassVeilOut .29s var(--motion-quiet) both;
+}
+.modal-card.liquid-dialog-opening{
+ animation:glassDialogBloom .43s cubic-bezier(.18,.88,.28,1) both!important;
+}
+.modal-card.liquid-dialog-closing{
+ animation:glassDialogReturn .30s cubic-bezier(.40,0,.75,.50) both!important;
+}
+@keyframes glassVeilIn{from{opacity:0;}to{opacity:1;}}
+@keyframes glassVeilOut{from{opacity:1;}to{opacity:0;}}
+@keyframes glassDialogBloom{
+ from{
+  opacity:.04;
+  transform:translate3d(var(--dialog-from-x,0px),var(--dialog-from-y,0px),0) scale(.12);
+  border-radius:49px;
+ }
+ to{opacity:1;transform:translate3d(0,0,0) scale(1);border-radius:30px;}
+}
+@keyframes glassDialogReturn{
+ from{opacity:1;transform:translate3d(0,0,0) scale(1);border-radius:30px;}
+ to{
+  opacity:0;
+  transform:translate3d(var(--dialog-from-x,0px),var(--dialog-from-y,0px),0) scale(.12);
+  border-radius:49px;
+ }
+}
+:root[data-theme="dark"] .liquid-selector > .liquid-choice-highlight,
+:root[data-theme="dark"] .safari-floating-menu .safari-menu-glider{
+ background:linear-gradient(140deg,rgba(185,231,200,.16),rgba(50,102,72,.09) 70%),
+  rgba(76,131,100,.45);
+ border-color:rgba(188,230,203,.40);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]) .liquid-selector > .liquid-choice-highlight,
+ :root:not([data-theme="light"]) .safari-floating-menu .safari-menu-glider{
+  background:linear-gradient(140deg,rgba(185,231,200,.16),rgba(50,102,72,.09) 70%),
+   rgba(76,131,100,.45);
+  border-color:rgba(188,230,203,.40);
+ }
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ .liquid-selector > .liquid-choice-highlight,
+ .safari-floating-menu .safari-menu-glider{
+  background:var(--readable-active)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .liquid-selector > .liquid-choice-highlight,
+ .safari-floating-menu,
+ .safari-floating-menu .safari-menu-glider,
+ .modal-card,.modal-backdrop,
+ .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  animation:none!important;
+  transition:none!important;
+  filter:none!important;
+ }
+}

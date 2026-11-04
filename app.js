@@ -3,6 +3,7 @@
 'use strict';
 const $ = (sel, root=document) => root.querySelector(sel);
 const DB = 'gzucm-pocket-web:v1';
+const POWER_DB = 'gzucm-pocket-web:manual-power:v1';
 const PREF = 'gzucm-pocket-web:prefs';
 const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const state = {
@@ -14,6 +15,11 @@ const state = {
 const PUBLIC=window.GZUCM_PUBLIC===true;
 const persisted=PUBLIC?null:saved(DB,null);
 if (isValidData(persisted)) state.data={...window.GZUCM_DEMO,...persisted,demo:false};
+const savedManualPower=PUBLIC?saved(POWER_DB,null):null;
+if(savedManualPower?.power?.source==='manual'&&Number.isFinite(Number(savedManualPower.power.balance))&&Number(savedManualPower.power.balance)>=0){
+ state.data={...state.data,power:savedManualPower.power,
+  powerDaily:Array.isArray(savedManualPower.powerDaily)?savedManualPower.powerDaily.slice(-120):[]};
+}
 state.view=['today','schedule','grades','power','settings'].includes(state.prefs.start)?state.prefs.start:'today';
 state.weekday=((new Date().getDay()+6)%7)+1;
 applyTheme();
@@ -97,7 +103,7 @@ function todayPage(){
  const intro=days.length?`今天有 ${days.length} 节课程，接下来的每一步都有方向。`:'今天没有排课，给自己留一点自由时间。';
  return `${heading('YOUR DAY, BEAUTIFULLY ORGANIZED','每一天，都值得好好安排。',`星期${'日一二三四五六'[now.getDay()]} · ${E(term().name)} · 第 ${weekNow()} 周`)}
  <section class="hero-card"><div class="hero-decoration" aria-hidden="true">学</div><div class="hero-kicker">TODAY AT A GLANCE · ${fmt(now,{month:'2-digit',day:'2-digit'})}</div><div class="hero-title">${soon?`下一站，${E(next.name)}`:'今天，继续向前。'}</div><p class="hero-desc">${soon?`${E(fmt(next._start,{weekday:'long',hour:'2-digit',minute:'2-digit'}))} · ${E(next.room||'地点待定')}。${E(next.content||intro)}`:intro}</p><div class="hero-bottom"><button class="hero-button" data-view="schedule">查看完整课表 ${I('arrow')}</button><span class="hero-line">第 ${weekNow()} / ${term().totalWeeks} 教学周</span></div></section>
- ${sectionTitle('校园一览')}<div class="metrics-mobile three-col">${metric('今日课程',`${days.length} <small style="font-size:13px">节</small>`,'让每节课都有迹可循','book')}${metric('本周课程',`${weekly.length} <small style="font-size:13px">节</small>`,'按周课程安排','calendar')}${metric('宿舍剩余',power.data?`${(+power.data.balance).toFixed(1)} <small style="font-size:13px">度</small>`:'—',isDemo()?'演示数据':power.data?.roomLabel||'尚未连接','zap')}</div>
+ ${sectionTitle('校园一览')}<div class="metrics-mobile three-col">${metric('今日课程',`${days.length} <small style="font-size:13px">节</small>`,'让每节课都有迹可循','book')}${metric('本周课程',`${weekly.length} <small style="font-size:13px">节</small>`,'按周课程安排','calendar')}${metric('宿舍剩余',power.data?`${(+power.data.balance).toFixed(1)} <small style="font-size:13px">度</small>`:'—',power.data?.source==='manual'?'手动记录':isDemo()?'演示数据':power.data?.roomLabel||'尚未连接','zap')}</div>
  ${sectionTitle('今天的课程',`<button class="small-action" data-view="schedule">本周课表 ${I('chevronRight',13)}</button>`)}<div class="two-col"><div class="card"><div class="card-heading">${I('clock',18)} ${fmt(now,{month:'long',day:'numeric',weekday:'long'})}<span class="badge">共 ${days.length} 节</span></div><div class="agenda-list">${days.length?days.map(courseRow).join(''):empty('今天没有课程','课程安排来自当前数据集，留点时间给自己吧。')}</div></div><div class="card"><div class="card-heading">${I('chartbar',18)} 本周概览 <span class="muted tiny">第 ${weekNow()} 周</span></div>${weeklyOverview(weekly)}${power.data?`<div class="power-mini"><div><div class="tiny muted">宿舍电量${isDemo()?' · 演示':''}</div><strong>${(+power.data.balance).toFixed(1)} <span class="tiny">度</span></strong><p>近 7 天日均 ${power.avg.toFixed(1)} 度</p></div><button class="icon-btn" data-view="power" aria-label="查看电费">${I('arrow')}</button></div>`:''}</div></div>
  ${isDemo()?`<div class="note warning mt-20"><strong>正在浏览演示模式</strong>：课表、成绩、电量及人名都是示例，不是学校真实数据。可在「设置」中导入自己的 JSON 快照或尝试连接本地只读服务。</div>`:''}`;
 }
@@ -212,7 +218,7 @@ async function syncAcademic(){if(state.loading)return;if(state.data.campus==='gr
  const prev=PUBLIC||state.data.demo?{}:state.data;
  const hasWeeks=prev.semester?.code===sem.code;
  const old=hasWeeks?(prev.sessions||[]).filter(s=>Number(s.week)!==current):[];
- const data={schemaVersion:1,demo:false,campus:'undergrad',semester:sem,sessions:[...old,...(weekRes.status==='fulfilled'?weekRes.value.sessions:[])],grades:gradesRes.status==='fulfilled'?gradesRes.value.grades:(prev.grades||[]),levels:gradesRes.status==='fulfilled'?gradesRes.value.levels:(prev.levels||[]),fitness:gradesRes.status==='fulfilled'?gradesRes.value.fitness:(prev.fitness||[]),power:prev.power||null,powerDaily:prev.powerDaily||[],exams:prev.exams||[]};
+ const data={schemaVersion:1,demo:false,campus:'undergrad',semester:sem,sessions:[...old,...(weekRes.status==='fulfilled'?weekRes.value.sessions:[])],grades:gradesRes.status==='fulfilled'?gradesRes.value.grades:(prev.grades||[]),levels:gradesRes.status==='fulfilled'?gradesRes.value.levels:(prev.levels||[]),fitness:gradesRes.status==='fulfilled'?gradesRes.value.fitness:(prev.fitness||[]),power:prev.power||(PUBLIC?saved(POWER_DB,null)?.power:null)||null,powerDaily:prev.powerDaily||(PUBLIC?saved(POWER_DB,null)?.powerDaily:null)||[],exams:prev.exams||[]};
  state.data=data;state.week=current;store();state.view='today';render();toast(`同步完成${weekRes.status==='rejected'?'（课表失败）':''}${gradesRes.status==='rejected'?'（成绩失败）':''}`);
  }catch(e){toast('同步失败：'+e.message);if(!state.connected)connectModal();}finally{state.loading=false;}}
 async function loadWeek(week){if(!state.connected||state.data.campus==='graduate')return;try{const result=await api('academic/week?week='+week);state.data.sessions=[...(state.data.sessions||[]).filter(s=>Number(s.week)!==week),...result.sessions];store();render();}catch(e){toast('本周课表同步失败：'+e.message);}}
@@ -227,17 +233,17 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,term().totalWeeks);render();loadWeek(state.week);break;}
  case'thisWeek':state.week=weekNow();state.weekday=((today().getDay()+6)%7)+1;render();loadWeek(state.week);break;
  case'ics':exportICS();break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
- case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
+ case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'refresh':if(state.connected)syncAcademic();else{connectModal();toast('需要先连接学校教务');}break;
  case'logout':logout();break;case'import':$('#import-file').click();break;case'export':exportData();break;
- case'demo':state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();localStorage.removeItem(DB);render();toast('已切换到虚构演示数据');break;
+ case'demo':localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();localStorage.removeItem(DB);render();toast('已切换到虚构演示数据');break;
  default:break;}}
 function handleChange(event){const t=event.target;if(t.id==='language-select'){state.prefs.language=t.value==='en'?'en':'zh';storePrefs();render();applyLanguage();toast(state.prefs.language==='en'?'Language changed to English':'界面语言已切换为中文');return;}if(t.id==='theme-select'){state.prefs.theme=t.value;storePrefs();applyTheme();render();}if(t.id==='start-select'){state.prefs.start=t.value;storePrefs();toast('默认启动页已更新');}if(t.id==='campus-select'){state.data={...state.data,campus:t.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(t.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}if(t.id==='opacity-range'){state.prefs.wallOpacity=Number(t.value);storePrefs();toast('课表背景显示强度已更新');}}
 function handleInput(event){if(event.target.id==='grade-search'){const input=event.target;state.gradeSearch=input.value;const selection=[input.selectionStart,input.selectionEnd];render();const next=$('#grade-search');next?.focus();try{next?.setSelectionRange(...selection);}catch{}}}
-function handleSubmit(event){if(event.target.id!=='power-form')return;event.preventDefault();const form=new FormData(event.target),balance=Number(form.get('balance')),usage=form.get('usage');if(!Number.isFinite(balance)||balance<0){toast('请填写有效电量');return;}const room=String(form.get('room')||'未命名宿舍').trim().slice(0,64);state.data={...state.data,demo:false,power:{balance,unit:'度',roomLabel:room,updatedAt:iso(today())}};
- if(usage!==''&&Number.isFinite(+usage)&&+usage>=0){const daily=(state.data.powerDaily||[]).filter(x=>x.date!==iso(today()));daily.push({date:iso(today()),usage:+usage,remain:balance});daily.sort((a,b)=>a.date.localeCompare(b.date));state.data.powerDaily=daily.slice(-120);}
- store();closeModal();render();toast('已保存到当前浏览器');}
+function handleSubmit(event){if(event.target.id!=='power-form')return;event.preventDefault();const form=new FormData(event.target),balance=Number(form.get('balance')),usage=form.get('usage');if(!Number.isFinite(balance)||balance<0){toast('请填写有效电量');return;}const room=String(form.get('room')||'未命名宿舍').trim().slice(0,64);state.data={...state.data,power:{balance,unit:'度',roomLabel:room,updatedAt:new Date().toISOString(),source:'manual'}};
+ if(usage!==''&&Number.isFinite(+usage)&&+usage>=0){const prior=state.data.demo&&!saved(POWER_DB,null)?[]:(state.data.powerDaily||[]);const daily=prior.filter(x=>x.date!==iso(today()));daily.push({date:iso(today()),usage:+usage,remain:balance});daily.sort((a,b)=>a.date.localeCompare(b.date));state.data.powerDaily=daily.slice(-120);}
+ if(PUBLIC){try{localStorage.setItem(POWER_DB,JSON.stringify({power:state.data.power,powerDaily:state.data.powerDaily||[]}));}catch{toast('无法持久保存电量记录');}}store();closeModal();render();toast('已保存到当前浏览器');}
 window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==state.ssoPopup||event.data?.type!=='GZUCM_CAS_CALLBACK_RETURN')return;checkOfficialAuth();});
 window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
 document.addEventListener('click',handleClick);

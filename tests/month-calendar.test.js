@@ -30,13 +30,14 @@ function environment(){
  const calendarDays=[['周日',0],['周一',1],['周二',2],['周三',3],['周四',4],['周五',5],['周六',6]];
  const factory=new Function('state','dt','iso','addDays','term','currentSessions','courseDate',
   'fmt','calendarDays','dayNames','E','I','heading','courseRow','empty','today','colorIndex',
-  'card','sectionTitle','courseKey',
-  code.slice(start,end)+'return {dayDate,displayDaySessions,monthCoursesIndex,monthPage,dayStrip,calendarGrid};');
+  'card','sectionTitle','courseKey','openModal',
+  code.slice(start,end)+'return {dayDate,displayDaySessions,monthCoursesIndex,monthPage,openMonthDayDetail,dayStrip,calendarGrid};');
+ let lastDialog=null;
  const api=factory(state,dt,iso,addDays,term,currentSessions,courseDate,fmt,calendarDays,
   ['周一','周二','周三','周四','周五','周六','周日'],
   s=>String(s),()=>'',()=>'',s=>'<p>'+s.name+'</p>',()=>'',()=>dt('2026-11-04'),
-  ()=>1,s=>s,()=>'',s=>s.name+'|'+s.week);
- return {...api,iso,state};
+  ()=>1,s=>s,()=>'',s=>s.name+'|'+s.week,(title,body)=>{lastDialog={title,body};});
+ return {...api,iso,state,dialog:()=>lastDialog};
 }
 test('week begins Sunday even though official school weekday 7 belongs to previous academic week',()=>{
  const {dayDate,displayDaySessions,iso}=environment();
@@ -74,27 +75,55 @@ test('monthly view fetches only teaching weeks and does not reload already fetch
  assert.match(code,/Promise\.allSettled\(batch\.map\(week=>api\('academic\/week\?week='\+week\)\)\)/);
 });
 
-test('all four courses on the same date render as full name, time, room, never +N or dots',()=>{
+
+test('the entire November calendar fits into seven equal columns, without a long agenda',()=>{
  const {monthPage}=environment();
  const html=monthPage();
- const beforeAgenda=html.slice(0,html.indexOf('class="month-all-courses"'));
- const names=['Wednesday class','Second Wednesday class','Third Wednesday class','Fourth Wednesday class'];
- for(const name of names)assert.ok(beforeAgenda.includes(name),name+' hidden in monthly grid');
- for(const room of ['W201','W202','W203','W204'])assert.ok(beforeAgenda.includes(room),room+' missing');
- assert.ok(beforeAgenda.includes('08:30–10:10'),'start and end times missing');
- assert.ok(beforeAgenda.includes('16:00–17:40'),'last course time missing');
- assert.equal((html.match(/class="month-event tone-/g)||[]).length,6);
- assert.doesNotMatch(html,/class="month-more"/);
- assert.match(html,/本月全部课程 · 6 节/);
- assert.match(html,/本月已获取 6 节课程/);
- assert.match(html,/class="month-agenda-date"/);
- assert.doesNotMatch(code,/courses\.slice\(0,2\)/);
+ assert.match(html,/class="card month-calendar month-compact"/);
+ assert.match(html,/style="--month-weeks:5"/);
+ assert.equal((html.match(/class="month-cell /g)||[]).length,35);
+ assert.match(html,/data-date="2026-11-01"/);
+ assert.match(html,/data-date="2026-11-30"/);
+ assert.match(html,/data-date="2026-12-05"/);
+ assert.match(html,/class="month-weekday sunday"/);
+ assert.doesNotMatch(html,/month-all-courses|month-day-detail|month-scroll-hint/);
+ assert.doesNotMatch(html,/class="month-event tone-/);
 });
-test('month list exposes every course for the entire month on mobile as readable text',()=>{
+test('the month uses two concise event markers and +N for busy days',()=>{
+ const {monthPage}=environment();
+ const html=monthPage();
+ assert.match(html,/class="month-mini-event tone-/);
+ assert.match(html,/class="month-overflow">\+2/);
+ assert.equal((html.match(/class="month-mini-event tone-/g)||[]).length,4);
+ assert.match(html,/data-action="selectMonthDay"/);
+ assert.doesNotMatch(html,/W201|W202|W203|W204/);
+});
+test('tapping a date exposes every course with details, without rebuilding the whole month',()=>{
+ const x=environment();
+ x.openMonthDayDetail('2026-11-04');
+ const modal=x.dialog();
+ assert.ok(modal);
+ for(const name of ['Wednesday class','Second Wednesday class','Third Wednesday class','Fourth Wednesday class']){
+  assert.ok(modal.body.includes(name),name+' missing in day details');
+ }
+ assert.match(modal.body,/4 节课程/);
+ assert.match(code,/document\.querySelectorAll\('\.month-cell'\)\.forEach/);
+ assert.match(code,/openMonthDayDetail\(raw\)/);
+});
+test('mobile month grid never forces horizontal scrolling or 1050px content',()=>{
  const css=fs.readFileSync(path.join(__dirname,'..','styles.css'),'utf8');
- assert.match(css,/\.month-calendar \.month-grid\{\s*min-width:1050px/);
- assert.match(css,/\.month-calendar \.month-event\{[\s\S]*?white-space:normal/);
- assert.match(css,/@media\(max-width:660px\)\{[\s\S]*?\.month-calendar \.month-event\{[\s\S]*?height:auto/);
- assert.match(css,/\.month-all-courses\{/);
- assert.doesNotMatch(css,/\.month-event\{width:9px;height:9px/);
+ assert.match(css,/\.month-calendar\.month-compact\{/);
+ assert.match(css,/\.month-compact \.month-grid\{[\s\S]*?grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+ assert.match(css,/\.month-compact \.month-mini-event\{/);
+ assert.match(css,/\.month-calendar\.month-compact\{[\s\S]*?overflow:hidden/);
+ assert.doesNotMatch(css,/\.month-calendar \.month-grid\{\s*min-width:1050px/);
+ assert.doesNotMatch(css,/\.month-calendar \.month-event\{[\s\S]*?min-height:48px/);
+});
+test('monthly data loading does not render twice before a single fetch finishes',()=>{
+ const from=code.indexOf('async function loadMonth(){');
+ const until=code.indexOf('async function logout(){',from);
+ const body=code.slice(from,until);
+ assert.match(body,/const status=\$\('\.month-brief\[role="status"\]'\)/);
+ assert.match(body,/if\(serial===state\.monthSerial\)/);
+ assert.equal((body.match(/\brender\(\)/g)||[]).length,1);
 });

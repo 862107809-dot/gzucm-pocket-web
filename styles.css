@@ -31,3 +31,9 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .bottom-nav{background:rgba(25,44,36,.85)}}
 :root[data-theme="dark"] .day-tab.active,:root[data-theme="dark"] .btn.primary{color:#10291d}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* Language selector: always available on desktop and mobile. */
+.language-switch{font:inherit;font-size:12px;min-width:86px;max-width:105px;border-radius:12px;border:1px solid var(--border);background:var(--surface-strong);color:var(--ink);padding:9px 7px;cursor:pointer}
+.top-actions .language-switch{flex-shrink:0}
+@media(max-width:600px){.language-switch{min-width:76px;max-width:85px;padding:7px 4px;font-size:11px}.top-actions{gap:5px}}
+.hero-button{text-decoration:none}

@@ -8,6 +8,7 @@ const USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/60
 function checkUrl(url){const u=new URL(url);if(u.protocol!=='https:'||!ALLOWED.has(u.hostname)||u.port)throw Error('为保护学校会话，已阻止跳转到未经允许的域名');return u;}
 class SchoolClient{
  constructor(){this.cookies=new Map();this.connected=false;this.qr=null;this.semester=null;}
+ hasSchoolSessionCookie(){return [...this.cookies.values()].some(c=>c.host==='jw.gzucm.edu.cn'&&c.name==='JSESSIONID'&&Boolean(c.value)&&(!c.expires||c.expires>Date.now()));}
  cookieHeader(url){const u=new URL(url);return [...this.cookies.values()].filter(c=>c.host===u.hostname&&u.pathname.startsWith(c.path)&&(!c.expires||c.expires>Date.now())).map(c=>c.name+'='+c.value).join('; ');}
  captureCookies(host,cookies){for(const raw of cookies||[]){const parts=String(raw).split(';');const [first,...attrs]=parts;const ix=first.indexOf('=');if(ix<1)continue;const name=first.slice(0,ix).trim(),value=first.slice(ix+1).trim();const path=attrs.map(a=>a.trim()).find(a=>/^path=/i.test(a))?.slice(5)||'/';if(!name||!path.startsWith('/'))continue;const key=host+'\t'+path+'\t'+name;const maxAge=attrs.find(a=>/^\s*max-age=/i.test(a))?.split('=')[1];if(!value||maxAge==='0'){this.cookies.delete(key);continue;}this.cookies.set(key,{host,path,name,value,expires:undefined});}}
  async request(url,form=null,referer=null,redirects=0){const u=checkUrl(url);if(redirects>4)throw Error('学校认证跳转次数超出安全限制');const method=form===null?'GET':'POST';const body=form===null?null:new URLSearchParams(form).toString();const headers={'User-Agent':USER_AGENT,'Accept':'application/json, text/javascript, */*; q=0.01','X-Requested-With':'XMLHttpRequest','Accept-Language':'zh-CN,zh;q=0.9','Referer':referer||JW+'/new/welcome.page?ui=new'};if(body!==null){headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';headers['Content-Length']=Buffer.byteLength(body);}const cookie=this.cookieHeader(u.toString());if(cookie)headers.Cookie=cookie;
@@ -28,6 +29,15 @@ class SchoolClient{
   this.connected=false;this.semester=null;this.cookies.clear();
   let phase='school-request';
   try {
+    // The Android app first loads the official school login page in WebView.
+    // Initialize the server's OWN school cookie jar before requesting a QR code.
+    // Do not follow off-allowlist redirects or import cookies from the user.
+    try {
+      await this.request(JW+'/',null,JW+'/');
+      console.warn('[GZUCM QR bootstrap]','result=ok','school_jsession='+String(this.hasSchoolSessionCookie()));
+    } catch(e) {
+      console.warn('[GZUCM QR bootstrap]','result=unavailable','school_jsession='+String(this.hasSchoolSessionCookie()));
+    }
     const raw=await this.request(JW+'/new/qrcodeLogin/qrcode',{},JW+'/');
     phase='parse-json';
     const root=parseJSON(raw);
@@ -155,7 +165,51 @@ class SchoolClient{
     throw err;
   }
 }
- async ping(){try{const raw=await this.request(JW+'/new/student/xsgrkb/getCalendarWeekDatas',{xnxqdm:'',zc:'',d1:'',d2:''},JW+'/new/student/xsgrkb/main.page');const j=parseJSON(raw);requireLogin(j);return String(j.code)==='0';}catch{return false;}}
+ async ping(){
+  // A blank timetable POST can fail argument validation even after the school
+  // session has been established. Use a valid academic term, and if the
+  // timetable API rejects it, check the documented calendar API as a fallback.
+  // Only JSON code=0 from a protected academic API is treated as proof.
+  const now=new Date();
+  const year=now.getUTCMonth()>=7?now.getUTCFullYear():now.getUTCFullYear()-1;
+  const semester=String(year)+(now.getUTCMonth()>=7?'01':'02');
+  let outcome='not-verified';
+  try {
+    const probes=[
+      [JW+'/new/student/xsgrkb/getCalendarWeekDatas',
+       {xnxqdm:semester,zc:'',d1:year+'-07-01 00:00:00',d2:(year+1)+'-08-31 00:00:00'},
+       JW+'/new/student/xsgrkb/main.page'],
+      [JW+'/new/xlxx/data',{xnxqdm:semester},JW+'/new/welcome.page?ui=new']
+    ];
+    for(const [url,form,ref] of probes){
+      try {
+        const raw=await this.request(url,form,ref);
+        let result;
+        try {result=parseJSON(raw);}
+        catch {outcome='non-json';continue;}
+        const code=String(result?.code??'missing');
+        if(code==='-401'||/尚未登录|登录失效|重新登录|已在别处登录/.test(String(result?.message||result?.msg||''))){
+          outcome='school-requires-login';
+          break;
+        }
+        if(code==='0'){
+          outcome='authenticated';
+          return true;
+        }
+        outcome=code==='missing'?'missing-code':'academic-api-nonzero';
+      }catch(e){
+        outcome=String(e?.message||'').includes('未经允许的域名')?'redirect-blocked':
+          String(e?.message||'').includes('超时')?'timeout':'request-error';
+      }
+    }
+    return false;
+  }finally{
+    // Privacy safe: never print response bodies, URLs, QR IDs, CAS tickets,
+    // cookie values, student identifiers or user-specific academic data.
+    console.warn('[GZUCM QR verify]','result='+outcome,
+      'school_jsession='+String(this.hasSchoolSessionCookie()));
+  }
+}
  ensure(){if(!this.connected)throw Error('尚未通过学校身份认证，请先扫码连接');}
  async getSemester(code){this.ensure();const d=new Date(),guess=code||`${d.getMonth()>=7?d.getFullYear():d.getFullYear()-1}${d.getMonth()>=7?'01':'02'}`;if(!/^20\d{4}$/.test(guess)||!['01','02'].includes(guess.slice(-2)))throw Error('学期编码格式无效');if(this.semester?.code===guess)return this.semester;const raw=await this.request(JW+'/new/xlxx/data',{xnxqdm:guess},JW+'/new/welcome.page?ui=new');this.semester=parseSemester(raw,guess);return this.semester;}
  async getWeek(week){this.ensure();const sem=await this.getSemester();if(!Number.isInteger(week)||week<1||week>sem.totalWeeks)throw Error('教学周不在校历范围内');const d1=new Date(sem.firstMondayIso+'T12:00:00');d1.setDate(d1.getDate()-1);const d2=new Date(d1);d2.setDate(d1.getDate()+(sem.totalWeeks+2)*7);const format=d=>d.toISOString().slice(0,10)+' 00:00:00';const raw=await this.request(JW+'/new/student/xsgrkb/getCalendarWeekDatas',{xnxqdm:sem.code,zc:String(week),d1:format(d1),d2:format(d2)},JW+'/new/student/xsgrkb/main.page');return parseWeek(raw,sem,week);}

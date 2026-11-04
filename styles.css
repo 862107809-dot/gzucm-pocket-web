@@ -1291,3 +1291,24 @@
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
  .month-calendar.month-compact,.month-compact .month-cell{background:var(--readable-control)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
 }
+
+
+/* Render only true navigation changes with a page entrance. Selecting a date,
+ * filter or preference no longer replays the 48px page-slide every time. */
+.page.page-stable{animation:none!important;}
+.page.page-enter{animation:rise .32s cubic-bezier(.22,1,.36,1) both!important;}
+
+/* During pointer scrubbing, prefer composited transforms to repeated expensive
+ * SVG/filter sampling on Safari. Border glints remain visible throughout. */
+@media(hover:none),(pointer:coarse){
+ .liquid-selector > .liquid-choice-highlight.is-dragging{
+  -webkit-backdrop-filter:blur(6px) saturate(1.18)!important;
+  backdrop-filter:blur(6px) saturate(1.18)!important;
+  filter:none!important;
+ }
+ .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  -webkit-backdrop-filter:blur(8px) saturate(1.22)!important;
+  backdrop-filter:blur(8px) saturate(1.22)!important;
+  filter:none!important;
+ }
+}

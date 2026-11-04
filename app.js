@@ -514,58 +514,59 @@ function monthCoursesIndex(){
  for(const courses of map.values())courses.sort((a,b)=>Number(a.startUnit)-Number(b.startUnit));
  return map;
 }
+/* Safari Calendar-style: seven columns fully visible, daily details on tap. */
 function monthPage(){
  const first=dt(state.monthCursor),year=first.getFullYear(),month=first.getMonth();
- const start=addDays(first,-first.getDay()); // Sunday is the first calendar column.
+ const start=addDays(first,-first.getDay());
  const daysInMonth=new Date(year,month+1,0).getDate();
  const count=Math.ceil((first.getDay()+daysInMonth)/7)*7;
  const byDate=monthCoursesIndex();
  const en=state.prefs.language==='en';
  const weekdayNames=en?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:calendarDays.map(x=>x[0]);
- const selected=byDate.get(state.monthSelected)||[];
- const monthDates=Array.from({length:daysInMonth},(_,i)=>addDays(first,i));
- const dailyClasses=monthDates.map(date=>({date,key:iso(date),courses:byDate.get(iso(date))||[]})).filter(item=>item.courses.length);
- const monthlyTotal=dailyClasses.reduce((sum,item)=>sum+item.courses.length,0);
- const fullMonthList=dailyClasses.map(item=>`<section class="month-agenda-date">
-  <div class="month-agenda-date-heading"><strong>${fmt(item.date,{month:'long',day:'numeric',weekday:'long'})}</strong><span class="badge">${item.courses.length} 节课程</span></div>
-  <div class="agenda-list">${item.courses.map(courseRow).join('')}</div>
- </section>`).join('');
+ let monthClasses=0,daysWithClass=0;
  const grid=Array.from({length:count},(_,i)=>{
   const date=addDays(start,i),key=iso(date),courses=byDate.get(key)||[];
   const outside=date.getMonth()!==month;
-  return `<div class="month-cell ${outside?'outside':''} ${key===iso(today())?'is-today':''} ${state.monthSelected===key?'selected':''}">
-   <button class="month-day" type="button" data-action="selectMonthDay" data-date="${key}"
-    aria-label="${fmt(date,{month:'long',day:'numeric'})} · ${courses.length} 节课程"
-    aria-pressed="${state.monthSelected===key}">${date.getDate()}${courses.length?`<span class="month-count">${courses.length}</span>`:''}</button>
-   <div class="month-events">${courses.map(course=>`<button type="button" class="month-event tone-${colorIndex(course)}" data-course="${E(courseKey(course))}" title="${E(course.name)} · ${E(course.startTime||'')} ${E(course.room||'')}">
-     <span class="month-event-name">${E(course.name||'未命名课程')}</span>
-     <span class="month-event-meta">${E([course.startTime&&course.endTime?course.startTime+'–'+course.endTime:course.startTime||'',course.room||'地点待定'].filter(Boolean).join(' · '))}</span>
-    </button>`).join('')}</div></div>`;
+  if(!outside&&courses.length){monthClasses+=courses.length;daysWithClass++;}
+  return `<button type="button" class="month-cell ${outside?'outside':''} ${key===iso(today())?'is-today':''} ${state.monthSelected===key?'selected':''}"
+   data-action="selectMonthDay" data-date="${key}"
+   aria-label="${fmt(date,{month:'long',day:'numeric'})} · ${courses.length} 节课程，点击查看详情"
+   aria-pressed="${state.monthSelected===key}">
+   <span class="month-date-number">${date.getDate()}</span>
+   <span class="month-mini-events" aria-hidden="true">${courses.slice(0,2).map(course=>
+    `<span class="month-mini-event tone-${colorIndex(course)}" title="${E(course.name)}">${E(course.name)}</span>`
+   ).join('')}${courses.length>2?`<span class="month-overflow">+${courses.length-2}</span>`:''}</span>
+  </button>`;
  }).join('');
- return `${heading('YOUR TIMETABLE','每个月的课程，一目了然。',`${E(term().name)} · 按月查看课程安排`)}
- ${scheduleViewSwitch()}
- <div class="month-toolbar"><div class="month-pick">
-  <button type="button" class="icon-btn" aria-label="上个月" data-action="prevMonth">${I('chevronLeft')}</button>
-  <strong>${fmt(first,{year:'numeric',month:'long'})}</strong>
-  <button type="button" class="icon-btn" aria-label="下个月" data-action="nextMonth">${I('chevronRight')}</button>
-  </div><div class="inline"><span class="tiny muted" role="status">${state.monthLoading?'正在加载本月课表…':state.monthLoadError?'部分课程加载失败，可重新加载':''}</span>
-  ${state.monthLoadError&&!state.monthLoading?`<button type="button" class="btn small" data-action="retryMonth">重试未加载课程</button>`:''}
-  <button type="button" class="btn small" data-action="thisMonth">本月</button>
-  <button type="button" class="btn small" data-action="ics">${I('download',14)} 导出日历</button></div></div>
- <div class="month-summary"><strong>本月已获取 ${monthlyTotal} 节课程</strong><span class="tiny muted">${dailyClasses.length} 天有课 · ${state.monthLoading?'仍在加载其余教学周':'已获取的课程全部显示，不折叠'}</span></div>
- <div class="month-scroll-hint tiny muted">月历可左右滑动查看所有课程；下方还有按日期排列的完整课程清单。</div>
- <div class="card month-calendar" role="region" aria-label="周日为第一天的完整月课表，可横向滚动" tabindex="0">
-  <div class="month-grid">${weekdayNames.map((name,i)=>`<div class="month-weekday ${i===0?'sunday':''}">${name}</div>`).join('')}
-  ${grid}</div></div>
- <section class="card month-day-detail">
-  <div class="card-heading"><span>${fmt(dt(state.monthSelected),{month:'long',day:'numeric',weekday:'long'})}</span>
-  <span class="badge">${selected.length} 节课程</span></div>
-  <div class="agenda-list">${selected.length?selected.map(courseRow).join(''):empty('当天暂无课程','选择其他日期查看课程安排。','calendar')}</div>
- </section>
- <section class="month-all-courses" aria-label="本月全部课程">
-  <div class="card-heading month-all-heading"><span>${I('calendar',18)} 本月全部课程 · ${monthlyTotal} 节</span><span class="tiny muted">按日期与上课时间排列</span></div>
-  ${dailyClasses.length?fullMonthList:`<div class="card"><div class="note">${state.monthLoading?'正在读取当月全部课程，请等待加载完成。':'当前月份暂无已获取的课程。已连接教务时可尝试重新加载。'}</div></div>`}
+ return `<section class="compact-month-view" aria-label="月课表">
+  <div class="compact-month-header">
+   <span class="eyebrow">YOUR TIMETABLE</span>
+   ${scheduleViewSwitch()}
+  </div>
+  <div class="month-toolbar"><div class="month-pick">
+   <button type="button" class="icon-btn" aria-label="上个月" data-action="prevMonth">${I('chevronLeft')}</button>
+   <strong>${fmt(first,{year:'numeric',month:'long'})}</strong>
+   <button type="button" class="icon-btn" aria-label="下个月" data-action="nextMonth">${I('chevronRight')}</button>
+   </div><div class="inline month-actions">
+   <button type="button" class="btn small" data-action="thisMonth">本月</button>
+   ${state.monthLoadError&&!state.monthLoading?`<button type="button" class="btn small" data-action="retryMonth">重试</button>`:''}
+   </div></div>
+  <div class="month-brief muted tiny" role="status">${state.monthLoading?'正在同步当月课程…':state.monthLoadError?'部分课程尚未同步 · 可重试':`${monthClasses} 节课程 · ${daysWithClass} 天有课 · 点击日期查看详情`}</div>
+  <div class="card month-calendar month-compact" role="region" aria-label="从周日开始的完整月课表">
+   <div class="month-grid" style="--month-weeks:${count/7}">${weekdayNames.map((name,i)=>
+    `<div class="month-weekday ${i===0?'sunday':''}">${name}</div>`).join('')}${grid}
+   </div>
+  </div>
  </section>`;
+}
+function openMonthDayDetail(raw){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return;
+ const date=dt(raw),courses=monthCoursesIndex().get(raw)||[];
+ const title=fmt(date,{month:'long',day:'numeric',weekday:'long'});
+ const body=`<div class="month-detail-count">${courses.length} 节课程</div>
+  <div class="agenda-list">${courses.length?courses.map(courseRow).join(''):
+   empty('当天没有课程','选择其他日期查看课表。','calendar')}</div>`;
+ openModal(title,body);
 }
 function countedGrade(g){const c=`${g.category||''} ${g.nature||''}`;if(c.includes('限选'))return true;return !c.includes('选修')&&!c.includes('任选');}
 function stats(){const grades=state.data.grades||[],count=grades.filter(g=>countedGrade(g)&&+g.credit>0);const credits=count.reduce((a,g)=>a+(+g.credit||0),0);const sum=count.reduce((a,g)=>a+(+g.credit||0)*(+g.gpa||0),0);const avg=count.reduce((a,g)=>a+(+g.credit||0)*(+g.score||0),0);const earned=grades.filter(g=>g.passed).reduce((a,g)=>a+(+g.credit||0),0);return {gpa:credits?sum/credits:null,avg:credits?avg/credits:null,earned,credits:grades.reduce((a,g)=>a+(+g.credit||0),0)};}
@@ -914,12 +915,12 @@ async function loadMonth(){
  if(!weeks.size){
   state.monthLoading=false;
   state.monthLoadError=0;
-  if(state.view==='schedule'&&state.scheduleMode==='month')render();
   return;
  }
  state.monthLoading=true;
  state.monthLoadError=0;
- if(state.view==='schedule'&&state.scheduleMode==='month')render();
+ const status=$('.month-brief[role="status"]');
+ if(status)status.textContent='正在同步当月课程…';
  let failures=0;
  const toFetch=[...weeks].sort((a,b)=>a-b);
  for(let i=0;i<toFetch.length;i+=3){
@@ -1055,7 +1056,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'prevMonth':case'nextMonth':{const d=dt(state.monthCursor);d.setDate(1);d.setMonth(d.getMonth()+(act==='nextMonth'?1:-1));state.monthCursor=iso(d);state.monthSelected=iso(d);render();loadMonth();break;}
  case'retryMonth':loadMonth();break;
  case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());render();loadMonth();break;
- case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;const d=dt(raw);if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));render();loadMonth();}else render();break;}
+ case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){const d=dt(raw);state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));render();loadMonth();}else{document.querySelectorAll('.month-cell').forEach(cell=>{const selected=cell.dataset.date===raw;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));});openMonthDayDetail(raw);}break;}
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;

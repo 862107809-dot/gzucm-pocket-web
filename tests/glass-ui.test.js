@@ -77,7 +77,7 @@ test('progress notices are centered once relative to the viewport',()=>{
 });
 test('dark timetable keeps scoped glass and readable course rows',()=>{
  const css=read('styles.css'),app=read('app.js');
- assert.match(app,/class="page page-\$\{state\.view\}"/);
+ assert.match(app,/class="page page-\$\{state\.view\} \$\{oldView===state\.view/);
  assert.match(css,/Timetable-only glass material/);
  assert.match(css,/:root\[data-theme="dark"\] \.page-schedule \.card/);
  assert.match(css,/\.page-schedule \.calendar-visual/);

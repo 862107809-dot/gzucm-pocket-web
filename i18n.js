@@ -130,23 +130,90 @@ pairs.push(...[
 ['语言切换','Switch language'],
 ['正在浏览演示模式','Demo mode is active'],['课表、成绩、电量及人名都是示例，不是学校真实数据。','All displayed classes, grades, electricity balances, and names are sample data, not real school records.']
 ]);
+pairs.push(...[
+ // High-confidence GZUCM course names, campus locations and academic labels.
+ ['毛泽东思想和中国特色社会主义理论体系概论','Introduction to Mao Zedong Thought and the Theoretical System of Socialism with Chinese Characteristics'],
+ ['习近平新时代中国特色社会主义思想概论','Introduction to Xi Jinping Thought on Socialism with Chinese Characteristics for a New Era'],
+ ['中国近现代史纲要','Outline of Modern Chinese History'],
+ ['马克思主义基本原理','Basic Principles of Marxism'],
+ ['思想道德与法治','Ideology, Morality and Rule of Law'],
+ ['大学英语','College English'],['局部解剖学','Regional Anatomy'],['系统解剖学','Systematic Anatomy'],
+ ['人体解剖学','Human Anatomy'],['中医基础理论','Fundamentals of Traditional Chinese Medicine'],
+ ['中医诊断学','Traditional Chinese Medicine Diagnostics'],
+ ['中医各家学说','Schools of Traditional Chinese Medicine'],
+ ['医学微生物学','Medical Microbiology'],
+ ['病理生理学','Pathophysiology'],['生理学','Physiology'],['医学统计学','Medical Statistics'],
+ ['中国医学史','History of Chinese Medicine'],['医用化学','Medical Chemistry'],
+ ['摄影艺术鉴赏','Photography Appreciation'],['形势与政策','Current Affairs and Policy'],
+ ['医学免疫学','Medical Immunology'],['病理学','Pathology'],
+ ['组织胚胎学','Histology and Embryology'],['药理学','Pharmacology'],
+ ['中药学','Chinese Materia Medica'],['方剂学','Chinese Herbal Formulas'],
+ ['内科学','Internal Medicine'],['外科学','Surgery'],['诊断学','Diagnostics'],
+ ['中西医结合','Integrated Chinese and Western Medicine'],
+ ['临床医学','Clinical Medicine'],['体育','Physical Education'],
+ ['高等数学','Advanced Mathematics'],['大学物理','University Physics'],
+ ['有机化学','Organic Chemistry'],['英语','English'],['普通话','Mandarin'],
+ ['大学城校区','University Town Campus'],['三元里校区','Sanyuanli Campus'],
+ ['外语楼','Foreign Languages Building'],['实验楼','Laboratory Building'],
+ ['教学楼','Teaching Building'],['学术报告厅','Academic Lecture Hall'],
+ ['大学城','University Town'],['校园','Campus'],['校区','Campus'],
+ ['实验教学','Laboratory Class'],['理论教学','Lecture'],
+ ['教学团队','Teaching Team'],['示例教师','Sample Instructor'],
+ ['专业基础课','Foundational Major Course'],
+ ['公共选修课','General Elective'],['通识课','General Education'],
+ ['专业限选课','Major Restricted Elective'],['专业选修课','Major Elective'],
+ ['必修课','Required Course'],['任选课','Open Elective'],
+ ['第九周','Week 9'],['第十周','Week 10'],
+ ['第一学期','Semester 1'],['第二学期','Semester 2'],['第三学期','Semester 3'],
+ ['第1学期','Semester 1'],['第2学期','Semester 2'],['第3学期','Semester 3'],
+ ['教学周','teaching weeks'],['学年','academic year'],['学期','semester'],
+ ['节','periods'],['度','kWh'],['周','week'],
+ ['中文','Chinese'],['中','G'],
+ ['第 10 / 19 教学周','Teaching week 10 of 19'],
+ ['第 9 / 20 教学周','Teaching week 9 of 20'],
+ ['今天有','There are'],['接下来的每一步都有方向。','Every step ahead has a purpose.'],
+ ['课程名称','Course name'],['讲授内容','Class topic'],['教师','Instructor'],
+ ['记录','records'],['实验','laboratory'],['理论','theory'],
+ ['专业','Major'],['健康','Health'],['药学','Pharmacy']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();
 const SKIP=new Set(['SCRIPT','STYLE','NOSCRIPT','CODE','PRE','TEXTAREA']);
+function transliterate(source){
+ const han=/[\u3400-\u9fff\uF900-\uFAFF]/g;
+ const pinyinFn=(typeof window!=='undefined'&&window.pinyinPro&&typeof window.pinyinPro.pinyin==='function')
+   ?window.pinyinPro.pinyin:null;
+ return source.replace(/[\u3400-\u9fff\uF900-\uFAFF]+/g,run=>{
+   if(pinyinFn){
+     try{
+       const romanized=pinyinFn(run,{toneType:'none',type:'string'});
+       if(typeof romanized==='string'&&!han.test(romanized))return romanized;
+     }catch{}
+   }
+   // An explicit placeholder is safer than inventing an English name or showing
+   // Chinese when transliteration is unavailable. The source is intact in state.
+   return '[Original title available in Chinese mode]';
+ });
+}
 function translate(text){
- if(typeof text!=='string'||!/[\u3400-\u9fff]/.test(text))return text;
+ if(typeof text!=='string'||!/[\u3400-\u9fff\uF900-\uFAFF]/.test(text))return text;
  let out=text;
- // Translate predictable numerical labels without changing raw course names.
+ // Academic year/term and variable counts are handled before dictionary matching.
+ out=out.replace(/(\d{4})\s*[—–-]\s*(\d{4})\s*学年\s*(?:第\s*([一二三四1234])\s*学期)?/g,
+   (_,from,to,n)=>from+'–'+to+' academic year'+(n?' · Semester '+({一:1,二:2,三:3,四:4}[n]||n):''));
+ out=out.replace(/第\s*(\d+)\s*\/\s*(\d+)\s*教学周/g,'Teaching week $1 of $2');
  out=out.replace(/第\s*(\d+)\s*周/g,'Week $1');
- out=out.replace(/共\s*(\d+)\s*节/g,'$1 classes');
+ out=out.replace(/共\s*(\d+)\s*节/g,'$1 class periods');
+ out=out.replace(/(\d+)\s*节课程/g,'$1 class periods');
  out=out.replace(/(\d+(?:\.\d+)?)\s*度/g,'$1 kWh');
  out=out.replace(/(\d+(?:\.\d+)?)\s*天/g,'$1 days');
- // Longest fixed UI strings first. Do not machine translate official academic records.
  for(const [zh,en] of dictionary)if(out.includes(zh))out=out.split(zh).join(en);
- out=out.replace(/星期([一二三四五六日])/g,(_,d)=>({一:'Monday',二:'Tuesday',三:'Wednesday',四:'Thursday',五:'Friday',六:'Saturday',日:'Sunday'})[d]);
- return out;
+ // Every remaining Chinese sequence is romanized locally, never sent to
+ // an online translator. If the library fails, use an explicit English placeholder.
+ return transliterate(out);
 }
+
 function apply(root,language='zh'){
  if(typeof document==='undefined'||!root)return;
  const en=language==='en';

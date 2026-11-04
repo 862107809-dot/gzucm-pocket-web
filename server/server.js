@@ -7,6 +7,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {SchoolClient,qrSvg}=require('./school');
 const {EcardClient,PORTAL}=require('./ecard');
+const CAS=require('./cas');
 const ROOT=path.resolve(__dirname,'..');
 const PORT=Number(process.env.PORT)||4173;
 // Loopback by default. Do not expose school session cookies to public networks.
@@ -29,12 +30,33 @@ const SESSION_COOKIE=PUBLIC?'__Host-gzsid':'gzsid';
 const MAX_SESSIONS=300;
 const qrStarts=[]; // Shared limiter reduces unintended school QR traffic on a public host.
 const powerAttempts=[]; // Avoid overloading the official ecard server from a public service.
+const CAS_CONFIG=CAS.configuration();
+const CAS_COOKIE=PUBLIC?'__Host-gzcas':'gzcas';
+const CAS_PENDING=new Map();
+const CAS_MAX_PENDING=100;
+const CAS_MAX_AGE=5*60*1000;
+function appendCookie(res,cookie){
+ const old=res.getHeader('Set-Cookie');
+ res.setHeader('Set-Cookie',old?[...(Array.isArray(old)?old:[old]),cookie]:cookie);
+}
+function casResultPage(res,status){
+ const ok=status==='ok';
+ const message=ok?'学校统一身份认证已验证；请返回广中医口袋查看状态。教务课表同步仍可能需要独立授权。'
+  :'学校身份认证未完成或回调无法验证；请返回广中医口袋使用扫码同步。';
+ res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
+ res.end('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>统一认证结果 · 广中医口袋</title></head><body style="margin:0;font:16px/1.7 system-ui;background:#153526;color:#eef8f0;display:grid;place-items:center;min-height:100vh"><main style="max-width:430px;padding:30px"><h1>官方认证结果</h1><p>'+message+'</p><p><a style="color:#ade7c0" href="/">返回广中医口袋</a></p></main><script src="/cas-complete.js" defer></script></body></html>');
+}
+function finishCasCallback(res,ok){
+ appendCookie(res,`${CAS_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
+ res.writeHead(303,{'Location':'/auth/cas/complete?status='+(ok?'ok':'failed'),'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
+ res.end();
+}
 function qrAllowed(){const now=Date.now();while(qrStarts.length&&qrStarts[0]<now-60000)qrStarts.shift();if(qrStarts.length>=18)return false;qrStarts.push(now);return true;}
 function powerAllowed(){const now=Date.now();while(powerAttempts.length&&powerAttempts[0]<now-60000)powerAttempts.shift();if(powerAttempts.length>=24)return false;powerAttempts.push(now);return true;}
 function isHttps(req){return req.socket.encrypted || (PUBLIC && req.headers['x-forwarded-proto']==='https');}
 function sessionCookie(value){return `${SESSION_COOKIE}=${value}; HttpOnly; Path=/; SameSite=Strict; Max-Age=43200${(PUBLIC||LAN)?'; Secure':''}`;}
 const allowedFiles=new Map(Object.entries({
- '/':'index.html','/index.html':'index.html','/boot-check.js':'boot-check.js','/privacy.html':'privacy.html','/styles.css':'styles.css','/app.js':'app.js','/data.js':'data.js','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/assets/icon.svg':'assets/icon.svg','/assets/apple-touch-icon.png':'assets/apple-touch-icon.png'
+ '/':'index.html','/index.html':'index.html','/boot-check.js':'boot-check.js','/cas-complete.js':'cas-complete.js','/privacy.html':'privacy.html','/styles.css':'styles.css','/app.js':'app.js','/data.js':'data.js','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/assets/icon.svg':'assets/icon.svg','/assets/apple-touch-icon.png':'assets/apple-touch-icon.png'
 }));
 const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
 function secureHeaders(res){if(PUBLIC)res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Cross-Origin-Resource-Policy','same-origin');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');res.setHeader('Content-Security-Policy',"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; form-action 'self'");}
@@ -55,7 +77,46 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
    res.writeHead(303,{'Location':'/','Set-Cookie':`gzaccess=${ACCESS_DIGEST}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200`,'Cache-Control':'no-store'});res.end();return;
   }pairingPage(res,true);return;
  }
- if(!hasAccess(req)){pairingPage(res);return;}if(url.pathname==='/favicon.ico'){res.writeHead(302,{Location:'/assets/icon.svg'});res.end();return;}
+ if(!hasAccess(req)){pairingPage(res);return;}
+ if(url.pathname==='/auth/cas/complete'&&req.method==='GET'){
+  casResultPage(res,url.searchParams.get('status'));return;
+ }
+ if(url.pathname==='/auth/cas/start'&&req.method==='GET'){
+  if(!CAS_CONFIG.enabled){return casResultPage(res,'failed');}
+  if(req.headers.host!==new URL(CAS_CONFIG.service).host){return reply(res,400,{error:'CAS 回调域名不符合已登记的域名'});}
+  const s=getSession(req,res);
+  if(s.casPending)CAS_PENDING.delete(s.casPending);
+  if(CAS_PENDING.size>=CAS_MAX_PENDING){return reply(res,429,{error:'当前身份认证请求过多，请稍后重试'});}
+  const nonce=crypto.randomBytes(32).toString('base64url');
+  s.casPending=nonce;
+  CAS_PENDING.set(nonce,{session:s,created:Date.now()});
+  appendCookie(res,`${CAS_COOKIE}=${nonce}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=300`);
+  res.writeHead(302,{'Location':CAS.loginUrl(CAS_CONFIG.service),'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
+  res.end();return;
+ }
+ if(url.pathname===CAS.CALLBACK_PATH&&req.method==='GET'){
+  const nonce=readCookies(req)[CAS_COOKIE]||'';
+  const pending=CAS_PENDING.get(nonce);
+  CAS_PENDING.delete(nonce);
+  if(!CAS_CONFIG.enabled||!pending||Date.now()-pending.created>CAS_MAX_AGE||pending.session.casPending!==nonce){
+   return finishCasCallback(res,false);
+  }
+  pending.session.casPending=null;
+  const ticket=url.searchParams.get('ticket')||'';
+  let valid=false;
+  if(CAS.ticketValidFormat(ticket)){
+   try{valid=await CAS.validateTicket(ticket,CAS_CONFIG.service);}
+   catch{valid=false;}
+  }
+  // CAS authentication proves SSO identity, not an authorized JW academic session.
+  if(valid&&[...sessions.values()].includes(pending.session)){
+   pending.session.casVerified=true;
+   pending.session.casVerifiedAt=Date.now();
+   pending.session.accessed=Date.now();
+  }
+  return finishCasCallback(res,valid);
+ }
+ if(url.pathname==='/favicon.ico'){res.writeHead(302,{Location:'/assets/icon.svg'});res.end();return;}
  if(!url.pathname.startsWith('/api/')){if(req.method!=='GET'&&req.method!=='HEAD'){reply(res,405,{error:'不支持的方法'});return;}const file=allowedFiles.get(url.pathname);if(!file){reply(res,404,{error:'页面不存在'});return;}sendFile(res,file);return;}
  if(req.method!=='GET'&&req.method!=='POST'){reply(res,405,{error:'不支持的方法'});return;}
  if(req.method==='POST'&&(!isPostAllowed(req)||(PUBLIC&&!String(req.headers['content-type']||'').startsWith('application/json')))){reply(res,403,{error:'非法跨站请求'});return;}
@@ -63,7 +124,7 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
  try{
   const p=url.pathname;
   if(p==='/api/health'&&req.method==='GET')return reply(res,200,{ok:true,app:'广中医口袋 Web',version:'1.3.0',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
-  if(p==='/api/session'&&req.method==='GET')return reply(res,200,{connected:s.client.connected,campus:'undergrad',qrPending:!!s.client.qr,powerBackend:'authenticated-session-required',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
+  if(p==='/api/session'&&req.method==='GET')return reply(res,200,{connected:s.client.connected,casAvailable:CAS_CONFIG.enabled,casVerified:!!s.casVerified,campus:'undergrad',qrPending:!!s.client.qr,powerBackend:'authenticated-session-required',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
   if(p==='/api/qr/start'&&req.method==='POST'){
    if(Date.now()-s.lastRequest<4000)return reply(res,429,{error:'请勿频繁申请学校二维码'});
    if(PUBLIC&&!qrAllowed())return reply(res,429,{error:'公开站点扫码请求较多，请稍后重试'});
@@ -96,11 +157,11 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
    const result=await s.ecard.live(url.searchParams.get('month'));
    return reply(res,200,result);
   }
-  if(p==='/api/logout'&&req.method==='POST'){s.client.clear();s.ecard.clear();sessions.delete(s.id);res.setHeader('Set-Cookie',`${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0${(PUBLIC||LAN)?'; Secure':''}`);return reply(res,200,{ok:true});}
+  if(p==='/api/logout'&&req.method==='POST'){s.client.clear();s.ecard.clear();if(s.casPending)CAS_PENDING.delete(s.casPending);s.casPending=null;s.casVerified=false;s.casVerifiedAt=0;sessions.delete(s.id);res.setHeader('Set-Cookie',`${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0${(PUBLIC||LAN)?'; Secure':''}`);return reply(res,200,{ok:true});}
   return reply(res,404,{error:'API 不存在'});
  }catch(error){const message=String(error?.message||'请求失败').replace(/[\r\n]/g,' ').slice(0,300);const status=error?.status||(/尚未|失效|重新认证/.test(message)?401:/二维码已过期/.test(message)?410:/超时|连接/.test(message)?503:502);return reply(res,status,{error:message,...(error?.code?{code:error.code}:{}),...(error?.officialUrl?{officialUrl:error.officialUrl}:{})});}
 }
-setInterval(()=>{for(const [sid,s] of sessions){if(Date.now()-s.accessed>TTL){s.client.clear();s.ecard.clear();sessions.delete(sid);}}},600_000).unref();
+setInterval(()=>{for(const [sid,s] of sessions){if(Date.now()-s.accessed>TTL){s.client.clear();s.ecard.clear();if(s.casPending)CAS_PENDING.delete(s.casPending);sessions.delete(sid);}}for(const [nonce,p] of CAS_PENDING){if(Date.now()-p.created>CAS_MAX_AGE)CAS_PENDING.delete(nonce);}},600_000).unref();
 const listener=(req,res)=>{handler(req,res).catch(err=>{console.error('[gzucm server]',String(err.message).slice(0,130));if(!res.headersSent)reply(res,500,{error:'本地服务内部错误'});else res.end();});};
 const server=TLS_CERT ? https.createServer({cert:fs.readFileSync(TLS_CERT),key:fs.readFileSync(TLS_KEY)},listener) : http.createServer(listener);
 server.listen(PORT,HOST,()=>{console.log(`广中医口袋 Web 已启动： ${TLS_CERT?'https':'http'}://${HOST}:${PORT}`);console.log(PUBLIC?'公开测试模式（需由 Render 等可信 HTTPS 反向代理提供 TLS），每个浏览器的学校会话相互隔离，重启后会话清空。':LAN?'已启用 HTTPS + 设备访问口令，学校会话仅保存在服务端内存。':'仅限本机访问，学校会话保存在 Node 进程内存中。');});

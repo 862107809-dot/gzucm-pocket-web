@@ -1,0 +1,99 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const app=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+const css=fs.readFileSync(path.join(__dirname,'..','styles.css'),'utf8');
+const start=app.indexOf('function navigateBottomModule(view){');
+const end=app.indexOf('function handleClick(event){',start);
+assert.ok(start>=0&&end>start,'swipe interaction helper functions must be present');
+function harness(){
+ let renders=0,closed=0,scheduleLoads=0,raf=0,frame=null;
+ const state={view:'today',scheduleMode:'week'};
+ const left=[0,100,200,300,400];
+ const names=['today','schedule','grades','power','settings'];
+ const tabs=left.map((x,i)=>({
+  offsetLeft:x,offsetWidth:100,dataset:{view:names[i]},
+  getBoundingClientRect:()=>({left:x,width:100})
+ }));
+ const classes=new Set();
+ const glass={
+  classList:{add:(...x)=>x.forEach(c=>classes.add(c)),remove:(...x)=>x.forEach(c=>classes.delete(c))},
+  style:{},isConnected:true
+ };
+ let captured=null;
+ const nav={
+  getClientRects:()=>[{}],
+  getBoundingClientRect:()=>({left:0,width:500}),
+  setPointerCapture:id=>{captured=id;},
+  hasPointerCapture:id=>captured===id,
+  releasePointerCapture:id=>{if(captured===id)captured=null;},
+  querySelector:sel=>sel==='.bottom-liquid-indicator'?glass:sel==='.bottom-item.active'?tabs[0]:null,
+  querySelectorAll:()=>tabs
+ };
+ const document={};
+ const win={matchMedia:()=>({matches:false}),scrollTo:()=>{}};
+ const output=new Function('state','window','document','requestAnimationFrame',
+   'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek',
+   'let liquidGestureSnap=false;\n'+app.slice(start,end)+
+   'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule};')(
+    state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
+    ()=>{closed++},()=>{renders++},()=>{scheduleLoads++},()=>{scheduleLoads++}
+   );
+ const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
+  cancelable:true,preventDefault(){this.prevented=true;},
+  target:{closest:sel=>sel==='.bottom-nav'?nav:null}});
+ return {state,glass,classes,nav,tabs,event,output,
+  frame:()=>{const next=frame;frame=null;next?.();},
+  counts:()=>({renders,closed,scheduleLoads,captured})};
+}
+test('finger drag follows the pointer and selects nearest bottom module on release',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(258,23));
+ h.frame();
+ assert.ok(h.classes.has('is-dragging'));
+ assert.ok(h.classes.has('is-instant'));
+ assert.equal(h.glass.style.transform,'translate3d(211px,0,0)');
+ h.output.bottomSwipeFinish(h.event(258,23));
+ assert.equal(h.state.view,'grades');
+ assert.equal(h.counts().renders,1);
+ assert.equal(h.counts().closed,1);
+ assert.equal(h.counts().captured,null);
+});
+test('vertical scrolling is never converted to bottom tab swipe',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(45,25));
+ h.output.bottomSwipeMove(h.event(48,90));
+ h.output.bottomSwipeFinish(h.event(49,125));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+});
+test('tap without dragging delegates to existing click handler',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeFinish(h.event(46,20));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+});
+test('swiping to an edge clamps glass and allows last tab selection',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(730,21));
+ h.frame();
+ assert.equal(h.glass.style.transform,'translate3d(403px,0,0)');
+ h.output.bottomSwipeFinish(h.event(480,21));
+ assert.equal(h.state.view,'settings');
+});
+test('touch-action pan-y, reduced motion and calendar gestures remain safe',()=>{
+ assert.match(css,/touch-action:pan-y/);
+ assert.match(css,/\.bottom-liquid-indicator\.is-dragging/);
+ assert.match(css,/--motion-fluid:cubic-bezier/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(app,/document\.addEventListener\('pointerdown',bottomSwipeDown/);
+ assert.match(app,/document\.addEventListener\('pointermove',bottomSwipeMove/);
+ assert.match(app,/document\.addEventListener\('pointerup',event=>bottomSwipeFinish\(event\)/);
+ assert.match(app,/calendar-visual,\.bottom-nav/);
+ assert.match(app,/document\.addEventListener\('click',bottomSwipeClickCapture,true\)/);
+});

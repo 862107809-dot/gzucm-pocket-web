@@ -594,7 +594,6 @@ function openModal(title,body,actions=''){
   const rect=card.getBoundingClientRect();
   card.style.setProperty('--dialog-from-x',Math.round(origin.x-rect.left-rect.width/2)+'px');
   card.style.setProperty('--dialog-from-y',Math.round(origin.y-rect.top-rect.height/2)+'px');
-  card.classList.add('liquid-dialog-opening');
   if(typeof card.animate==='function'){
    try{
     const animation=card.animate(liquidDialogFrames(rect,origin,false,430),
@@ -604,8 +603,8 @@ function openModal(title,body,actions=''){
      if(dialogAnimation===animation)dialogAnimation=null;
      card.classList.remove('liquid-dialog-opening');
     },()=>{});
-   }catch{}
-  }
+   }catch{card.classList.add('liquid-dialog-opening');}
+  }else card.classList.add('liquid-dialog-opening');
   backdrop.classList.add('liquid-backdrop-opening');
  }
  applyLanguage();
@@ -662,9 +661,17 @@ function hideSafariMenu(focus=false){
  const old=safariMenuState.anchor;
  if(old?.isConnected)old.setAttribute('aria-expanded','false');
  const portal=$('#popover-root');
- if(portal)portal.innerHTML='';
+ const menu=portal?.querySelector('.safari-floating-menu');
  safariMenuState={anchor:null,kind:''};
  if(focus&&old?.isConnected)old.focus({preventScroll:true});
+ if(!portal||!menu||menu.classList.contains('is-closing'))return;
+ const finish=()=>{if(portal.firstElementChild===menu)portal.innerHTML='';};
+ if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){finish();return;}
+ menu.inert=true;
+ menu.style.pointerEvents='none';
+ menu.classList.add('is-closing');
+ menu.addEventListener('animationend',finish,{once:true});
+ setTimeout(finish,320);
 }
 function safariMenuItems(kind){
  const en=state.prefs.language==='en';
@@ -717,6 +724,17 @@ function toggleSafariMenu(anchor,kind){
  const top=above?r.top-height-9:Math.min(r.bottom+9,Math.max(10,vh-height-10));
  menu.style.left=Math.round(left)+'px';
  menu.style.top=Math.round(Math.max(10,top))+'px';
+ menu.style.setProperty('--popover-origin-x',Math.round(r.left+r.width/2-left)+'px');
+ menu.style.setProperty('--popover-origin-y',Math.round(r.top+r.height/2-top)+'px');
+ const chosen=menu.querySelector('.safari-menu-option.selected')||menu.querySelector('.safari-menu-option');
+ if(chosen){
+  const glider=document.createElement('span');
+  glider.className='safari-menu-glider';
+  glider.setAttribute('aria-hidden','true');
+  menu.insertBefore(glider,chosen);
+  setSelectorGlass(glider,{x:chosen.offsetLeft,y:chosen.offsetTop,width:chosen.offsetWidth,height:chosen.offsetHeight});
+ }
+ menu.classList.toggle('can-scrub',menu.scrollHeight<=menu.clientHeight+3);
  applyLanguage();
  menu.querySelector('.safari-menu-option')?.focus({preventScroll:true});
 }

@@ -109,8 +109,8 @@ test('dark course tiles use readable text and transparent deep surfaces',()=>{
  assert.match(css,/prefers-reduced-transparency:reduce/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  const app=read('app.js');
- assert.match(app,/class="cal-event tone-\$\{colorIndex\(s\)\}"/);
- assert.match(app,/data-course="\$\{E\(courseKey\(s\)\)\}"/);
+ assert.match(app,/class="cal-event tone-\$\{colorIndex\(course\)\}"/);
+ assert.match(app,/data-course="\$\{E\(courseKey\(course\)\)\}"/);
 });
 
 test('top and settings choice menus open as small anchored Safari glass boxes',()=>{

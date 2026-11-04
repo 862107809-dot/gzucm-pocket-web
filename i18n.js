@@ -155,6 +155,7 @@ pairs.push(...[
  ['高等数学','Advanced Mathematics'],['大学物理','University Physics'],
  ['有机化学','Organic Chemistry'],['英语','English'],['普通话','Mandarin'],
  ['大学城校区','University Town Campus'],['三元里校区','Sanyuanli Campus'],
+ ['英语教学楼','English Teaching Building'],
  ['外语楼','Foreign Languages Building'],['实验楼','Laboratory Building'],
  ['教学楼','Teaching Building'],['学术报告厅','Academic Lecture Hall'],
  ['大学城','University Town'],['校园','Campus'],['校区','Campus'],

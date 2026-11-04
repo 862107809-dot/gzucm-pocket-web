@@ -36,12 +36,16 @@ test('No pinyin: unknown records get an English-only placeholder',()=>{
  const server=fs.readFileSync(path.join(__dirname,'..','server','server.js'),'utf8');
  assert.doesNotMatch(server,/pinyin-pro/i);
 });
-test('English selector is wired on navigation and settings, persisting preference',()=>{
+test('Only one EN/ZH language button is rendered and the old selectors are absent',()=>{
  const js=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
- assert.match(js,/id="language-select"/);
- assert.match(js,/id="language-settings"/);
- assert.match(js,/state\.prefs\.language=t\.value==='en'\?'en':'zh'/);
- assert.match(js,/storePrefs\(\);render\(\);applyLanguage\(\)/);
+ const sourceMatches=js.match(/data-action="toggleLanguage"/g)||[];
+ assert.equal(sourceMatches.length,1);
+ assert.match(js,/state\.prefs\.language==='en'\?'ZH':'EN'/);
+ assert.match(js,/case'toggleLanguage':toggleLanguage\(\);break;/);
+ assert.match(js,/state\.prefs\.language=state\.prefs\.language==='en'\?'zh':'en'/);
+ assert.match(js,/storePrefs\(\);\s*render\(\)/);
+ assert.doesNotMatch(js,/id="language-select"|id="language-settings"/);
+ assert.doesNotMatch(js,/\bcase'language-select'\b/);
 });
 test('Browser loads translation module before app',()=>{
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');

@@ -9,12 +9,13 @@ const start=app.indexOf('function navigateBottomModule(view){');
 const end=app.indexOf('function handleClick(event){',start);
 assert.ok(start>=0&&end>start,'swipe interaction helper functions must be present');
 function harness(){
- let renders=0,closed=0,scheduleLoads=0,raf=0,frame=null;
+ let renders=0,closed=0,scheduleLoads=0,raf=0,frame=null,tones=0,armed=0;
  const state={view:'today',scheduleMode:'week'};
  const left=[0,100,200,300,400];
  const names=['today','schedule','grades','power','settings'];
  const tabs=left.map((x,i)=>({
   offsetLeft:x,offsetWidth:100,dataset:{view:names[i]},
+  classList:{toggle:()=>{}},
   getBoundingClientRect:()=>({left:x,width:100})
  }));
  const classes=new Set();
@@ -35,18 +36,19 @@ function harness(){
  const document={};
  const win={matchMedia:()=>({matches:false}),scrollTo:()=>{}};
  const output=new Function('state','window','document','requestAnimationFrame',
-   'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek',
+   'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek','armLiquidSound','playLiquidTick',
    'let liquidGestureSnap=false;\n'+app.slice(start,end)+
    'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule};')(
     state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
-    ()=>{closed++},()=>{renders++},()=>{scheduleLoads++},()=>{scheduleLoads++}
+    ()=>{closed++},()=>{renders++},()=>{scheduleLoads++},()=>{scheduleLoads++},
+    ()=>{armed++},()=>{tones++}
    );
  const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
   cancelable:true,preventDefault(){this.prevented=true;},
   target:{closest:sel=>sel==='.bottom-nav'?nav:null}});
  return {state,glass,classes,nav,tabs,event,output,
   frame:()=>{const next=frame;frame=null;next?.();},
-  counts:()=>({renders,closed,scheduleLoads,captured})};
+  counts:()=>({renders,closed,scheduleLoads,captured,tones,armed})};
 }
 test('finger drag follows the pointer and selects nearest bottom module on release',()=>{
  const h=harness();
@@ -59,6 +61,8 @@ test('finger drag follows the pointer and selects nearest bottom module on relea
  h.output.bottomSwipeFinish(h.event(258,23));
  assert.equal(h.state.view,'grades');
  assert.equal(h.counts().renders,1);
+ assert.ok(h.counts().armed>=1);
+ assert.equal(h.counts().tones,1);
  assert.equal(h.counts().closed,1);
  assert.equal(h.counts().captured,null);
 });

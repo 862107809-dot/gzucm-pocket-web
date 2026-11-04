@@ -46,7 +46,7 @@ function harness(kind='schedule',vertical=false){
    getBoundingClientRect:()=>({left,top,width:vertical?180:100,height:50}),
    getAttribute:attr=>attr==='aria-pressed'?(i===0?'true':'false'):null,
    contains(node){return node===button;},
-   click(){clicks++;group.clicked=i;},
+   click(){clicks++;group.clicked=i;group.transformOnClick=group.glass?.style?.transform;},
    closest(sel){
     if(sel==='.bottom-nav'||sel==='input,textarea,select')return null;
     if(sel==='.safari-floating-menu')return menu?group:null;
@@ -192,4 +192,18 @@ test('settings sound switch supports horizontal drag, normal tap and vertical sc
  f.liquidSwitchMove(ev(13,95));
  f.liquidSwitchFinish(ev(13,95));
  assert.equal(stored,2,'vertical scroll cannot flip a switch');
+});
+
+test('finger-up transform is committed before the click, never briefly returning to the old tab',()=>{
+ const h=harness('schedule');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ h.selectors.liquidPointerMove(h.event(0,205,21));
+ h.runFrame();
+ h.selectors.liquidPointerFinish(h.event(0,243,21));
+ assert.equal(h.group.clicked,2);
+ assert.equal(h.group.transformOnClick,'translate3d(193px,0px,0)');
+ const css=fs.readFileSync(path.join(__dirname,'..','styles.css'),'utf8');
+ assert.match(app,/const changed=!!\(old&&\(old\.value!==liquidSelectorValue\(active\)\|\|old\.dragging\)/);
+ assert.match(app,/void glass\.offsetWidth/);
+ assert.match(css,/\.page\.page-stable\{animation:none!important/);
 });

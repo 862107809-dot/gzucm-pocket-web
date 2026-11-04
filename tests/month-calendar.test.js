@@ -14,7 +14,10 @@ function environment(){
  const addDays=(d,n)=>{const out=new Date(d);out.setDate(out.getDate()+n);return out;};
  const sessions=[
   {week:8,weekday:7,name:'Sunday class',room:'S101',startUnit:1},
-  {week:9,weekday:3,name:'Wednesday class',room:'W201',startUnit:3},
+  {week:9,weekday:3,name:'Wednesday class',room:'W201',startUnit:3,startTime:'08:30',endTime:'10:10'},
+  {week:9,weekday:3,name:'Second Wednesday class',room:'W202',startUnit:5,startTime:'10:20',endTime:'12:00'},
+  {week:9,weekday:3,name:'Third Wednesday class',room:'W203',startUnit:7,startTime:'14:00',endTime:'15:40'},
+  {week:9,weekday:3,name:'Fourth Wednesday class',room:'W204',startUnit:9,startTime:'16:00',endTime:'17:40'},
   {week:9,weekday:5,name:'Friday class',room:'F101',startUnit:5}
  ];
  const semester={name:'2026-2027',firstMondayIso:'2026-09-07',totalWeeks:20};
@@ -69,4 +72,29 @@ test('week and month modes are reachable without overwriting school course dates
 test('monthly view fetches only teaching weeks and does not reload already fetched weeks',()=>{
  assert.match(code,/if\(week>=1&&week<=\(term\(\)\.totalWeeks\|\|19\)&&!state\.loadedWeeks\.has\(week\)\)/);
  assert.match(code,/Promise\.allSettled\(batch\.map\(week=>api\('academic\/week\?week='\+week\)\)\)/);
+});
+
+test('all four courses on the same date render as full name, time, room, never +N or dots',()=>{
+ const {monthPage}=environment();
+ const html=monthPage();
+ const beforeAgenda=html.slice(0,html.indexOf('class="month-all-courses"'));
+ const names=['Wednesday class','Second Wednesday class','Third Wednesday class','Fourth Wednesday class'];
+ for(const name of names)assert.ok(beforeAgenda.includes(name),name+' hidden in monthly grid');
+ for(const room of ['W201','W202','W203','W204'])assert.ok(beforeAgenda.includes(room),room+' missing');
+ assert.ok(beforeAgenda.includes('08:30–10:10'),'start and end times missing');
+ assert.ok(beforeAgenda.includes('16:00–17:40'),'last course time missing');
+ assert.equal((html.match(/class="month-event tone-/g)||[]).length,6);
+ assert.doesNotMatch(html,/class="month-more"/);
+ assert.match(html,/本月全部课程 · 6 节/);
+ assert.match(html,/本月已获取 6 节课程/);
+ assert.match(html,/class="month-agenda-date"/);
+ assert.doesNotMatch(code,/courses\.slice\(0,2\)/);
+});
+test('month list exposes every course for the entire month on mobile as readable text',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'..','styles.css'),'utf8');
+ assert.match(css,/\.month-calendar \.month-grid\{\s*min-width:1050px/);
+ assert.match(css,/\.month-calendar \.month-event\{[\s\S]*?white-space:normal/);
+ assert.match(css,/@media\(max-width:660px\)\{[\s\S]*?\.month-calendar \.month-event\{[\s\S]*?height:auto/);
+ assert.match(css,/\.month-all-courses\{/);
+ assert.doesNotMatch(css,/\.month-event\{width:9px;height:9px/);
 });

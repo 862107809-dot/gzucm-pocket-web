@@ -37,3 +37,8 @@
 .top-actions .language-switch{flex-shrink:0}
 @media(max-width:600px){.language-switch{min-width:76px;max-width:85px;padding:7px 4px;font-size:11px}.top-actions{gap:5px}}
 .hero-button{text-decoration:none}
+
+/* English course titles are longer than Chinese names; prevent clipping. */
+:root[lang="en"] .hero-title{font-size:clamp(25px,3vw,39px);line-height:1.22;overflow-wrap:anywhere}
+:root[lang="en"] .hero-desc,:root[lang="en"] .course-name,:root[lang="en"] .overview-name,:root[lang="en"] .course-tag{overflow-wrap:anywhere}
+:root[lang="en"] .hero-line{white-space:normal;text-align:right}

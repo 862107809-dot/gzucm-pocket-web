@@ -7,7 +7,7 @@
  */
 const https = require('node:https');
 const {URL,URLSearchParams} = require('node:url');
-const {parsePowerHtml,parsePowerDailyJson} = require('./parsers');
+const {parsePowerHtml,parsePowerContext,parsePowerBalanceJson,parsePowerDailyJson} = require('./parsers');
 const BASE='https://ecard.gzucm.edu.cn';
 const PORTAL=BASE+'/user/powerfee/index';
 const SIGN_IN=BASE+'/sso/login?plat=gzzyy';
@@ -18,6 +18,7 @@ function parseSetCookies(host,arr,jar){for(const raw of arr||[]){const [first,..
 function cookieFor(jar,url){return [...jar.values()].filter(c=>c.host===url.hostname&&url.pathname.startsWith(c.path)).sort((a,b)=>b.path.length-a.path.length).map(c=>`${c.name}=${c.value}`).join('; ');}
 class EcardClient{
  constructor(){this.cookies=new Map();this.lastRead=0;}
+ hasAuthenticatedSession(){return [...this.cookies.values()].some(c=>c.host==='ecard.gzucm.edu.cn'&&c.name==='JSESSIONID'&&c.value&&c.path.startsWith('/user'));}
  async request(target,body=null,hop=0){
   const u=safeUrl(target);if(hop>4)throw Error('一卡通页面重定向过多');
   const encoded=body===null?null:new URLSearchParams(body).toString();
@@ -35,12 +36,25 @@ class EcardClient{
   return response.body;
  }
  async live(month){
+  if(!this.hasAuthenticatedSession())throw needLogin();
   const html=await this.request(PORTAL);
-  const details=parsePowerHtml(html);
-  if(!details){
-   // An unauthenticated HTML page may return 200. Never interpret missing data as 0.
-   throw needLogin();
+  // The page may render a static powerTips balance, or fetch it dynamically from
+  // getBalance using the bound room IDs and session token.
+  const context=parsePowerContext(html);
+  let details=parsePowerHtml(html);
+  if(context){
+    try{
+      const result=await this.request(BASE+'/user/powerfee/getBalance',{
+        implType:'CGCOMMON1001',schoolAreaNo:context.schoolAreaNo,
+        buildingNo:context.buildingNo,roomNum:context.roomNum,from:'',token:context.token
+      });
+      details=parsePowerBalanceJson(result,context);
+    }catch(err){
+      if(!details)throw err;
+      console.warn('[GZUCM ecard]','balance_api=unavailable','page_balance=available');
+    }
   }
+  if(!details)throw needLogin();
   const {token,schoolAreaNo,roomNum}=details;
   const day=(month&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))?month:new Date().toISOString().slice(0,7);
   const warnings=[];let powerDaily=[];

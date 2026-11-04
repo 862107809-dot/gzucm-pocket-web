@@ -27,12 +27,12 @@ function environment(){
  const calendarDays=[['周日',0],['周一',1],['周二',2],['周三',3],['周四',4],['周五',5],['周六',6]];
  const factory=new Function('state','dt','iso','addDays','term','currentSessions','courseDate',
   'fmt','calendarDays','dayNames','E','I','heading','courseRow','empty','today','colorIndex',
-  'card','sectionTitle',
+  'card','sectionTitle','courseKey',
   code.slice(start,end)+'return {dayDate,displayDaySessions,monthCoursesIndex,monthPage,dayStrip,calendarGrid};');
  const api=factory(state,dt,iso,addDays,term,currentSessions,courseDate,fmt,calendarDays,
   ['周一','周二','周三','周四','周五','周六','周日'],
   s=>String(s),()=>'',()=>'',s=>'<p>'+s.name+'</p>',()=>'',()=>dt('2026-11-04'),
-  ()=>1,s=>s,()=>'',);
+  ()=>1,s=>s,()=>'',s=>s.name+'|'+s.week);
  return {...api,iso,state};
 }
 test('week begins Sunday even though official school weekday 7 belongs to previous academic week',()=>{

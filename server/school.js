@@ -24,7 +24,37 @@ class SchoolClient{
   }
  if(result.status>=500)throw Error('学校系统暂时不可用（HTTP '+result.status+'）');if(result.status===401||result.status===403)throw Error('学校拒绝访问，可能需要重新登录');return result.body;
  }
- async startQR(){this.connected=false;this.semester=null;this.cookies.clear();const raw=await this.request(JW+'/new/qrcodeLogin/qrcode',{},JW+'/');const root=parseJSON(raw);if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'无法向学校申请扫码登录');const detail=typeof root.data==='string'?parseJSON(root.data):root.data;if(!detail?.qrcodeId||!detail.confirmUrl)throw Error('学校二维码格式改变，缺少 qrcodeId / confirmUrl');const url=new URL(detail.confirmUrl,JW);checkUrl(url);this.qr={id:String(detail.qrcodeId),confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};return {confirmUrl:url.href};}
+ async startQR(){
+  this.connected=false;this.semester=null;this.cookies.clear();
+  let phase='school-request';
+  try {
+    const raw=await this.request(JW+'/new/qrcodeLogin/qrcode',{},JW+'/');
+    phase='parse-json';
+    const root=parseJSON(raw);
+    phase='check-response';
+    if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'学校没有接受二维码申请');
+    const detail=typeof root.data==='string'?parseJSON(root.data):root.data;
+    if(!detail?.qrcodeId||!detail.confirmUrl)throw Error('学校二维码响应缺少必要字段');
+    phase='verify-confirm-url';
+    const url=new URL(detail.confirmUrl,JW);
+    checkUrl(url);
+    this.qr={id:String(detail.qrcodeId),confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};
+    return {confirmUrl:url.href};
+  } catch(err) {
+    // Privacy-safe diagnostic. Never log URL paths, query strings, cookies or QR identifiers.
+    const code=String(err?.message||'').includes('未经允许的域名')
+      ? 'URL_DENIED'
+      : String(err?.message||'').includes('超时') ? 'TIMEOUT'
+      : String(err?.message||'').includes('ENOTFOUND') ? 'DNS_FAILURE'
+      : String(err?.message||'').includes('ECONN') ? 'CONNECTION_FAILURE'
+      : String(err?.message||'').includes('Unexpected token') ? 'INVALID_JSON'
+      : 'UNEXPECTED';
+    const phaseCode='GZQR_'+phase.toUpperCase().replaceAll('-','_')+'_'+code;
+    console.warn('[GZUCM QR diagnostic]', 'phase='+phase, 'category='+code);
+    err.code=phaseCode;
+    throw err;
+  }
+}
  async pollQR(){if(!this.qr)throw Error('请先获取学校二维码');if(Date.now()-this.qr.created>30*60_000)throw Error('二维码已过期，请重新获取');if(this.connected)return {status:'connected',connected:true};const raw=await this.request(JW+'/new/qrcodeLogin/qrcodeStatus',{qrcodeId:this.qr.id},JW+'/');const root=parseJSON(raw);if(root.code!==0&&String(root.code)!=='0')throw Error(root.message||'学校查询扫码状态失败');const detail=typeof root.data==='string'?parseJSON(root.data):root.data||{};const info=detail.scanInfo&&typeof detail.scanInfo==='object'?detail.scanInfo:detail;const code=String(info.status??detail.status??'0');if(code==='0'){this.qr.lastStatus='pending';return {status:'pending',connected:false};}if(code==='1'){this.qr.lastStatus='scanned';return {status:'scanned',connected:false};}if(code==='2'){
   const target=info.url||detail.url;if(!target)throw Error('已确认扫码，但学校未返回可完成登录的 URL');const jump=new URL(String(target),JW);checkUrl(jump);await this.request(jump.href,null,JW+'/');const verified=await this.ping();this.connected=verified;if(!verified)throw Error('学校已确认扫码，但未取得有效教务会话；请重新扫码或检查接口变更');this.qr.lastStatus='connected';return {status:'connected',connected:true};}
  return {status:'pending',message:'学校返回未知扫码状态 '+code,connected:false};}

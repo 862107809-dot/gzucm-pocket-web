@@ -1,6 +1,6 @@
 /* Cache namespace v5: old cache-first app.js caused a permanent boot screen. */
-const CACHE = 'gzucm-pocket-web-v8-20261104-lang-power3';
-const ASSETS = ['/', '/index.html', '/styles.css?v=20261104-lang-power3', '/i18n.js?v=20261104-lang-power3', '/data.js?v=20261104-fix2', '/app.js?v=20261104-lang-power3', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
+const CACHE = 'gzucm-pocket-web-v9-20261104-en-no-cjk1';
+const ASSETS = ['/', '/index.html', '/styles.css?v=20261104-en-no-cjk1', '/vendor/pinyin-pro.js?v=3.29.5', '/i18n.js?v=20261104-en-no-cjk1', '/data.js?v=20261104-fix2', '/app.js?v=20261104-en-no-cjk1', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
 self.addEventListener('install', event => {
  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

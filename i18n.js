@@ -99,8 +99,8 @@ function translate(text){
  if(typeof text!=='string'||!/[\u3400-\u9fff]/.test(text))return text;
  let out=text;
  // Translate predictable numerical labels without changing raw course names.
- out=out.replace(/第\\s*(\d+)\s*周/g,'Week $1');
- out=out.replace(/共\\s*(\d+)\s*节/g,'$1 classes');
+ out=out.replace(/第\s*(\d+)\s*周/g,'Week $1');
+ out=out.replace(/共\s*(\d+)\s*节/g,'$1 classes');
  out=out.replace(/(\d+(?:\.\d+)?)\s*度/g,'$1 kWh');
  out=out.replace(/(\d+(?:\.\d+)?)\s*天/g,'$1 days');
  // Longest fixed UI strings first. Do not machine translate official academic records.

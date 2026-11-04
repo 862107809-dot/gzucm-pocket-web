@@ -91,6 +91,45 @@ const pairs=[
 ['官方','Official'],['返回','Back'],
 ['中文','中文'],['语言','Language'],['界面语言','Interface language']
 ];
+pairs.push(...[
+['你的校园，你的数据','Your campus, your data'],
+['校园空间 · CAMPUS','Campus spaces · CAMPUS'],
+['个人中心','Personal settings'],
+['非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。','Unofficial project · Enter passwords only on official school websites. Demo records are fictional.'],
+['虚构演示数据','Fictional demo records'],['已与本地服务连接','Connected to local service'],['本地已导入数据','Local data imported'],['本地数据','Local data'],
+['教师待定','Instructor TBA'],['这一天没有安排课程','No classes scheduled today'],['可以安排自习、运动或者出去走走。','A great time for studying, exercise, or a walk.'],
+['把每一周，过得从容有序。','Plan every week with ease.'],['每节课程的时间、地点与授课内容','Class times, locations and topics'],
+['本周暂无课程','No classes this week'],['可以在设置里导入课表','Import a timetable in settings'],
+['本周课程分布','This week by day'],['完整周视图','Full week view'],['外观设置','Appearance settings'],
+['左右切换教学周，点开课程查看「上课内容」「授课教师」「真实日期」。官方数据以学校教务系统为准。','Switch weeks using the arrows; open a class for its topic, instructor, and actual date. Official school records take precedence.'],
+['上课内容','Class topic'],['真实日期','Actual date'],['节次','Periods'],['完整周课表，可左右滚动','Full weekly timetable; scroll horizontally'],
+['导出日历','Export calendar'],['看见每一份努力的积累。','See how far you have come.'],
+['课程成绩、考级成绩与体测记录。指标仅供参考，以教务系统口径为准。','Course grades, exam scores and fitness records. Figures are illustrative; official school records take precedence.'],
+['加权平均分','Weighted average'],['已修学分','Earned credits'],['学分加权 · 不含普通选修','Credit-weighted · Excludes general electives'],
+['按参与绩点计算的课程学分加权','Weighted by course credits used in GPA'],['当前记录中已通过课程','Passed courses in current records'],
+['课程成绩','Course grades'],['考级成绩','Exam results'],['体测成绩','Fitness scores'],
+['搜索课程名称','Search course names'],['没有找到课程成绩','No matching course grades'],
+['更换关键词，或在设置中导入数据','Try another keyword or import your records in Settings'],
+['未注明学期','Term not specified'],['暂无考级记录','No exam records'],['导入自己的成绩数据后即可查看','Import your academic records to see results'],
+['暂无体测记录','No fitness records'],['导入自己的体测数据后即可查看','Import fitness records to view them'],['体测总分','Total fitness score'],
+['公选 / 任选','General electives'],['暂无学分','No credits'],['学分','Credits'],['绩点','GPA'],['门',' courses'],
+['加权绩点和平均分按参与计算的课程学分加权；普通选修、任选课不计入，专业限选课计入。课程成绩缺少绩点时可能影响结果，统计仅供参考。','GPA and weighted average use the credits of included courses. General electives are excluded while restricted major electives are counted. Missing GPA data may affect results.'],
+['公选课按教务字段 kcflmc 分类，个别课程缺少分类时归入「未分类」。毕业所需学分以培养方案为准。','General electives follow the official kcflmc category. Unclassified courses appear as “Other”. Graduation requirements follow your program handbook.'],
+['记录查询结果','Record official reading manually'],
+['学校官网查电费','Check electricity on school website'],['同步实时电量','Sync live electricity'],
+['手动记录','Manual record'],['当前网站尚未获得一卡通服务器端授权，请直接打开下方学校官方页面查询实时余额。','This website has not obtained a campus card server session. Open the official school page to check your live balance.'],
+['学校一卡通有独立登录态，Safari 不允许本站读取你在学校网页上的 Cookie。','The campus card uses a separate login. Safari does not let this website read cookies from the school website.'],
+['本站不会把未认证的数据伪装成实时查询。','This website will never present unverified data as live readings.'],
+['仅记录您从学校官网查询到的电量，不会向学校发送密码或写入学校系统。公开网站的手动记录保存在当前浏览器，不包含教务成绩。','Record a balance you looked up on the official school website. No password or writes go to the school. Manual entries stay in this browser; grades are not saved.'],
+['当日用电','Daily usage'],['房间信息','Room details'],['查询结果','Lookup result'],
+['中文 / English，自动保存选择','Chinese / English; selection is saved automatically'],
+['请切换到「扫码登录」，获取学校二维码。电脑端使用微信扫一扫；手机端可先截图保存二维码，再打开微信 → 右上角「＋」→「扫一扫」→「相册」，选择刚才的截图，进入学校官方确认页完成授权。','Choose QR Login to get a school QR code. Scan it with WeChat on a computer. On a phone, screenshot it and select it in WeChat → Scan → Album, then confirm on the official school page.'],
+['不要向任何人发送登录二维码截图。二维码只能用于当前会话，过期后请重新获取。','Never share screenshots of your login QR code. It is valid only for this session and expires.'],
+['截图保存二维码','Save a screenshot of the QR code'],['请不要分享二维码截图','Do not share the QR screenshot'],
+['界面语言已切换为中文','Interface language changed to Chinese'],
+['语言切换','Switch language'],
+['正在浏览演示模式','Demo mode is active'],['课表、成绩、电量及人名都是示例，不是学校真实数据。','All displayed classes, grades, electricity balances, and names are sample data, not real school records.']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

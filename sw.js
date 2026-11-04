@@ -1,6 +1,6 @@
 /* Cache namespace v5: old cache-first app.js caused a permanent boot screen. */
-const CACHE = 'gzucm-pocket-web-v20-20261105-safari-swipe12';
-const ASSETS = ['/', '/index.html', '/styles.css?v=20261105-safari-swipe12', '/vendor/liquid-glass.js?v=20261104-mit-glass1', '/glass-effects.js?v=20261105-safari-swipe12', '/i18n.js?v=20261105-safari-swipe12', '/data.js?v=20261104-fix2', '/app.js?v=20261105-safari-swipe12', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
+const CACHE = 'gzucm-pocket-web-v21-20261105-liquid-choices13';
+const ASSETS = ['/', '/index.html', '/styles.css?v=20261105-liquid-choices13', '/vendor/liquid-glass.js?v=20261104-mit-glass1', '/glass-effects.js?v=20261105-liquid-choices13', '/i18n.js?v=20261105-liquid-choices13', '/data.js?v=20261104-fix2', '/app.js?v=20261105-liquid-choices13', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
 self.addEventListener('install', event => {
  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

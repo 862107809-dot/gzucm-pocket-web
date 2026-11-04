@@ -32,10 +32,12 @@
 :root[data-theme="dark"] .day-tab.active,:root[data-theme="dark"] .btn.primary{color:#10291d}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}}
 
-/* Language selector: always available on desktop and mobile. */
-.language-switch{font:inherit;font-size:12px;min-width:86px;max-width:105px;border-radius:12px;border:1px solid var(--border);background:var(--surface-strong);color:var(--ink);padding:9px 7px;cursor:pointer}
+/* Single language toggle: EN switches Chinese→English, ZH switches back. */
+.language-switch{font:inherit;font-weight:700;letter-spacing:.04em;font-size:12px;width:44px;min-width:44px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface-strong);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .18s ease,border-color .18s ease}
+.language-switch:hover{background:var(--surface)}
+.language-switch:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .top-actions .language-switch{flex-shrink:0}
-@media(max-width:600px){.language-switch{min-width:76px;max-width:85px;padding:7px 4px;font-size:11px}.top-actions{gap:5px}}
+@media(max-width:600px){.language-switch{min-width:38px;width:38px;height:36px;font-size:11px}.top-actions{gap:5px}}
 .hero-button{text-decoration:none}
 
 /* English course titles are longer than Chinese names; prevent clipping. */

@@ -65,3 +65,24 @@ test('glass contrast and appearance picker are readable in both themes',()=>{
  assert.match(app,/\{key:'system'/);
  assert.doesNotMatch(app,/class="avatar"/);
 });
+
+test('progress notices are centered once relative to the viewport',()=>{
+ const css=read('styles.css');
+ assert.match(css,/@keyframes toastIn\{from\{opacity:0;transform:translateY\(-8px\)\}to\{opacity:1;transform:translateY\(0\)\}\}/);
+ assert.doesNotMatch(css,/@keyframes toastIn[^}]*translate\(-50%/);
+ assert.match(css,/\.toast-root\{\s*position:fixed;\s*inset-inline:0;/);
+ assert.match(css,/\.toast-root[\s\S]*?display:flex;\s*justify-content:center/);
+ assert.match(css,/\.toast-root \.toast\{[\s\S]*?text-align:center/);
+});
+test('dark timetable keeps scoped glass and readable course rows',()=>{
+ const css=read('styles.css'),app=read('app.js');
+ assert.match(app,/class="page page-\$\{state\.view\}"/);
+ assert.match(css,/Timetable-only glass material/);
+ assert.match(css,/:root\[data-theme="dark"\] \.page-schedule \.card/);
+ assert.match(css,/\.page-schedule \.calendar-visual/);
+ assert.match(css,/rgba\(21,43,33,\.83\)!important/);
+ assert.match(css,/\.page-schedule \.agenda-row/);
+ assert.match(css,/rgba\(30,54,42,\.88\)!important/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
+ assert.doesNotMatch(css,/\.page-schedule \.cal-event\{\s*filter:/);
+});

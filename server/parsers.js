@@ -26,6 +26,32 @@ function parsePowerHtml(html){
  const roomLabel=inputValue(html,'roomChooseText')||inputValue(html,'roomChoose')||roomNum||'宿舍';
  return {balance:Number(num[1]),unit:'度',roomLabel,roomNum,schoolAreaNo,buildingNo,token};
 }
+function parsePowerContext(html){
+ const source=String(html||'');
+ // Never infer a balance from an empty or unrelated login page.
+ if(!source.includes('powerfee')&&!/name=["']roomNum["']|id=["']roomNum["']/.test(source))return null;
+ const token=source.match(/\b(?:var|let|const)\s+token\s*=\s*["']([^"']+)["']/i)?.[1]||inputValue(source,'token');
+ const roomNum=inputValue(source,'roomNum');
+ const schoolAreaNo=inputValue(source,'schoolAreaNo');
+ const buildingNo=inputValue(source,'buildingNo');
+ if(!token||!roomNum||!schoolAreaNo||!buildingNo)return null;
+ return {token,roomNum,schoolAreaNo,buildingNo,
+ roomLabel:inputValue(source,'roomChooseText')||inputValue(source,'roomChoose')||'房间 '+roomNum};
+}
+function parsePowerBalanceJson(raw,room){
+ let root;
+ try{root=typeof raw==='string'?JSON.parse(raw):raw;}
+ catch{throw Error('一卡通余额接口返回非 JSON 数据');}
+ if(root?.ret!==true&&String(root?.ret)!=='true')throw Error('一卡通余额接口未返回成功状态');
+ const value=root?.obj?.powerBalance;
+ if(value===undefined||value===null||!/^\\d+(?:\\.\\d+)?$/.test(String(value).trim()))throw Error('一卡通余额接口未返回有效电量');
+ const balance=Number(value);
+ if(!Number.isFinite(balance)||balance<0||balance>1000000)throw Error('一卡通电量数值超出合理范围');
+ const respRoom=String(root?.obj?.roomNum??'');
+ if(room?.roomNum&&respRoom&&room.roomNum!==respRoom)throw Error('一卡通返回的房间标识与当前页面不一致');
+ return {balance,unit:'度',roomLabel:room?.roomLabel||'宿舍',
+ roomNum:room?.roomNum||respRoom,schoolAreaNo:room?.schoolAreaNo||'',buildingNo:room?.buildingNo||'',token:room?.token||''};
+}
 function parsePowerDailyJson(raw){
  let root;try{root=typeof raw==='string'?JSON.parse(raw):raw;}catch{throw Error('用电明细返回非 JSON 数据');}
  if(root?.ret!==true && String(root?.ret)!=='true')throw Error('一卡通明细接口没有返回成功标志');
@@ -34,4 +60,4 @@ function parsePowerDailyJson(raw){
  return arr.map(x=>({date:String(x.dateTime||x.accountTime||x.date||x.time||'').slice(0,10),usage:Number(x.dailyUsed||0),remain:Number(x.leftUsed||0),total:Number(x.totalUsed||0)})).filter(x=>/^20\d{2}-\d{2}-\d{2}$/.test(x.date)&&Number.isFinite(x.usage)&&Number.isFinite(x.remain));
 }
 function countedGrade(g){const c=`${g.category||''} ${g.nature||''}`;return c.includes('限选')||(!c.includes('选修')&&!c.includes('任选'));}
-module.exports={parseJSON,requireLogin,parseSemester,parseWeek,parseGrades,parseLevels,parseFitness,parseExams,parsePowerHtml,parsePowerDailyJson,weekOf,addDays,countedGrade};
+module.exports={parseJSON,requireLogin,parseSemester,parseWeek,parseGrades,parseLevels,parseFitness,parseExams,parsePowerHtml,parsePowerContext,parsePowerBalanceJson,parsePowerDailyJson,weekOf,addDays,countedGrade};

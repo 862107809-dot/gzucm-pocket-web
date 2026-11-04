@@ -9,7 +9,7 @@ const start=app.indexOf('function navigateBottomModule(view){');
 const end=app.indexOf('function handleClick(event){',start);
 assert.ok(start>=0&&end>start,'swipe interaction helper functions must be present');
 function harness(){
- let renders=0,closed=0,scheduleLoads=0,raf=0,frame=null,tones=0,armed=0;
+ let renders=0,closed=0,scheduleLoads=0,raf=0,frame=null,tones=0,armed=0,transformOnRender=null;
  const state={view:'today',scheduleMode:'week'};
  const left=[0,100,200,300,400];
  const names=['today','schedule','grades','power','settings'];
@@ -40,7 +40,7 @@ function harness(){
    'let liquidGestureSnap=false;\n'+app.slice(start,end)+
    'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule};')(
     state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
-    ()=>{closed++},()=>{renders++},()=>{scheduleLoads++},()=>{scheduleLoads++},
+    ()=>{closed++},()=>{renders++;transformOnRender=glass.style.transform;},()=>{scheduleLoads++},()=>{scheduleLoads++},
     ()=>{armed++},()=>{tones++}
    );
  const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
@@ -48,7 +48,7 @@ function harness(){
   target:{closest:sel=>sel==='.bottom-nav'?nav:null}});
  return {state,glass,classes,nav,tabs,event,output,
   frame:()=>{const next=frame;frame=null;next?.();},
-  counts:()=>({renders,closed,scheduleLoads,captured,tones,armed})};
+  counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
 }
 test('finger drag follows the pointer and selects nearest bottom module on release',()=>{
  const h=harness();
@@ -100,4 +100,24 @@ test('touch-action pan-y, reduced motion and calendar gestures remain safe',()=>
  assert.match(app,/document\.addEventListener\('pointerup',event=>bottomSwipeFinish\(event\)/);
  assert.match(app,/calendar-visual,\.bottom-nav/);
  assert.match(app,/document\.addEventListener\('click',bottomSwipeClickCapture,true\)/);
+});
+
+test('release uses the final pointer coordinate, not the previous animation frame',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(235,22));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(355,22));
+ assert.equal(h.state.view,'power');
+ assert.equal(h.counts().transformOnRender,'translate3d(308px,0,0)');
+});
+test('dragging back to the already-selected tab does not repaint the entire page',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(80,21));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(45,21));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+ assert.equal(h.glass.style.transform,'translate3d(3px,0,0)');
 });

@@ -66,7 +66,23 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
   if(p==='/api/session'&&req.method==='GET')return reply(res,200,{connected:s.client.connected,campus:'undergrad',qrPending:!!s.client.qr,powerBackend:'authenticated-session-required',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
   if(p==='/api/qr/start'&&req.method==='POST'){
    if(Date.now()-s.lastRequest<4000)return reply(res,429,{error:'请勿频繁申请学校二维码'});
-   if(PUBLIC&&!qrAllowed())return reply(res,429,{error:'公开站点扫码请求较多，请稍后重试'});s.lastRequest=Date.now();s.rotated=false;const info=await s.client.startQR();return reply(res,200,{confirmUrl:info.confirmUrl,svg:qrSvg(info.confirmUrl)});
+   if(PUBLIC&&!qrAllowed())return reply(res,429,{error:'公开站点扫码请求较多，请稍后重试'});
+   s.lastRequest=Date.now();s.rotated=false;
+   let phase='request-school';
+   try{
+    const info=await s.client.startQR();
+    phase='render-svg';
+    const svg=qrSvg(info.confirmUrl);
+    console.warn('[GZUCM QR start]', 'phase=complete', 'result=ok');
+    return reply(res,200,{confirmUrl:info.confirmUrl,svg});
+   }catch(err){
+    const category=err?.code?.startsWith('GZQR_')?'school-qr'
+     :phase==='render-svg'?'svg-error':'school-qr-other';
+    console.warn('[GZUCM QR start]', 'phase='+phase, 'category='+category);
+    if(!err?.code)err.code=phase==='render-svg'?'GZQR_SVG_FAILED':'GZQR_START_FAILED';
+    if(!err?.message)err.message=phase==='render-svg'?'二维码图形生成失败':'二维码接口请求失败';
+    throw err;
+   }
   }
   if(p==='/api/qr/status'&&req.method==='GET'){const result=await s.client.pollQR();if(PUBLIC&&result.connected&&!s.rotated){const next=crypto.randomBytes(32).toString('base64url');sessions.delete(s.id);s.id=next;s.rotated=true;sessions.set(next,s);res.setHeader('Set-Cookie',sessionCookie(next));}return reply(res,200,result);}
   if(p==='/api/academic/semester'&&req.method==='GET')return reply(res,200,{semester:await s.client.getSemester(url.searchParams.get('code'))});

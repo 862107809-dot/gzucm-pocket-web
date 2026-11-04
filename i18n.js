@@ -137,6 +137,7 @@ pairs.push(...[
  ['中国近现代史纲要','Outline of Modern Chinese History'],
  ['马克思主义基本原理','Basic Principles of Marxism'],
  ['思想道德与法治','Ideology, Morality and Rule of Law'],
+ ['广州中医药大学','Guangzhou University of Chinese Medicine'],
  ['大学英语','College English'],['局部解剖学','Regional Anatomy'],['系统解剖学','Systematic Anatomy'],
  ['人体解剖学','Human Anatomy'],['中医基础理论','Fundamentals of Traditional Chinese Medicine'],
  ['中医诊断学','Traditional Chinese Medicine Diagnostics'],

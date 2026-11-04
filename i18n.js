@@ -223,6 +223,17 @@ pairs.push(...[
  ['滑动选择','Slide to select'],
  ['选项滑动','Sliding selection']
 ]);
+pairs.push(...[
+ ['点击日期查看详情','Tap a date to see classes'],
+ ['点击查看详情','Tap to see details'],
+ ['从周日开始的完整月课表','Complete monthly calendar, starting Sunday'],
+ ['当天没有课程','No classes this day'],
+ ['选择其他日期查看课表。','Choose another date to view classes.'],
+ ['正在同步当月课程…','Syncing classes for this month…'],
+ ['部分课程尚未同步 · 可重试','Some classes could not sync · Retry'],
+ ['点击日期','Select a date'],
+ ['重试','Retry']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

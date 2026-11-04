@@ -332,8 +332,128 @@ function powerChart(rows){if(!rows.length)return empty('还没有趋势记录','
 function settingsPage(){return `${heading('YOUR SPACE','让它更像你的校园生活。','个人偏好、数据管理与本地连接。所有演示数据均为虚构示例。')}
  <div class="settings-grid"><div class="grid-gap"><div class="card"><div class="card-heading">${I('sun',18)} 个性化外观</div><div class="setting-item"><div><div class="setting-label">外观模式</div><div class="setting-hint">跟随 iOS / macOS 系统或手动切换</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="theme" aria-haspopup="menu" aria-expanded="false">${state.prefs.theme==='system'?'跟随系统':state.prefs.theme==='light'?'浅色':'深色'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">默认启动页</div><div class="setting-hint">下次进入时打开的页面</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="start" aria-haspopup="menu" aria-expanded="false">${({today:'今日',schedule:'课表',grades:'成绩',power:'电费'})[state.prefs.start]||'今日'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">自定义课表背景</div><div class="setting-hint">仅存储在当前浏览器内</div></div><button class="btn small" data-action="wallpaper">${I('upload')} 选择图片</button></div><div class="setting-item"><div><div class="setting-label">背景透明度</div><div class="setting-hint">调整课表图片显示强度</div></div><input class="range" id="opacity-range" type="range" min="0" max="1" step="0.05" value="${state.prefs.wallOpacity}" aria-label="课表背景透明度" /></div>${state.prefs.wallpaper?`<button class="btn small ghost" data-action="clearWallpaper">移除课表背景</button>`:''}</div><div class="card"><div class="card-heading">${I('shield',18)} 隐私与安全</div><div class="note"><strong>数据与隐私</strong><p class="mb-0">${PUBLIC?'公开网站不默认保存学业数据到浏览器 localStorage；服务器内存短暂保存你的教务会话，学校密码仅在官方页面填写。云服务商可能处理访问信息，请勿在公共设备使用。':'私人版本使用浏览器 localStorage 缓存数据，并在本地 Node 服务进程内保存学校会话。'}</p></div><div class="setting-item"><div><div class="setting-label">清除本地数据</div><div class="setting-hint">恢复演示数据，不会删除官方账号信息</div></div><button class="btn small danger" data-action="reset">清除</button></div></div></div>
  <div class="grid-gap"><div class="card"><div class="card-heading">${I('cloud',18)} 连接与同步</div><div class="setting-item"><div><div class="setting-label">同步状态</div><div class="setting-hint">${state.connected?'本科教务已认证':'尚未连接学校系统'}</div></div><span class="status-pill ${state.connected?'':'demo'}">${state.connected?'已连接':'未连接'}</span></div><div class="setting-item"><div><div class="setting-label">学习阶段</div><div class="setting-hint">本科同步为试验性；研究生可导入数据</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="campus" aria-haspopup="menu" aria-expanded="false">${state.data.campus==='graduate'?'研究生':'本科'}${I('chevronRight',14)}</button></div><div class="grid-gap mt-12"><button class="btn primary block" data-action="connect">${I('link')} ${PUBLIC?'登录学校教务':'连接学校教务'}</button><button class="btn block" data-action="refresh">${I('refresh')} 尝试同步课表与成绩</button>${state.connected?`<button class="btn danger block" data-action="logout">退出当前学校会话</button>`:''}</div><div class="note warning mt-12"><strong>实验性接口</strong><p class="mb-0">密码登录暂不支持，请截图二维码后通过微信扫一扫（相册识别）登录。扫码授权可同步课表；一卡通电费需要另行查询。</p></div></div><div class="card"><div class="card-heading">${I('file',18)} 数据备份</div><div class="grid-gap"><button class="btn block" data-action="import">${I('upload')} 导入 JSON 数据</button><button class="btn block" data-action="export">${I('download')} 导出当前 JSON 备份</button><button class="btn block" data-action="demo">${I('sparkle')} 切换到演示数据</button></div><div class="setting-hint mt-12">支持本项目 schemaVersion: 1 的 JSON 格式。导入的本地记录不会自动与学校系统核对。</div></div><div class="card"><div class="card-heading">${I('info',18)} 关于</div><p class="tiny muted" style="line-height:1.9">广中医口袋 Web 1.3 · Safari / PWA 适配<br>参考 <a href="https://github.com/Hello-Minecraft/gzucm-pocket" target="_blank" rel="noopener noreferrer">Hello-Minecraft/gzucm-pocket</a>，独立非官方实现。<br>不属于广州中医药大学，不代表学校意见。<br>液态玻璃效果使用 CSS 仿真，不是苹果原生私有 API。</p></div></div></div>`;}
-function openModal(title,body,actions=''){clearInterval(state.poll);state.poll=null;$('#modal-root').innerHTML=`<div class="modal-backdrop" id="modal-overlay"><section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><h2 id="modal-title">${E(title)}</h2><button class="icon-btn" data-action="close" aria-label="关闭弹窗">${I('close')}</button></div><div class="modal-body">${body}</div>${actions?`<div class="modal-actions">${actions}</div>`:''}</section></div>`;$('#modal-root').querySelector('.modal-card').focus?.();applyLanguage();}
-function closeModal(){clearInterval(state.poll);state.poll=null;$('#modal-root').innerHTML='';}
+/* Glass dialog expansion uses the pressed control as its visual source.
+ * The source is kept so closing collapses back toward that same point. */
+let dialogClickOrigin=null;
+let dialogReturnFocus=null;
+let dialogSource=null;
+let dialogAnimation=null;
+let dialogCloseId=0;
+function recordDialogOrigin(trigger){
+ if(!trigger?.getBoundingClientRect||trigger.closest?.('.modal-card'))return;
+ const r=trigger.getBoundingClientRect();
+ if(r.width<1||r.height<1)return;
+ dialogClickOrigin={x:r.left+r.width/2,y:r.top+r.height/2,
+  width:r.width,height:r.height,at:Date.now(),trigger};
+}
+function resolveDialogOrigin(){
+ const prior=dialogClickOrigin;
+ dialogClickOrigin=null;
+ if(prior&&Date.now()-prior.at<850)return prior;
+ return {x:window.innerWidth/2,y:window.innerHeight/2,width:18,height:18,trigger:null};
+}
+function liquidDialogFrames(cardRect,origin,closing=false,duration=420){
+ const cx=cardRect.left+cardRect.width/2,cy=cardRect.top+cardRect.height/2;
+ const dx=(origin?.x??cx)-cx,dy=(origin?.y??cy)-cy;
+ const small=Math.max(.075,Math.min(.22,Math.min(
+  (origin?.width||18)/Math.max(cardRect.width,1),
+  (origin?.height||18)/Math.max(cardRect.height,1))));
+ const frames=[];
+ for(let i=0;i<=42;i++){
+  const offset=i/42;
+  const progress=i===42?1:Math.min(1.015,Math.max(0,safariSpringProgress(offset*duration/1000,closing?.96:.90,closing?20:17)));
+  const openProgress=closing?1-progress:progress;
+  const scale=small+(1-small)*openProgress;
+  frames.push({offset,
+   transform:'translate3d('+(dx*(1-openProgress)).toFixed(2)+'px,'+
+    (dy*(1-openProgress)).toFixed(2)+'px,0) scale('+scale.toFixed(4)+')',
+   opacity:String(Math.min(1,Math.max(0,.03+.97*openProgress))),
+   borderRadius:(30+(1-openProgress)*19).toFixed(1)+'px'});
+ }
+ return frames;
+}
+function openModal(title,body,actions=''){
+ clearInterval(state.poll);state.poll=null;
+ const root=$('#modal-root');
+ if(!root)return;
+ const replacing=!!root.querySelector('.modal-card')&&!root.querySelector('.modal-backdrop.is-closing');
+ const origin=replacing?dialogSource:resolveDialogOrigin();
+ if(!replacing)dialogReturnFocus=origin.trigger?.isConnected?origin.trigger:null;
+ dialogSource=origin;
+ dialogCloseId++;
+ try{dialogAnimation?.cancel()}catch{}
+ dialogAnimation=null;
+ root.innerHTML='<div class="modal-backdrop" id="modal-overlay">'+
+  '<section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">'+
+  '<div class="modal-head"><h2 id="modal-title">'+E(title)+'</h2>'+
+  '<button class="icon-btn" data-action="close" aria-label="关闭弹窗">'+I('close')+'</button></div>'+
+  '<div class="modal-body">'+body+'</div>'+
+  (actions?'<div class="modal-actions">'+actions+'</div>':'')+'</section></div>';
+ const card=root.querySelector('.modal-card');
+ const backdrop=root.querySelector('.modal-backdrop');
+ if(!card||!backdrop)return;
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ if(!replacing&&!reduced){
+  const rect=card.getBoundingClientRect();
+  card.style.setProperty('--dialog-from-x',Math.round(origin.x-rect.left-rect.width/2)+'px');
+  card.style.setProperty('--dialog-from-y',Math.round(origin.y-rect.top-rect.height/2)+'px');
+  card.classList.add('liquid-dialog-opening');
+  if(typeof card.animate==='function'){
+   try{
+    const animation=card.animate(liquidDialogFrames(rect,origin,false,430),
+      {duration:430,fill:'none',easing:'linear'});
+    dialogAnimation=animation;
+    animation.finished.then(()=>{
+     if(dialogAnimation===animation)dialogAnimation=null;
+     card.classList.remove('liquid-dialog-opening');
+    },()=>{});
+   }catch{}
+  }
+  backdrop.classList.add('liquid-backdrop-opening');
+ }
+ applyLanguage();
+ card.focus({preventScroll:true});
+}
+function closeModal(immediate=false){
+ clearInterval(state.poll);state.poll=null;
+ const root=$('#modal-root');
+ const backdrop=root?.querySelector('.modal-backdrop');
+ const card=backdrop?.querySelector('.modal-card');
+ if(!root||!backdrop||!card)return;
+ const id=++dialogCloseId;
+ const focus=dialogReturnFocus;
+ const finish=()=>{
+  if(dialogCloseId!==id||root.firstElementChild!==backdrop)return;
+  root.innerHTML='';
+  dialogAnimation=null;
+  dialogSource=null;
+  dialogReturnFocus=null;
+  if(focus?.isConnected)focus.focus({preventScroll:true});
+ };
+ try{dialogAnimation?.cancel()}catch{}
+ dialogAnimation=null;
+ if(immediate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+  finish();return;
+ }
+ card.inert=true;
+ backdrop.classList.add('is-closing');
+ card.classList.remove('liquid-dialog-opening');
+ const rect=card.getBoundingClientRect();
+ const origin=dialogSource||{x:rect.left+rect.width/2,y:rect.top+rect.height/2,width:16,height:16};
+ if(typeof card.animate==='function'){
+  try{
+   const animation=card.animate(liquidDialogFrames(rect,origin,true,300),
+    {duration:300,fill:'none',easing:'linear'});
+   dialogAnimation=animation;
+   animation.finished.then(finish,finish);
+   return;
+  }catch{}
+ }
+ card.style.setProperty('--dialog-from-x',Math.round(origin.x-rect.left-rect.width/2)+'px');
+ card.style.setProperty('--dialog-from-y',Math.round(origin.y-rect.top-rect.height/2)+'px');
+ card.classList.add('liquid-dialog-closing');
+ setTimeout(finish,310);
+}
 let toastTimer=null;
 function toast(text){const root=$('#toast-root');root.innerHTML=`<div class="toast">${E(text)}</div>`;applyLanguage();clearTimeout(toastTimer);toastTimer=setTimeout(()=>root.innerHTML='',2800);}
 function showCourse(key){const s=(state.data.sessions||[]).find(x=>matchesKey(x,key));if(!s)return;openModal('课程详情',`<div class="course-detail-hero"><div class="tiny muted">${E(s.category||'课程')} · 第 ${s.week} 周</div><strong>${E(s.name)}</strong><p>${E(s.content||'教务系统暂无具体授课内容')}</p></div>${[['时间',`${courseDate(s)} ${dayNames[(s.weekday||1)-1]} · ${s.startTime||'--:--'}—${s.endTime||'--:--'}`],['授课教师',s.teachers||'未提供'],['上课地点',s.room||'未提供'],['教学环节',s.category||'未提供'],['教学模式',s.teachingMode||'未提供'],['课程代码',s.code||'未提供']].map(([k,v])=>`<div class="detail-line"><span class="detail-key">${k}</span><span class="detail-value">${E(v)}</span></div>`).join('')}`);}
@@ -631,7 +751,7 @@ function bottomSwipeClickCapture(event){
  event.preventDefault();
  event.stopImmediatePropagation();
 }
-function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
+function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
  if(target.dataset.view){navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}

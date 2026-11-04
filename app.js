@@ -8,7 +8,7 @@ const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(
 const state = {
   data: window.GZUCM_DEMO,
   view:'today', week:1, weekday:1, scheduleMode:'day',gradeTab:'course',gradeSearch:'',creditMode:'total',
-  connected:false,loading:false,poll:null,authMode:'password',powerStatus:'idle',
+  connected:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',
   prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,...saved(PREF,{})}
 };
 const PUBLIC=window.GZUCM_PUBLIC===true;
@@ -146,9 +146,10 @@ function connectModal(mode='password'){
  openModal('登录广中医教务 · 官方身份认证',`<div class="segmented" style="display:flex;margin-bottom:18px" role="group" aria-label="选择教务登录方式"><button type="button" class="${pwd?'active':''}" aria-pressed="${pwd}" data-action="authPassword">账号密码</button><button type="button" class="${!pwd?'active':''}" aria-pressed="${!pwd}" data-action="authQr">扫码登录</button></div>
  <div class="privacy-mark">${I('shield',17)} 只在学校官网输入密码 · 本站不接收学校密码</div>
  ${pwd?`<p>此方式会直接打开学校<strong>统一身份认证平台</strong>，使用学校的账号、密码和官方验证码登录教务，不会生成二维码。</p>
- <a class="btn primary block mt-20" href="${SCHOOL_SSO_URL}" target="_blank" rel="noopener noreferrer">${I('lock',16)} 前往学校统一身份认证 · 密码登录</a>
- <p class="tiny muted mt-12">官方入口：jw.gzucm.edu.cn/new/ssoLogin。随后由学校跳转至 authserver.gzucm.edu.cn 完成认证。</p>
- <div class="note warning mt-20"><strong>密码登录与本站同步是两回事</strong><p class="mb-0">在学校官网登录后可以直接使用学校教务系统；但学校网站的登录 Cookie 不会自动交给广中医口袋或 Render 服务器。当前本站没有获批的单点登录回调，<strong>单独完成官方密码登录不会自动同步本站课表</strong>。若要在本站同步课表和成绩，请切换上方「扫码登录」使用目前已验证的授权方式。</p></div>`:`<p>请使用学校支持的方式扫描下方生成的二维码，并在学校页面确认。扫码后，本站将尝试验证教务会话并同步本人课表、成绩。</p>
+ <button type="button" class="btn primary block mt-20" data-action="openOfficialLogin">${I('lock',16)} 在学校官方认证窗口登录</button>
+ <p class="tiny muted mt-12">点击后会打开学校官方登录窗口，广中医口袋当前页面保持不变。官方入口：jw.gzucm.edu.cn/new/ssoLogin，随后跳转学校 authserver 认证页面。</p>
+ <div class="note warning mt-20"><strong>${state.casVerified?'学校统一身份已验证（但教务数据尚需授权）':state.casAvailable?'已配置校方登记的 CAS 回调':'尚无校方批准的第三方 CAS 回调'}</strong><p class="mb-0">${state.casAvailable?'学校官方窗口返回后，本站会验证 CAS 身份票据。':'当前只能在学校官方页面完成密码登录，无法将其认证结果直接传给本站。'} <strong>CAS 身份验证不等于获得教务系统 JSESSIONID；要在本站同步课表和成绩，请使用扫码登录完成独立授权。</strong> 本站不会读取官方窗口的密码或 Cookie。</p></div>
+ <button type="button" class="btn block mt-12" data-action="checkOfficialAuth">${I('refresh',15)} 检查官方认证状态</button>`:`<p>请使用学校支持的方式扫描下方生成的二维码，并在学校页面确认。扫码后，本站将尝试验证教务会话并同步本人课表、成绩。</p>
  <div class="qr-wrap mt-20" id="qr-panel"><button class="btn primary block" data-action="startQr">${I('link',15)} 获取学校登录二维码</button></div>
  <div class="note mt-12">二维码链接仅用于本次授权，请勿分享。学校是否完成登录以教务系统实际返回的会话状态为准。</div>`}
  <p class="tiny muted mt-20">非官方独立项目。学校密码只在官方域名输入。<a href="/privacy.html" target="_blank" rel="noopener noreferrer">隐私说明</a></p>`);
@@ -167,7 +168,29 @@ async function importData(file){if(!file)return;if(file.size>8*1024*1024){toast(
 async function importWallpaper(file){if(!file)return;if(file.size>10*1024*1024){toast('图片请小于 10MB');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('请选择 JPG、PNG 或 WebP');return;}
  try{const url=URL.createObjectURL(file),img=new Image();img.src=url;await img.decode();const scale=Math.min(1,1200/img.width,900/img.height),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);state.prefs.wallpaper=canvas.toDataURL('image/jpeg',.72);URL.revokeObjectURL(url);storePrefs();render();toast('背景已经更新');}catch{toast('图片读取失败');}}
 async function api(path,options={}){const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),20000);try{const res=await fetch('/api/'+path,{...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})},credentials:'same-origin',signal:ac.signal,cache:'no-store'});let obj;try{obj=await res.json();}catch{throw Error('服务暂时不可用，请刷新页面或稍后重试');}if(!res.ok)throw Object.assign(Error(obj.error||'请求失败'),{status:res.status,code:obj.code,officialUrl:obj.officialUrl});return obj;}finally{clearTimeout(timeout);}}
-async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;if(PUBLIC){if(state.connected){await syncAcademic();}else{connectModal();}}else if(state.connected&&!state.data.demo)render();}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
+async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;state.casAvailable=!!info.casAvailable;state.casVerified=!!info.casVerified;if(PUBLIC){if(state.connected){await syncAcademic();}else{connectModal();}}else if(state.connected&&!state.data.demo)render();}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
+function openOfficialLogin(){
+ // Open from a genuine click so browsers do not block the popup.
+ // CAS registration is optional and disabled by default.
+ const target=state.casAvailable?'/auth/cas/start':SCHOOL_SSO_URL;
+ state.ssoPopup=window.open(target,'gzucmSchoolLogin','popup=yes,width=560,height=760,scrollbars=yes,resizable=yes');
+ if(!state.ssoPopup){toast('浏览器拦截了学校登录窗口，请允许本站打开弹出窗口');return;}
+ try{state.ssoPopup.focus();}catch{}
+ if(!state.casAvailable)toast('已打开学校官网；当前尚未配置可返回本站的 CAS 授权回调');
+}
+async function checkOfficialAuth(){
+ try{
+  const info=await api('session');
+  state.casAvailable=!!info.casAvailable;
+  state.casVerified=!!info.casVerified;
+  state.connected=!!info.connected;
+  if($('#modal-overlay')&&state.authMode==='password')connectModal('password');
+  if(state.casVerified&&state.connected)toast('官方身份与教务数据会话均已就绪');
+  else if(state.casVerified)toast('学校身份已验证；同步课表还需独立教务授权');
+  else if(state.connected)toast('教务会话已连接，可同步数据');
+  else toast('尚未取得可供本站使用的官方身份回调，请使用扫码授权同步');
+ }catch{toast('无法检查认证状态，请稍后重试');}
+}
 async function startQr(){state.authMode='qr';const panel=$('#qr-panel');if(!panel)return;if(PUBLIC){state.data=window.GZUCM_DEMO;state.week=weekNow();}panel.innerHTML='<div class="tiny muted">正在请求学校的二维码接口…</div>';try{const qr=await api('qr/start',{method:'POST',body:'{}'});const safe=E(qr.confirmUrl||'');panel.innerHTML=`<div class="qr-frame">${qr.svg?`<img alt="教务系统登录二维码" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}">`:I('link',54)}</div><div class="tiny muted" style="text-align:center">用学校支持的方式扫码后确认</div><div class="mono-link">学校扫码确认链接已生成 · 为保护登录安全，已隐藏完整链接</div><div class="inline" style="justify-content:center;flex-wrap:wrap"><a class="btn small primary" target="_blank" rel="noopener noreferrer" href="${safe}">${I('link',14)} 打开学校确认页</a><button class="btn small" data-action="copyQr">${I('file',14)} 复制确认链接</button></div><div class="tiny muted" style="text-align:center">仅在学校官方域名输入密码。打开的页面必须完成学校的二维码确认，才能让本站获得同步所需的会话。</div><div class="tiny muted" id="qr-status" role="status">等待扫码…</div>`;state.qrLink=qr.confirmUrl;state.poll=setInterval(pollQr,3500);}catch(e){panel.innerHTML=`<div class="note warning">${E(e.message||'二维码申请失败')}${e.code?'<div class="tiny muted mt-12">诊断代码：'+E(e.code)+'</div>':''}</div><button class="btn primary mt-12" data-action="startQr">重试</button>`;}}
 async function pollQr(){if(!$('#qr-panel')){clearInterval(state.poll);state.poll=null;return;}try{const r=await api('qr/status');const el=$('#qr-status');if(el)el.textContent=({pending:'等待扫码…',scanned:'已扫码，请在学校页面确认',confirmed:'认证已确认，正在验证会话…',connected:'已连接学校教务'}[r.status]||r.message||'等待学校响应…');if(r.connected){state.connected=true;closeModal();toast('教务已连接，正在读取课表');await syncAcademic();}}catch(e){const el=$('#qr-status');if(el)el.textContent='查询状态：'+e.message;clearInterval(state.poll);state.poll=null;}}
 async function syncPower(){
@@ -205,7 +228,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'thisWeek':state.week=weekNow();state.weekday=((today().getDay()+6)%7)+1;render();loadWeek(state.week);break;
  case'ics':exportICS();break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
- case'connect':connectModal();break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
+ case'connect':connectModal();break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'refresh':if(state.connected)syncAcademic();else{connectModal();toast('需要先连接学校教务');}break;
  case'logout':logout();break;case'import':$('#import-file').click();break;case'export':exportData();break;
  case'demo':state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();localStorage.removeItem(DB);render();toast('已切换到虚构演示数据');break;
@@ -215,6 +238,7 @@ function handleInput(event){if(event.target.id==='grade-search'){const input=eve
 function handleSubmit(event){if(event.target.id!=='power-form')return;event.preventDefault();const form=new FormData(event.target),balance=Number(form.get('balance')),usage=form.get('usage');if(!Number.isFinite(balance)||balance<0){toast('请填写有效电量');return;}const room=String(form.get('room')||'未命名宿舍').trim().slice(0,64);state.data={...state.data,demo:false,power:{balance,unit:'度',roomLabel:room,updatedAt:iso(today())}};
  if(usage!==''&&Number.isFinite(+usage)&&+usage>=0){const daily=(state.data.powerDaily||[]).filter(x=>x.date!==iso(today()));daily.push({date:iso(today()),usage:+usage,remain:balance});daily.sort((a,b)=>a.date.localeCompare(b.date));state.data.powerDaily=daily.slice(-120);}
  store();closeModal();render();toast('已保存到当前浏览器');}
+window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==state.ssoPopup||event.data?.type!=='GZUCM_CAS_CALLBACK_RETURN')return;checkOfficialAuth();});
 document.addEventListener('click',handleClick);
 document.addEventListener('change',handleChange);
 document.addEventListener('input',handleInput);

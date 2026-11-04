@@ -198,6 +198,24 @@ pairs.push(...[
  ['部分教学周加载失败，可稍后重新打开本月','Some teaching weeks could not load. Please retry this month.'],
  ['显示方式','View mode'],['周视图','Week view'],['月视图','Month view']
 ]);
+pairs.push(...[
+ ['本月已获取','Classes loaded this month:'],['本月全部课程','All classes this month'],
+ ['本月已获取 6 节课程','6 classes loaded this month'],
+ ['节课程',' classes'],['天有课','days with classes'],
+ ['已获取的课程全部显示，不折叠','All loaded classes displayed; none hidden'],
+ ['仍在加载其余教学周','Loading remaining teaching weeks'],
+ ['月历可左右滑动查看所有课程；下方还有按日期排列的完整课程清单。','Swipe horizontally through the full monthly calendar. The complete date-by-date class list is below.'],
+ ['按日期与上课时间排列','Sorted by date and class time'],
+ ['当前月份暂无已获取的课程。已连接教务时可尝试重新加载。','No classes loaded for this month. Try again when connected to school.'],
+ ['正在读取当月全部课程，请等待加载完成。','Loading the complete monthly timetable.'],
+ ['部分课程加载失败，可重新加载','Some classes failed to load. Please retry.'],
+ ['重试未加载课程','Retry missing classes'],
+ ['本月已获取','Loaded this month'],
+ ['月历可左右滑动查看所有课程','Swipe to see every class in the month'],
+ ['完整课程清单','Complete list of classes'],
+ ['未命名课程','Unnamed class'],
+ ['已获取的课程全部显示','Every loaded class is shown']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

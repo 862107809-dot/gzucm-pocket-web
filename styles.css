@@ -119,3 +119,21 @@
 @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
  .topbar,.bottom-nav,.sidebar,.modal-card{background:var(--surface-strong);}
 }
+
+@media(max-width:600px){
+ .topbar .top-left{min-width:0;flex:1 1 auto;}
+ .topbar .top-actions{flex:0 0 auto;}
+ .topbar .top-date{min-width:0;}
+ .topbar .avatar{display:none;}
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]) .topbar,
+ :root:not([data-theme="light"]) .bottom-nav,
+ :root:not([data-theme="light"]) .sidebar,
+ :root:not([data-theme="light"]) .modal-card{
+  background:
+   radial-gradient(ellipse 320px 100px at var(--glass-x,28%) var(--glass-y,0%),var(--glass-glow),transparent 75%),
+   linear-gradient(160deg,rgba(117,164,134,.10),rgba(20,44,34,.03) 80%),
+   var(--surface);
+ }
+}

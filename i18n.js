@@ -253,6 +253,7 @@ function translate(text){
  out=out.replace(/第\s*(\d+)\s*周/g,'Week $1');
  out=out.replace(/共\s*(\d+)\s*节/g,'$1 class periods');
  out=out.replace(/(\d+)\s*节课程/g,'$1 class periods');
+ out=out.replace(/(\d+)\s*天有课/g,'$1 days with classes');
  out=out.replace(/(\d+(?:\.\d+)?)\s*度/g,'$1 kWh');
  out=out.replace(/(\d+(?:\.\d+)?)\s*天/g,'$1 days');
  for(const [zh,en] of dictionary)if(out.includes(zh))out=out.split(zh).join(en);

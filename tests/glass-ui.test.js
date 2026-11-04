@@ -46,7 +46,7 @@ test('glass enhancements are limited and cannot interfere with QR or academics',
  assert.doesNotMatch(code,/fetch\(|XMLHttpRequest|https?:\/\//);
  const app=read('app.js');
  assert.match(app,/case'startQr':state\.authMode='qr';startQr\(\)/);
- assert.match(app,/case'connect':connectModal\('qr'\)/);
+ assert.match(app,/case'connect':hideSafariMenu\(\);connectModal\('qr'\)/);
 });
 
 test('glass contrast and appearance picker are readable in both themes',()=>{

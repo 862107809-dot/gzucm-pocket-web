@@ -80,17 +80,59 @@ const palette=['#81bca1','#85a8d0','#dfba88','#b5a1d5','#d9979a','#7ebdb3','#85a
 const courseDate = s => s.date || iso(addDays(dt(term().firstMondayIso), (s.week-1)*7+s.weekday-1));
 const isDemo=()=>!!state.data.demo;
 function applyLanguage(){window.GZUCM_I18N?.apply(document.body,state.prefs.language==='en'?'en':'zh');}
+let previousBottomTab=null;
+let liquidMoveFrame=0;
+function alignBottomLiquid(previousTab,previousRect){
+ const nav=document.querySelector('#app .bottom-nav');
+ const glass=nav?.querySelector('.bottom-liquid-indicator');
+ const current=nav?.querySelector('.bottom-item.active');
+ if(!nav||!glass||!current)return;
+ if(liquidMoveFrame){cancelAnimationFrame(liquidMoveFrame);liquidMoveFrame=0;}
+ const motionReduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ const navRect=nav.getBoundingClientRect();
+ if(!navRect.width||!current.offsetWidth)return;
+ const inset=3;
+ const targetX=current.offsetLeft+inset;
+ const targetW=Math.max(12,current.offsetWidth-inset*2);
+ const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
+ const changed=previousTab&&previousTab!==state.view&&!motionReduced;
+ const oldX=previousRect?.width?previousRect.left-navRect.left
+   :previous?.offsetLeft+inset;
+ const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
+ const startX=Number.isFinite(oldX)?oldX:targetX;
+ const startW=Number.isFinite(oldW)?oldW:targetW;
+ glass.classList.add('is-instant');
+ glass.style.width=(changed?startW:targetW)+'px';
+ glass.style.transform='translate3d('+(changed?startX:targetX)+'px,0,0)';
+ if(!changed)return;
+ // Commit the previous geometry before the next animation frame.
+ void glass.offsetWidth;
+ glass.classList.remove('is-instant');
+ glass.classList.add('is-moving');
+ glass.addEventListener('animationend',()=>glass.classList.remove('is-moving'),{once:true});
+ liquidMoveFrame=requestAnimationFrame(()=>{
+  liquidMoveFrame=0;
+  if(!glass.isConnected)return;
+  glass.style.width=targetW+'px';
+  glass.style.transform='translate3d('+targetX+'px,0,0)';
+ });
+}
 function render(){
  hideSafariMenu();
  const root=$('#app');
+ const oldGlass=root.querySelector('.bottom-liquid-indicator');
+ const oldRect=oldGlass?.getBoundingClientRect();
+ const oldView=previousBottomTab;
  root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view}" id="page-content">${page()}</div></main>${bottomNav()}`;
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
+ alignBottomLiquid(oldView,oldRect);
+ previousBottomTab=state.view;
 }
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav>${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
 function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn theme-trigger" type="button" title="${state.prefs.language==='en'?'Appearance':'外观模式'}" aria-label="${state.prefs.language==='en'?'Choose light or dark appearance':'选择浅色或深色模式'}" data-action="themeMenu" aria-haspopup="menu" aria-expanded="false">${I(state.prefs.theme==='dark'?'moon':state.prefs.theme==='light'?'sun':(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'moon':'sun'))}</button><button type="button" class="icon-btn settings-trigger" title="设置选项" aria-haspopup="menu" aria-expanded="false" aria-label="打开设置选项" data-action="settingsMenu">${I('settings')}</button></div></header>`;}
-function bottomNav(){return `<nav class="bottom-nav" aria-label="手机底部导航">${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
+function bottomNav(){return `<nav class="bottom-nav" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
 function heading(eyebrow,title,sub){return `<div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-sub">${sub}</p>`;}
 function sectionTitle(title,btn=''){return `<div class="section-heading"><h2>${title}</h2>${btn}</div>`;}
 function empty(title,subtitle,ic='calendar'){return `<div class="empty">${I(ic,36)}<strong>${E(title)}</strong><p>${E(subtitle)}</p></div>`;}
@@ -499,7 +541,7 @@ window.addEventListener('message',event=>{if(event.origin!==window.location.orig
 // Follow system appearance without overriding the user's explicit choice.
 window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change',()=>{if(state.prefs.theme==='system'){applyTheme();render();}});
 window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
-window.addEventListener('resize',()=>hideSafariMenu());
+window.addEventListener('resize',()=>{hideSafariMenu();alignBottomLiquid(null,null);});
 window.addEventListener('scroll',e=>{if(!e.target?.closest?.('#popover-root'))hideSafariMenu();},true);
 document.addEventListener('click',handleClick);
 document.addEventListener('change',handleChange);

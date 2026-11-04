@@ -36,9 +36,23 @@ class SchoolClient{
     const detail=typeof root.data==='string'?parseJSON(root.data):root.data;
     if(!detail?.qrcodeId||!detail.confirmUrl)throw Error('学校二维码响应缺少必要字段');
     phase='verify-confirm-url';
-    const url=new URL(detail.confirmUrl,JW);
+    const qrId=String(detail.qrcodeId);
+    let url=new URL(detail.confirmUrl,JW);
+    // QR confirmation is a link for the USER to open. It is not an HTTP request
+    // by this server. Never forward users to a domain returned unchecked by a
+    // remote response. The Android project's verified school H5 route is
+    // https://jw.gzucm.edu.cn/#/qrcodeConfirm/showConfirm?qrcodeId=...
+    if(url.protocol!=='https:'||url.hostname!=='jw.gzucm.edu.cn'||url.port){
+      if(!/^qrcodeLogin_[A-Za-z0-9_-]{4,240}$/.test(qrId)){
+        throw Error('学校二维码确认地址不受信任，且二维码标识格式不符合预期');
+      }
+      // Rebuild the documented on-campus route from the school's QR identifier,
+      // rather than whitelisting an unknown host or forwarding untrusted links.
+      url=new URL('/#/qrcodeConfirm/showConfirm?qrcodeId='+encodeURIComponent(qrId),JW);
+      console.warn('[GZUCM QR canonical fallback]', 'reconstructed_on_school_domain=true');
+    }
     checkUrl(url);
-    this.qr={id:String(detail.qrcodeId),confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};
+    this.qr={id:qrId,confirmUrl:url.href,created:Date.now(),lastStatus:'pending'};
     return {confirmUrl:url.href};
   } catch(err) {
     // Privacy-safe diagnostic. Never log URL paths, query strings, cookies or QR identifiers.

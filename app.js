@@ -187,20 +187,185 @@ function alignBottomLiquid(previousTab,previousRect){
  });
 }
 
+/* The same touch-following glass selection for week/month, weekdays,
+ * grade filters, credit filters, login choices and desktop sidebar tabs.
+ * The indicator is decorative; native buttons keep their click/ARIA semantics. */
+let liquidSelectorPointer=null;
+let ignoreLiquidSelectorClickUntil=0;
+function liquidSelectorId(group){
+ if(group.classList.contains('day-strip'))return 'days';
+ if(group.classList.contains('schedule-view-switch'))return 'schedule-mode';
+ if(group.querySelector('[data-grade-tab]'))return 'grade-type';
+ if(group.querySelector('[data-credit]'))return 'credit-type';
+ if(group.querySelector('[data-action="authPassword"]'))return 'login-mode';
+ if(group.classList.contains('sidebar-nav-main'))return 'sidebar-main';
+ if(group.classList.contains('sidebar-nav-account'))return 'sidebar-account';
+ return '';
+}
+function liquidSelectorButtons(group){
+ return [...group.children].filter(el=>el.tagName==='BUTTON');
+}
+function liquidSelectorActive(group){
+ return liquidSelectorButtons(group).find(el=>el.classList.contains('active')||
+  el.getAttribute('aria-pressed')==='true'||el.getAttribute('aria-current')==='page');
+}
+function liquidSelectorValue(button){
+ return String(button?.dataset.mode??button?.dataset.day??button?.dataset.gradeTab??
+  button?.dataset.credit??button?.dataset.action??button?.dataset.view??'');
+}
+function snapshotLiquidSelectors(root){
+ const values=new Map();
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
+  const active=liquidSelectorActive(group),id=liquidSelectorId(group);
+  if(id&&active)values.set(id,{value:liquidSelectorValue(active),
+   x:active.offsetLeft,y:active.offsetTop,width:active.offsetWidth,height:active.offsetHeight});
+ }
+ return values;
+}
+function setSelectorGlass(glass,geometry){
+ if(!glass||!geometry)return;
+ glass.style.width=Math.max(1,geometry.width)+'px';
+ glass.style.height=Math.max(1,geometry.height)+'px';
+ glass.style.transform='translate3d('+geometry.x+'px,'+geometry.y+'px,0)';
+}
+function enhanceLiquidSelectors(root,previous=new Map()){
+ if(!root)return;
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
+  const id=liquidSelectorId(group),active=liquidSelectorActive(group);
+  if(!id||!active)continue;
+  group.classList.add('liquid-selector');
+  const glass=document.createElement('span');
+  glass.className='liquid-choice-highlight is-instant';
+  glass.setAttribute('aria-hidden','true');
+  group.prepend(glass);
+  const target={x:active.offsetLeft,y:active.offsetTop,
+   width:active.offsetWidth,height:active.offsetHeight};
+  const old=previous.get(id);
+  const changed=old&&old.value!==liquidSelectorValue(active)&&
+   !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  setSelectorGlass(glass,changed?old:target);
+  if(changed){
+   requestAnimationFrame(()=>{
+    if(!glass.isConnected)return;
+    // Safari-style movement: a responsive start and softly damped landing.
+    glass.classList.remove('is-instant');
+    setSelectorGlass(glass,target);
+   });
+  }
+ }
+}
+function liquidClosestButton(buttons,x,y,vertical){
+ let best=null,distance=Infinity,index=-1;
+ buttons.forEach((button,i)=>{
+  const r=button.getBoundingClientRect();
+  const d=Math.abs((vertical?y:x)-(vertical?r.top+r.height/2:r.left+r.width/2));
+  if(d<distance){best=button;distance=d;index=i;}
+ });
+ return {button:best,index};
+}
+function selectorGlassFor(group){
+ return group.querySelector('.liquid-choice-highlight,.safari-menu-glider');
+}
+function liquidPointerDown(event){
+ if(event.isPrimary===false||event.button>0)return;
+ if(event.target.closest?.('.bottom-nav')||event.target.closest?.('input,textarea,select'))return;
+ const menu=event.target.closest?.('.safari-floating-menu');
+ const group=menu||event.target.closest?.('.liquid-selector');
+ if(!group)return;
+ const buttons=menu?[...group.querySelectorAll('.safari-menu-option')]:liquidSelectorButtons(group);
+ if(buttons.length<2||!buttons.some(x=>x.contains(event.target)))return;
+ const glass=selectorGlassFor(group);
+ if(!glass)return;
+ armLiquidSound();
+ liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
+  x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
+  vertical:!!menu||group.matches('.sidebar nav'),dragging:false,scroll:false,
+  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu};
+}
+function liquidPointerMove(event){
+ const p=liquidSelectorPointer;
+ if(!p||p.pointerId!==event.pointerId||p.scroll)return;
+ const dx=event.clientX-p.x,dy=event.clientY-p.y;
+ if(!p.dragging){
+  if(!p.vertical&&Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.15){p.scroll=true;return;}
+  if(p.vertical&&!p.menu&&Math.abs(dx)>11&&Math.abs(dx)>Math.abs(dy)*1.15){p.scroll=true;return;}
+  const travelled=p.vertical?Math.abs(dy):Math.abs(dx);
+  if(travelled<8)return;
+  p.dragging=true;
+  p.glass.classList.add('is-instant','is-dragging');
+  p.glass.classList.remove('is-moving');
+  try{p.group.setPointerCapture(event.pointerId);}catch{}
+ }
+ if(event.cancelable)event.preventDefault();
+ p.lastX=event.clientX;p.lastY=event.clientY;
+ const nearest=liquidClosestButton(p.buttons,event.clientX,event.clientY,p.vertical);
+ if(nearest.index!==p.index&&nearest.index>=0){
+  p.index=nearest.index;
+  p.buttons.forEach((button,i)=>button.classList.toggle('is-scrubbed',i===nearest.index));
+  playLiquidTick(nearest.index);
+ }
+ if(p.raf)return;
+ p.raf=requestAnimationFrame(()=>{
+  p.raf=0;
+  if(!p.glass.isConnected)return;
+  const target=liquidClosestButton(p.buttons,p.lastX,p.lastY,p.vertical).button;
+  const start=p.buttons[0],end=p.buttons[p.buttons.length-1];
+  if(!target)return;
+  const size=p.vertical?target.offsetHeight:target.offsetWidth;
+  const base=p.vertical?start.offsetTop:start.offsetLeft;
+  const limit=p.vertical?end.offsetTop:end.offsetLeft;
+  const parentRect=p.group.getBoundingClientRect();
+  const raw=(p.vertical?p.lastY-parentRect.top:p.lastX-parentRect.left)-size/2+
+   (p.vertical?p.group.scrollTop:0);
+  const pos=Math.max(base,Math.min(limit,raw));
+  setSelectorGlass(p.glass,{x:p.vertical?target.offsetLeft:pos,
+   y:p.vertical?pos:target.offsetTop,width:target.offsetWidth,height:target.offsetHeight});
+ });
+}
+function liquidPointerFinish(event,cancelled=false){
+ const p=liquidSelectorPointer;
+ if(!p||p.pointerId!==event.pointerId)return;
+ liquidSelectorPointer=null;
+ if(p.raf)cancelAnimationFrame(p.raf);
+ try{if(p.group.hasPointerCapture?.(event.pointerId))p.group.releasePointerCapture(event.pointerId);}catch{}
+ p.buttons.forEach(button=>button.classList.remove('is-scrubbed'));
+ if(!p.dragging)return;
+ if(event.cancelable)event.preventDefault();
+ if(cancelled){
+  const selected=p.source||liquidSelectorActive(p.group);
+  if(selected)setSelectorGlass(p.glass,{x:selected.offsetLeft,y:selected.offsetTop,
+   width:selected.offsetWidth,height:selected.offsetHeight});
+  p.glass.classList.remove('is-dragging','is-instant');
+  return;
+ }
+ const nearest=liquidClosestButton(p.buttons,event.clientX,event.clientY,p.vertical).button;
+ p.glass.classList.remove('is-dragging','is-instant');
+ ignoreLiquidSelectorClickUntil=Date.now()+450;
+ if(nearest?.isConnected)nearest.click();
+}
+function guardLiquidSelectorClick(event){
+ if(!event.isTrusted||Date.now()>ignoreLiquidSelectorClickUntil)return;
+ if(!event.target.closest?.('.liquid-selector,.safari-floating-menu'))return;
+ ignoreLiquidSelectorClickUntil=0;
+ event.preventDefault();
+ event.stopImmediatePropagation();
+}
 function render(){
  hideSafariMenu();
  const root=$('#app');
+ const previousLiquidSelectors=snapshotLiquidSelectors(root);
  const oldGlass=root.querySelector('.bottom-liquid-indicator');
  const oldRect=oldGlass?.getBoundingClientRect();
  const oldView=previousBottomTab;
  root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view}" id="page-content">${page()}</div></main>${bottomNav()}`;
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
+ enhanceLiquidSelectors(root,previousLiquidSelectors);
  alignBottomLiquid(oldView,oldRect);
  previousBottomTab=state.view;
 }
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
-function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav>${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
+function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav class="sidebar-nav-main" aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav class="sidebar-nav-account">${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
 function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn theme-trigger" type="button" title="${state.prefs.language==='en'?'Appearance':'外观模式'}" aria-label="${state.prefs.language==='en'?'Choose light or dark appearance':'选择浅色或深色模式'}" data-action="themeMenu" aria-haspopup="menu" aria-expanded="false">${I(state.prefs.theme==='dark'?'moon':state.prefs.theme==='light'?'sun':(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'moon':'sun'))}</button><button type="button" class="icon-btn settings-trigger" title="设置选项" aria-haspopup="menu" aria-expanded="false" aria-label="打开设置选项" data-action="settingsMenu">${I('settings')}</button></div></header>`;}
 function bottomNav(){return `<nav class="bottom-nav" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
 function heading(eyebrow,title,sub){return `<div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-sub">${sub}</p>`;}
@@ -407,6 +572,7 @@ function openModal(title,body,actions=''){
  clearInterval(state.poll);state.poll=null;
  const root=$('#modal-root');
  if(!root)return;
+ const previousModalSelectors=snapshotLiquidSelectors(root);
  const replacing=!!root.querySelector('.modal-card')&&!root.querySelector('.modal-backdrop.is-closing');
  const origin=replacing?dialogSource:resolveDialogOrigin();
  if(!replacing)dialogReturnFocus=origin.trigger?.isConnected?origin.trigger:null;
@@ -443,6 +609,7 @@ function openModal(title,body,actions=''){
   backdrop.classList.add('liquid-backdrop-opening');
  }
  applyLanguage();
+ enhanceLiquidSelectors(root,previousModalSelectors);
  card.focus({preventScroll:true});
 }
 function closeModal(immediate=false){
@@ -834,6 +1001,11 @@ window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change'
 window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
 window.addEventListener('resize',()=>{hideSafariMenu();alignBottomLiquid(null,null);});
 window.addEventListener('scroll',e=>{if(!e.target?.closest?.('#popover-root'))hideSafariMenu();},true);
+document.addEventListener('pointerdown',liquidPointerDown,{passive:true});
+document.addEventListener('pointermove',liquidPointerMove,{passive:false});
+document.addEventListener('pointerup',event=>liquidPointerFinish(event),{passive:false});
+document.addEventListener('pointercancel',event=>liquidPointerFinish(event,true),{passive:false});
+document.addEventListener('click',guardLiquidSelectorClick,true);
 document.addEventListener('pointerdown',bottomSwipeDown,{passive:true});
 document.addEventListener('pointermove',bottomSwipeMove,{passive:false});
 document.addEventListener('pointerup',event=>bottomSwipeFinish(event),{passive:false});

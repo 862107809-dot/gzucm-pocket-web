@@ -147,3 +147,49 @@ test('reduced-motion, readable contrast and quiet sound preference are supported
  assert.match(css,/\.safari-floating-menu \.safari-menu-glider/);
  assert.match(css,/\.bottom-item\.is-scrubbed/);
 });
+
+test('settings sound switch supports horizontal drag, normal tap and vertical scroll',()=>{
+ const from=app.indexOf('let liquidSwitchPointer=null;');
+ const to=app.indexOf('function guardLiquidSelectorClick(event){',from);
+ assert.ok(from>=0&&to>from);
+ let stored=0,rendered=0,armed=0,tones=0;
+ const state={prefs:{soundEffects:false}};
+ const f=new Function('state','storePrefs','render','armLiquidSound','playLiquidTick',
+   app.slice(from,to)+'return {liquidSwitchDown,liquidSwitchMove,liquidSwitchFinish,guardLiquidSwitchClick};')(
+   state,()=>stored++,()=>rendered++,()=>armed++,()=>tones++);
+ const classList=names();
+ const button={
+  classList, pointerId:null,
+  getBoundingClientRect:()=>({left:0,width:46}),
+  setPointerCapture(id){button.pointerId=id;},
+  hasPointerCapture(id){return button.pointerId===id;},
+  releasePointerCapture(){button.pointerId=null;}
+ };
+ const ev=(x,y)=>({
+  pointerId:1,isPrimary:true,button:0,clientX:x,clientY:y,cancelable:true,
+  target:{closest:sel=>sel==='.switch[role="switch"]'?button:null},
+  preventDefault(){this.prevented=true;}
+ });
+ f.liquidSwitchDown(ev(10,20));
+ f.liquidSwitchMove(ev(43,22));
+ assert.ok(classList.contains('preview-on'));
+ f.liquidSwitchFinish(ev(43,22));
+ assert.equal(state.prefs.soundEffects,true);
+ assert.equal(stored,1);
+ assert.equal(rendered,1);
+ assert.equal(armed,1);
+ assert.equal(tones,1);
+ f.liquidSwitchDown(ev(42,20));
+ f.liquidSwitchMove(ev(3,20));
+ f.liquidSwitchFinish(ev(3,20));
+ assert.equal(state.prefs.soundEffects,false);
+ assert.equal(stored,2);
+ assert.equal(rendered,2);
+ f.liquidSwitchDown(ev(10,20));
+ f.liquidSwitchFinish(ev(10,20));
+ assert.equal(stored,2,'simple tap stays in native click handler');
+ f.liquidSwitchDown(ev(10,20));
+ f.liquidSwitchMove(ev(13,95));
+ f.liquidSwitchFinish(ev(13,95));
+ assert.equal(stored,2,'vertical scroll cannot flip a switch');
+});

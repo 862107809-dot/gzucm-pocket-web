@@ -445,7 +445,7 @@ function render(){
  const oldGlass=root.querySelector('.bottom-liquid-indicator');
  const oldRect=oldGlass?.getBoundingClientRect();
  const oldView=previousBottomTab;
- root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view}" id="page-content">${page()}</div></main>${bottomNav()}`;
+ root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view} ${oldView===state.view?'page-stable':'page-enter'}" id="page-content">${page()}</div></main>${bottomNav()}`;
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);

@@ -18,7 +18,7 @@ function parseSetCookies(host,arr,jar){for(const raw of arr||[]){const [first,..
 function cookieFor(jar,url){return [...jar.values()].filter(c=>c.host===url.hostname&&url.pathname.startsWith(c.path)).sort((a,b)=>b.path.length-a.path.length).map(c=>`${c.name}=${c.value}`).join('; ');}
 class EcardClient{
  constructor(){this.cookies=new Map();this.lastRead=0;}
- hasAuthenticatedSession(){return [...this.cookies.values()].some(c=>c.host==='ecard.gzucm.edu.cn'&&c.name==='JSESSIONID'&&c.value&&c.path.startsWith('/user'));}
+ hasAuthenticatedSession(){return [...this.cookies.values()].some(c=>c.host==='ecard.gzucm.edu.cn'&&c.name==='JSESSIONID'&&c.value&&'/user/powerfee/index'.startsWith(c.path));}
  async request(target,body=null,hop=0){
   const u=safeUrl(target);if(hop>4)throw Error('一卡通页面重定向过多');
   const encoded=body===null?null:new URLSearchParams(body).toString();

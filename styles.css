@@ -1269,3 +1269,29 @@
   filter:none!important;
  }
 }
+
+
+/* Native-looking reversible binary switch: tap or slide the glass thumb. */
+.switch[role="switch"]{
+ cursor:pointer;
+ touch-action:pan-y;
+ -webkit-tap-highlight-color:transparent;
+ transition:background .27s var(--motion-soft),box-shadow .27s var(--motion-soft);
+ box-shadow:inset 0 1px 1px rgba(15,53,31,.10),0 2px 9px var(--readable-shadow);
+}
+.switch[role="switch"]::after{
+ transition:transform .31s var(--motion-fluid),box-shadow .27s var(--motion-soft);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 6px rgba(0,0,0,.18);
+}
+.switch.preview-on{background:var(--accent)!important;}
+.switch.preview-on::after{transform:translateX(18px) scale(1.055);}
+.switch.preview-off{background:var(--readable-control)!important;}
+.switch.preview-off::after{transform:translateX(0) scale(1.055);}
+.switch[role="switch"]:focus-visible{
+ outline:2px solid var(--accent);outline-offset:3px;
+}
+@media(prefers-reduced-motion:reduce){
+ .switch[role="switch"],.switch[role="switch"]::after{
+  transition:none!important;
+ }
+}

@@ -2240,3 +2240,127 @@
   scale:1.04 1.05;
  }
 }
+
+
+/* CONFIRM-ONLY DOCK OVERHANG v2 — referenced App Store behavior.
+ * Resting and tapped selection stay inside the rail. Only an actual
+ * horizontal drag enlarges the optical capsule outside the Dock border.
+ * The animated return follows the gesture without springing backwards. */
+@media(max-width:900px){
+ #app .bottom-nav .bottom-liquid-indicator .bottom-liquid-surface{
+  inset:0;
+  border-radius:22px;
+  transition:inset .27s cubic-bezier(.20,.86,.28,1),
+    box-shadow .28s ease-out;
+ }
+ #app .bottom-nav.is-dock-pressed,
+ #app .bottom-nav.is-dock-dragging{
+  scale:1!important;
+ }
+ #app .bottom-nav.is-dock-pressed .bottom-liquid-indicator{
+  scale:1!important;
+ }
+ #app .bottom-nav.is-dock-dragging .bottom-liquid-indicator{
+  scale:1!important;
+ }
+ #app .bottom-nav.is-dock-dragging .bottom-liquid-indicator .bottom-liquid-surface,
+ #app .bottom-nav .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  inset:-10px -13px;
+ }
+ #app .bottom-nav.is-dock-releasing,
+ #app .bottom-nav.is-dock-settling{
+  animation:pocketDockClickConfirm .34s cubic-bezier(.22,.78,.24,1) both!important;
+ }
+ #app .bottom-nav.is-dock-releasing .bottom-liquid-indicator,
+ #app .bottom-nav.is-dock-settling .bottom-liquid-indicator{
+  animation:none!important;
+  scale:1!important;
+ }
+ #app .bottom-nav.is-dock-dropping{
+  animation:pocketDockDragReturn .29s cubic-bezier(.22,1,.36,1) both!important;
+ }
+ #app .bottom-nav.is-dock-dropping .bottom-liquid-indicator .bottom-liquid-surface{
+  animation:pocketDockGlassReturn .29s cubic-bezier(.22,1,.36,1) both!important;
+ }
+ #app .bottom-nav .bottom-liquid-indicator.is-confirmed .bottom-liquid-surface{
+  filter:none;
+ }
+}
+@keyframes pocketDockClickConfirm{
+ 0%{scale:1;}
+ 45%{scale:.996;}
+ 100%{scale:1;}
+}
+@keyframes pocketDockDragReturn{
+ from{scale:1;}
+ to{scale:1;}
+}
+@keyframes pocketDockGlassReturn{
+ 0%{inset:-10px -13px;}
+ 100%{inset:0;}
+}
+/* All touch-selectable horizontal rails share the same drag-only magnify
+ * logic. Weekday dates, grade filters, semester selector and schedule tabs
+ * keep their original button hitboxes and allow vertical page scrolling. */
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail.is-rail-pressed,
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail.is-rail-dragging{
+ scale:1!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed > .liquid-choice-highlight{
+ scale:1!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > .liquid-choice-highlight{
+ scale:1.085!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-releasing,
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-settling{
+ animation:pocketDockClickConfirm .34s cubic-bezier(.22,.78,.24,1) both!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-releasing > .liquid-choice-highlight,
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-settling > .liquid-choice-highlight{
+ animation:none!important;
+ scale:1!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+ animation:pocketDockDragReturn .29s cubic-bezier(.22,1,.36,1) both!important;
+}
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping > .liquid-choice-highlight{
+ animation:pocketRailLensDrop .29s cubic-bezier(.22,1,.36,1) both;
+}
+@media(min-width:901px){
+ .sidebar .liquid-selector > .liquid-choice-highlight{
+  scale:1!important;
+ }
+ .sidebar .liquid-selector > .liquid-choice-highlight.is-dragging{
+  scale:1.065 1.07!important;
+ }
+}
+.safari-floating-menu .safari-menu-glider{
+ scale:1;
+ transform-origin:center;
+ transition:scale .18s ease-out;
+}
+.safari-floating-menu .safari-menu-glider.is-dragging{
+ scale:1.06;
+}
+@media(prefers-reduced-motion:reduce){
+ #app .bottom-nav.is-dock-releasing,
+ #app .bottom-nav.is-dock-settling,
+ #app .bottom-nav.is-dock-dropping,
+ #app .bottom-nav.is-dock-dropping .bottom-liquid-indicator .bottom-liquid-surface,
+ :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-releasing,
+ :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-settling,
+ :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+  animation:none!important;
+ }
+ #app .bottom-nav .bottom-liquid-indicator .bottom-liquid-surface{
+  transition:none!important;
+  inset:0!important;
+ }
+ :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > .liquid-choice-highlight,
+ .sidebar .liquid-selector > .liquid-choice-highlight,
+ .safari-floating-menu .safari-menu-glider{
+  scale:1!important;
+  transition:none!important;
+ }
+}

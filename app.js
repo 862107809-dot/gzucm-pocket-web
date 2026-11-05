@@ -1017,7 +1017,7 @@ async function syncAcademic(){if(state.loading)return;if(state.data.campus==='gr
  const prev=PUBLIC||state.data.demo?{}:state.data;
  const hasWeeks=prev.semester?.code===sem.code;
  const old=hasWeeks?(prev.sessions||[]).filter(s=>Number(s.week)!==current):[];
- const data={schemaVersion:1,demo:false,campus:'undergrad',semester:sem,sessions:[...old,...(weekRes.status==='fulfilled'?weekRes.value.sessions:[])],grades:gradesRes.status==='fulfilled'?gradesRes.value.grades:(prev.grades||[]),levels:gradesRes.status==='fulfilled'?gradesRes.value.levels:(prev.levels||[]),fitness:gradesRes.status==='fulfilled'?gradesRes.value.fitness:(prev.fitness||[]),power:prev.power||(PUBLIC?saved(POWER_DB,null)?.power:null)||null,powerDaily:prev.powerDaily||(PUBLIC?saved(POWER_DB,null)?.powerDaily:null)||[],exams:prev.exams||[]};
+ const data={schemaVersion:1,demo:false,campus:'undergrad',semester:sem,sessions:[...old,...(weekRes.status==='fulfilled'?weekRes.value.sessions:[])],grades:gradesRes.status==='fulfilled'?gradesRes.value.grades:(prev.grades||[]),levels:gradesRes.status==='fulfilled'?gradesRes.value.levels:(prev.levels||[]),fitness:gradesRes.status==='fulfilled'?gradesRes.value.fitness:(prev.fitness||[]),power:prev.power||(['ecard-live','ecard-page'].includes(state.data.power?.source)?state.data.power:null)||(PUBLIC?saved(POWER_DB,null)?.power:null)||null,powerDaily:prev.powerDaily||(['ecard-live','ecard-page'].includes(state.data.power?.source)?state.data.powerDaily:null)||(PUBLIC?saved(POWER_DB,null)?.powerDaily:null)||[],exams:prev.exams||[]};
  state.data=data;state.loadedWeeks=new Set(weekRes.status==='fulfilled'?[current]:[]);state.week=current;store();state.view='today';render();toast(`同步完成${weekRes.status==='rejected'?'（课表失败）':''}${gradesRes.status==='rejected'?'（成绩失败）':''}`);
  }catch(e){toast('同步失败：'+e.message);if(!state.connected)connectModal();}finally{state.loading=false;}}
 async function loadWeek(week){
@@ -1077,7 +1077,7 @@ async function loadMonth(){
   if(failures)toast('部分教学周加载失败，可重新切换月份或重试');
  }
 }
-async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}state.connected=false;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
+async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}state.connected=false;state.ecardReady=false;state.powerLastSync=0;state.powerLastAttempt=0;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
 function navigateBottomModule(view){
  if(!['today','schedule','grades','power','settings'].includes(view))return;
  state.view=view;
@@ -1238,7 +1238,7 @@ function handleSubmit(event){
  const room=String(form.get('room')||'').trim().slice(0,64);
  if(!room){toast('请填写宿舍名称');return;}
  const previous=state.data.power;
- const keepHistory=previous?.source==='manual'&&previous.roomLabel===room&&!state.data.demo;
+ const keepHistory=previous?.source==='manual'&&previous.roomLabel===room;
  let daily=keepHistory?(state.data.powerDaily||[]).filter(x=>x.date!==date):[];
  if(rawUsage)daily.push({date,usage:Number(rawUsage),remain:date===iso(today())?balance:null,total:null});
  daily.sort((a,b)=>a.date.localeCompare(b.date));

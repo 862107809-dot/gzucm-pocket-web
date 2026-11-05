@@ -644,7 +644,9 @@ function powerPage(){
   ('预计约在 '+p.predictedDate+' 耗尽 · '+(p.quality==='better'?'记录较完整':'样本有限')+'，仅供参考'):
   (p.reason||'需要有效的余额及最近用电记录');
  const avg=p.sampleDays?(p.average7??0).toFixed(2):'—';
- const statusText=state.ecardReady?'已检测到一卡通服务端会话，可尝试实时同步':'本站尚未取得一卡通专用授权，使用学校官网或手动记录';
+ const statusText=state.ecardReady?'已检测到一卡通服务端会话，可尝试实时同步':
+  '尚无一卡通独立授权：本站 Cookie 和教务扫码均不能代替一卡通会话';
+ const snapshots=(state.powerSnapshots||[]).filter(row=>row.roomLabel===data?.roomLabel).slice(-7).reverse();
  const warnings=state.powerHistoryStatus==='partial'?'部分用电明细获取失败，预测以已成功读取的记录为准。':
   state.powerHistoryStatus==='unavailable'?'未能同步用电明细，可能暂时无法估算可用天数。':'';
  return `${heading('DORM ENERGY','点亮宿舍的每一天。','宿舍实时电量、用电统计与可用天数预测；仅对已确认的数据进行计算。')}
@@ -686,6 +688,12 @@ function powerPage(){
    (days.length?days.slice().reverse().map(d=>'<div class="daily-row"><div><strong>'+E(d.date)+'</strong><div class="tiny muted">剩余 '+(d.remain===null?'未提供':d.remain.toFixed(2)+' 度')+'</div></div><strong>-'+d.usage.toFixed(2)+' 度</strong></div>').join(''):
    empty('暂无有效用电明细','读取官方用电记录，或在“记录用电”中添加至少3天的数据')))}
  </div>
+ <section class="card mt-20">
+  <div class="card-heading">${I('clock',18)} 自动保存的电量快照 <span class="muted tiny">最近 7 天</span></div>
+  <p class="muted tiny">每次成功从官方页面或接口取得电量，自动保存当天最新的一笔余额到当前浏览器。余额变化不等于实际耗电量，因为可能发生充值。</p>
+  ${snapshots.length?snapshots.map(s=>`<div class="daily-row"><div><strong>${E(fmt(new Date(s.at),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))}</strong><div class="tiny muted">${E(s.roomLabel)} · ${s.source==='ecard-live'?'官方接口':'官网页面'}</div></div><strong>${s.balance.toFixed(2)} 度</strong></div>`).join(''):
+   empty('尚无自动记录','当前未完成一卡通独立授权。只有成功查询到真实电量后才会保存，不会把演示数据当作自动记录。')}
+ </section>
  <div class="note mt-20">预计可用天数是基于有效历史用电的统计推算，不是学校官方承诺；余额若超过48小时未更新，将暂停展示预测。日均值只使用有实际记录的日期，不会把缺失记录当作零用电。</div>`;
 }
 function powerChart(rows){if(!rows.length)return empty('还没有趋势记录','记录至少一天的电量即可显示趋势','chart');const vals=rows.map(x=>Math.max(0,+x.usage||0)),max=Math.max(1,...vals)*1.3;const xs=vals.map((_,i)=>40+i*360/Math.max(1,vals.length-1)),ys=vals.map(v=>170-v/max*130);const poly=xs.map((x,i)=>`${x},${ys[i]}`).join(' ');const area=`M ${xs[0]} 170 L ${xs.map((x,i)=>`${x} ${ys[i]}`).join(' L ')} L ${xs.at(-1)} 170 Z`;return `<svg class="power-linechart" viewBox="0 0 440 220" role="img" aria-label="最近用电量折线趋势图"><defs><linearGradient id="chartG" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#76ad8f" stop-opacity=".38"/><stop offset="1" stop-color="#76ad8f" stop-opacity="0"/></linearGradient></defs><path class="chart-axis" d="M40 40H410M40 105H410M40 170H410" fill="none"/><path d="${area}" fill="url(#chartG)"/><polyline points="${poly}" fill="none" stroke="#71ab89" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>${xs.map((x,i)=>`<circle cx="${x}" cy="${ys[i]}" r="4" fill="#50886d" stroke="white" stroke-width="2"/>`).join('')}<text class="chart-label" x="3" y="43">${max.toFixed(1)}</text><text class="chart-label" x="15" y="173">0</text>${xs.map((x,i)=>`<text class="chart-label" x="${x}" y="194" text-anchor="middle">${E(String(rows[i].date).slice(5))}</text>`).join('')}</svg>`;}
@@ -1007,7 +1015,21 @@ async function syncPower(automatic=false){
    history=[...records.values()].sort((a,b)=>a.date.localeCompare(b.date)).slice(-90);
   }
   state.data={...state.data,power:result.power,powerDaily:history};
+  // Successful verified reads create one local balance snapshot per day.
+  // This is separate from actual daily usage, which comes from the school.
+  state.powerSnapshots=window.GZUCM_POWER_SNAPSHOTS?.append(
+   state.powerSnapshots,result.power,new Date())||[];
   state.powerLastSync=Date.now();
+  try{
+   const power=window.GZUCM_POWER_SNAPSHOTS?.cachedPower(result.power);
+   if(power){
+    localStorage.setItem(LIVE_POWER_DB,JSON.stringify({
+     power,powerDaily:history.slice(-90),snapshots:state.powerSnapshots,
+     recordedAt:new Date().toISOString()
+    }));
+    state.powerLastStored=power.updatedAt;
+   }
+  }catch{state.powerError='电量已读取，但浏览器本地存储失败，刷新后可能无法保留记录。';}
   state.powerHistoryStatus=result.historyStatus||'';
   state.powerError=Array.isArray(result.warnings)?result.warnings.join(' '):'';
   store();render();

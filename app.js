@@ -4,12 +4,13 @@
 const $ = (sel, root=document) => root.querySelector(sel);
 const DB = 'gzucm-pocket-web:v1';
 const POWER_DB = 'gzucm-pocket-web:manual-power:v1';
+const LIVE_POWER_DB = 'gzucm-pocket-web:live-power-cache:v1';
 const PREF = 'gzucm-pocket-web:prefs';
 const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const state = {
   data: window.GZUCM_DEMO,
   view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthLoadError:0,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
-  connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',powerLastSync:0,powerLastAttempt:0,powerHistoryStatus:'',powerError:'',
+  connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',powerLastSync:0,powerLastAttempt:0,powerHistoryStatus:'',powerError:'',powerSnapshots:[],powerLastStored:'',
   prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',soundEffects:true,hapticEffects:true,...saved(PREF,{})}
 };
 const PUBLIC=window.GZUCM_PUBLIC===true;
@@ -19,6 +20,17 @@ const savedManualPower=PUBLIC?saved(POWER_DB,null):null;
 if(savedManualPower?.power?.source==='manual'&&Number.isFinite(Number(savedManualPower.power.balance))&&Number(savedManualPower.power.balance)>=0){
  state.data={...state.data,power:savedManualPower.power,
   powerDaily:Array.isArray(savedManualPower.powerDaily)?savedManualPower.powerDaily.slice(-120):[]};
+}
+// Preserve sanitized, per-browser electricity readings across reloads.
+const lastPowerCache=saved(LIVE_POWER_DB,null);
+state.powerSnapshots=window.GZUCM_POWER_SNAPSHOTS?.compact(lastPowerCache?.snapshots||[])||[];
+const lastVerified=window.GZUCM_POWER_SNAPSHOTS?.cachedPower(lastPowerCache?.power);
+if(lastVerified&&(!state.data.power||state.data.demo||
+ Date.parse(lastVerified.updatedAt)>Date.parse(state.data.power.updatedAt||'1970-01-01'))){
+ state.data={...state.data,power:lastVerified,
+  powerDaily:Array.isArray(lastPowerCache.powerDaily)?lastPowerCache.powerDaily.slice(-90):[]};
+ state.powerHistoryStatus='cached';
+ state.powerLastStored=lastVerified.updatedAt;
 }
 state.view=['today','schedule','grades','power','settings'].includes(state.prefs.start)?state.prefs.start:'today';
 state.weekday=((new Date().getDay()+6)%7)+1;
@@ -473,7 +485,7 @@ function nextCourse(){const now=today(), candidates=(state.data.sessions||[]).ma
 function powerInfo(){
  const raw=state.data.power;
  // A demonstration balance must never silently become a live reading after login.
- const data=state.data.demo||['ecard-live','ecard-page','manual','imported'].includes(raw?.source)?raw:null;
+ const data=state.data.demo||['ecard-live','ecard-page','ecard-cache','manual','imported'].includes(raw?.source)?raw:null;
  const now=today();
  const insight=window.GZUCM_POWER_INSIGHTS?.calculate(data,state.data.powerDaily||[],{now,todayIso:iso(now)});
  return {data,...insight,avg:insight?.average7??0,remaining:insight?.remainingDays??null};
@@ -623,7 +635,7 @@ function powerPage(){
  const p=powerInfo(),data=p.data,days=p.recent7||[];
  const live=data?.source==='ecard-live',pageBalance=data?.source==='ecard-page';
  const manual=data?.source==='manual';
- const sourceLabel=live?'官方接口实时读取':pageBalance?'官网页面读取（待核验）':manual?'手动记录':data?.source==='imported'?'导入备份（非实时）':isDemo()?'演示示例':'尚无有效电量';
+ const sourceLabel=live?'官方接口实时读取':pageBalance?'官网页面读取（待核验）':manual?'手动记录':data?.source==='imported'?'导入备份（非实时）':data?.source==='ecard-cache'?'官方历史缓存（未刷新）':isDemo()?'演示示例':'尚无有效电量';
  const stamp=Number.isFinite(Date.parse(data?.updatedAt||''))?
   fmt(new Date(data.updatedAt),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'暂无更新时间';
  const balance=p.balance===null?'--':p.balance.toFixed(2);

@@ -35,6 +35,7 @@ function harness(){
  let captured=null;
  const nav={
   classList:{
+   add:(...names)=>names.forEach(name=>navClasses.add(name)),
    toggle:(name,on)=>on?navClasses.add(name):navClasses.delete(name),
    remove:(...names)=>names.forEach(name=>navClasses.delete(name))
   },
@@ -171,4 +172,26 @@ test('App Store-style whole-tab visuals include spring and reduced-motion fallba
  assert.match(css,/\.bottom-liquid-indicator\.is-edge-rebound/);
  assert.match(css,/@keyframes pocketTabLanding/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+});
+
+test('the entire Dock rail grows on press and drag, then settles on release',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ assert.ok(h.navClasses.has('is-dock-pressed'));
+ h.output.bottomSwipeMove(h.event(235,20));
+ assert.ok(h.navClasses.has('is-dock-dragging'));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(235,20));
+ assert.equal(h.navClasses.has('is-dock-pressed'),false);
+ assert.equal(h.navClasses.has('is-dock-dragging'),false);
+ assert.match(css,/\.bottom-nav\.is-dock-pressed\{/);
+ assert.match(css,/\.bottom-nav\.is-dock-dragging\{/);
+ assert.match(css,/@keyframes pocketDockSettle/);
+});
+test('vertical scrolling cancels the Dock rail enlargement immediately',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(50,110));
+ assert.equal(h.navClasses.has('is-dock-pressed'),false);
+ assert.equal(h.navClasses.has('is-dock-dragging'),false);
 });

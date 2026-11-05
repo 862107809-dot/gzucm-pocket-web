@@ -173,15 +173,14 @@ function liquidSpringFrames(startX,startW,endX,endW,duration=540){
 // No overshoot after a horizontal drag: every frame advances monotonically
 // towards the selected tab, unlike the spring reserved for ordinary taps.
 function liquidDropFrames(startX,startW,endX,endW){
- const frames=[],count=40,ratio=endW?startW/endW:1,delta=endX-startX;
- for(let i=0;i<=count;i++){
-  const offset=i/count;
-  const progress=1-Math.pow(1-offset,3);
-  const x=startX+delta*progress;
-  const scale=Math.max(.85,Math.min(1.2,ratio+(1-ratio)*progress));
-  frames.push({offset,transform:'translate3d('+x.toFixed(2)+'px,0,0) scaleX('+scale.toFixed(4)+')'});
- }
- return frames;
+ // Native compositor interpolation: do not bake 40 time samples that can
+ // stutter on 90/120Hz panels. CSS/WAAPI owns every display-vsync frame.
+ const ratio=Math.max(.85,Math.min(1.2,endW?startW/endW:1));
+ return [
+  {offset:0,transform:'translate3d('+startX.toFixed(2)+'px,0,0) scaleX('+ratio.toFixed(4)+')',
+   easing:'cubic-bezier(.20,.82,.30,1)'},
+  {offset:1,transform:'translate3d('+endX.toFixed(2)+'px,0,0) scaleX(1)'}
+ ];
 }
 function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const nav=document.querySelector('#app .bottom-nav');

@@ -1224,7 +1224,7 @@ function hideSafariMenu(focus=false){
  menu.style.pointerEvents='none';
  menu.classList.add('is-closing');
  menu.addEventListener('animationend',finish,{once:true});
- setTimeout(finish,510);
+ setTimeout(finish,305);
 }
 function safariMenuItems(kind){
  const en=state.prefs.language==='en';

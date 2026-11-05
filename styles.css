@@ -1455,7 +1455,7 @@
   scale:1;
   transform-origin:center bottom;
   transition:
-   scale .32s cubic-bezier(.18,.76,.22,1.23),
+   scale .095s cubic-bezier(.16,.68,.22,1.16),
    border-color .24s ease,
    box-shadow .30s ease!important;
  }
@@ -1475,7 +1475,10 @@
    0 0 0 1px rgba(165,233,190,.38);
  }
  .bottom-nav.is-dock-settling{
-  animation:pocketDockSettle .42s cubic-bezier(.22,.80,.25,1) both;
+  animation:pocketDockSettle .36s cubic-bezier(.22,.80,.25,1) both;
+ }
+ .bottom-nav.is-dock-releasing{
+  animation:pocketDockRelease .32s cubic-bezier(.22,.78,.24,1) both;
  }
 }
 @keyframes pocketDockSettle{
@@ -1484,11 +1487,18 @@
  73%{scale:1.007;}
  100%{scale:1;}
 }
+@keyframes pocketDockRelease{
+ 0%{scale:1.032;}
+ 38%{scale:.994;}
+ 70%{scale:1.006;}
+ 100%{scale:1;}
+}
 @media(prefers-reduced-motion:reduce){
  .bottom-nav,
  .bottom-nav.is-dock-pressed,
  .bottom-nav.is-dock-dragging,
- .bottom-nav.is-dock-settling{
+ .bottom-nav.is-dock-settling,
+ .bottom-nav.is-dock-releasing{
   scale:1!important;
   transition:none!important;
   animation:none!important;
@@ -1501,7 +1511,9 @@
  */
 #app .pocket-full-press{
  transform-origin:center center;
- animation:pocketFullSurfacePress .20s cubic-bezier(.18,.75,.22,1.18) both!important;
+ /* First animation frame already enlarged: no waiting for a swipe or delay. */
+ transform:none!important;
+ animation:pocketFullSurfacePress .18s cubic-bezier(.18,.75,.22,1.18) both!important;
  filter:brightness(1.055) drop-shadow(0 5px 12px rgba(37,116,72,.16));
 }
 #app .pocket-full-release{
@@ -1509,30 +1521,30 @@
  animation:pocketFullSurfaceRelease .34s cubic-bezier(.22,.78,.24,1) both!important;
 }
 #app .pocket-full-card.pocket-full-press{
- animation:pocketCardSurfacePress .20s cubic-bezier(.18,.75,.22,1.18) both!important;
+ animation:pocketCardSurfacePress .18s cubic-bezier(.18,.75,.22,1.18) both!important;
  filter:brightness(1.03) drop-shadow(0 8px 16px rgba(37,116,72,.11));
 }
 #app .pocket-full-card.pocket-full-release{
  animation:pocketCardSurfaceRelease .34s cubic-bezier(.22,.78,.24,1) both!important;
 }
 @keyframes pocketFullSurfacePress{
- 0%{scale:1;}
- 58%{scale:1.055;}
- 100%{scale:1.044;}
+ 0%{scale:1.065;}
+ 42%{scale:1.086;}
+ 100%{scale:1.075;}
 }
 @keyframes pocketFullSurfaceRelease{
- 0%{scale:1.044;}
+ 0%{scale:1.075;}
  42%{scale:.991;}
  72%{scale:1.008;}
  100%{scale:1;}
 }
 @keyframes pocketCardSurfacePress{
- 0%{scale:1;}
- 58%{scale:1.021;}
- 100%{scale:1.015;}
+ 0%{scale:1.012;}
+ 42%{scale:1.030;}
+ 100%{scale:1.023;}
 }
 @keyframes pocketCardSurfaceRelease{
- 0%{scale:1.015;}
+ 0%{scale:1.023;}
  44%{scale:.995;}
  73%{scale:1.003;}
  100%{scale:1;}
@@ -1544,4 +1556,23 @@
   animation:none!important;
   filter:none!important;
  }
+}
+
+/* Weekday selection is seven independent tap-only tiles, no sliding lens. */
+.day-strip .day-tab{
+ position:relative;
+ touch-action:pan-y;
+ transition:background-color .17s ease,border-color .17s ease,
+            box-shadow .17s ease,color .17s ease;
+}
+.day-strip .day-tab.active{
+ background:var(--readable-active)!important;
+ color:var(--accent)!important;
+ border-color:var(--readable-border)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),
+            0 6px 16px var(--readable-shadow);
+}
+.day-strip > .liquid-choice-highlight{display:none!important;}
+@media(prefers-reduced-motion:reduce){
+ .day-strip .day-tab{transition:none!important;}
 }

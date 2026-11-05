@@ -10,7 +10,7 @@ const state = {
   data: window.GZUCM_DEMO,
   view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthLoadError:0,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
   connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',
-  prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',soundEffects:true,...saved(PREF,{})}
+  prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',soundEffects:true,hapticEffects:true,...saved(PREF,{})}
 };
 const PUBLIC=window.GZUCM_PUBLIC===true;
 const persisted=PUBLIC?null:saved(DB,null);
@@ -343,6 +343,7 @@ function liquidPointerMove(event){
   p.index=nearest.index;
   p.buttons.forEach((button,i)=>button.classList.toggle('is-scrubbed',i===nearest.index));
   playLiquidTick(nearest.index);
+  window.GZUCM_HAPTICS?.pulse('selection');
  }
  if(p.raf)return;
  p.raf=requestAnimationFrame(()=>{
@@ -379,7 +380,7 @@ function liquidPointerFinish(event,cancelled=false){
    width:selected.offsetWidth,height:selected.offsetHeight});
  }
 }
-/* The binary sound switch also supports dragging its thumb left/right;
+/* Binary sound and haptic switches also support dragging their thumbs;
  * tapping remains a native button action, and vertical page scroll is free. */
 let liquidSwitchPointer=null;
 let ignoreLiquidSwitchClickUntil=0;
@@ -417,10 +418,12 @@ function liquidSwitchFinish(event,cancelled=false){
  if(cancelled)return;
  const r=p.button.getBoundingClientRect();
  const on=event.clientX>=r.left+r.width/2;
- if(on!==state.prefs.soundEffects){
-  state.prefs.soundEffects=on;
+ const key=p.button.dataset.action==='toggleHaptics'?'hapticEffects':'soundEffects';
+ if(on!==(state.prefs[key]!==false)){
+  window.GZUCM_HAPTICS?.pulse('toggle',true);
+  state.prefs[key]=on;
   storePrefs();
-  if(on){armLiquidSound();playLiquidTick();}
+  if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}
   render();
  }
 }
@@ -615,7 +618,7 @@ function powerPage(){const p=powerInfo(), data=p.data, days=state.data.powerDail
  ${sectionTitle('最近用电趋势',state.ecardReady?`<button class="small-action" data-action="syncPower">刷新实时数据 ${I('refresh',14)}</button>`:`<button class="small-action" data-action="editPower">记录查询结果 ${I('edit',14)}</button>`)}<div class="two-col">${card(`<div class="card-heading">近 7 天用电量 <span class="muted tiny">单位：度</span></div>${powerChart(days.slice(-7))}`,'trend-card')}${card(`<div class="card-heading">每日明细 <span class="muted tiny">最近 ${Math.min(days.length,7)} 天</span></div>${days.length?days.slice(-7).reverse().map(d=>`<div class="daily-row"><div><strong>${E(d.date)}</strong><div class="tiny muted">剩余 ${Number.isFinite(+d.remain)?(+d.remain).toFixed(2):'—'} 度</div></div><strong>-${(+d.usage||0).toFixed(2)} 度</strong></div>`).join(''):empty('暂无用电明细','可以手动添加每日记录')}`)}</div><div class="note warning mt-20"><strong>关于真实电费同步</strong>：本站已对接校方只读数据格式，但是否能在站内自动同步取决于获得一卡通专用的服务器端授权。当前尚无稳定的独立认证回调；可以直接在<a href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">校方实时电费页面</a>查看，网站内的手动记录不等于官方数据。</div>`;}
 function powerChart(rows){if(!rows.length)return empty('还没有趋势记录','记录至少一天的电量即可显示趋势','chart');const vals=rows.map(x=>Math.max(0,+x.usage||0)),max=Math.max(1,...vals)*1.3;const xs=vals.map((_,i)=>40+i*360/Math.max(1,vals.length-1)),ys=vals.map(v=>170-v/max*130);const poly=xs.map((x,i)=>`${x},${ys[i]}`).join(' ');const area=`M ${xs[0]} 170 L ${xs.map((x,i)=>`${x} ${ys[i]}`).join(' L ')} L ${xs.at(-1)} 170 Z`;return `<svg class="power-linechart" viewBox="0 0 440 220" role="img" aria-label="最近用电量折线趋势图"><defs><linearGradient id="chartG" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#76ad8f" stop-opacity=".38"/><stop offset="1" stop-color="#76ad8f" stop-opacity="0"/></linearGradient></defs><path class="chart-axis" d="M40 40H410M40 105H410M40 170H410" fill="none"/><path d="${area}" fill="url(#chartG)"/><polyline points="${poly}" fill="none" stroke="#71ab89" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>${xs.map((x,i)=>`<circle cx="${x}" cy="${ys[i]}" r="4" fill="#50886d" stroke="white" stroke-width="2"/>`).join('')}<text class="chart-label" x="3" y="43">${max.toFixed(1)}</text><text class="chart-label" x="15" y="173">0</text>${xs.map((x,i)=>`<text class="chart-label" x="${x}" y="194" text-anchor="middle">${E(String(rows[i].date).slice(5))}</text>`).join('')}</svg>`;}
 function settingsPage(){return `${heading('YOUR SPACE','让它更像你的校园生活。','个人偏好、数据管理与本地连接。所有演示数据均为虚构示例。')}
- <div class="settings-grid"><div class="grid-gap"><div class="card"><div class="card-heading">${I('sun',18)} 个性化外观</div><div class="setting-item"><div><div class="setting-label">外观模式</div><div class="setting-hint">跟随 iOS / macOS 系统或手动切换</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="theme" aria-haspopup="menu" aria-expanded="false">${state.prefs.theme==='system'?'跟随系统':state.prefs.theme==='light'?'浅色':'深色'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">玻璃交互音效</div><div class="setting-hint">滑过导航选项播放轻柔反馈音；不加载外部音频</div></div><button type="button" class="switch ${state.prefs.soundEffects===false?'':'on'}" role="switch" aria-checked="${state.prefs.soundEffects!==false}" aria-label="玻璃交互音效" data-action="toggleSound"></button></div><div class="setting-item"><div><div class="setting-label">默认启动页</div><div class="setting-hint">下次进入时打开的页面</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="start" aria-haspopup="menu" aria-expanded="false">${({today:'今日',schedule:'课表',grades:'成绩',power:'电费'})[state.prefs.start]||'今日'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">自定义课表背景</div><div class="setting-hint">仅存储在当前浏览器内</div></div><button class="btn small" data-action="wallpaper">${I('upload')} 选择图片</button></div><div class="setting-item"><div><div class="setting-label">背景透明度</div><div class="setting-hint">调整课表图片显示强度</div></div><input class="range" id="opacity-range" type="range" min="0" max="1" step="0.05" value="${state.prefs.wallOpacity}" aria-label="课表背景透明度" /></div>${state.prefs.wallpaper?`<button class="btn small ghost" data-action="clearWallpaper">移除课表背景</button>`:''}</div><div class="card"><div class="card-heading">${I('shield',18)} 隐私与安全</div><div class="note"><strong>数据与隐私</strong><p class="mb-0">${PUBLIC?'公开网站不默认保存学业数据到浏览器 localStorage；服务器内存短暂保存你的教务会话，学校密码仅在官方页面填写。云服务商可能处理访问信息，请勿在公共设备使用。':'私人版本使用浏览器 localStorage 缓存数据，并在本地 Node 服务进程内保存学校会话。'}</p></div><div class="setting-item"><div><div class="setting-label">清除本地数据</div><div class="setting-hint">恢复演示数据，不会删除官方账号信息</div></div><button class="btn small danger" data-action="reset">清除</button></div></div></div>
+ <div class="settings-grid"><div class="grid-gap"><div class="card"><div class="card-heading">${I('sun',18)} 个性化外观</div><div class="setting-item"><div><div class="setting-label">外观模式</div><div class="setting-hint">跟随 iOS / macOS 系统或手动切换</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="theme" aria-haspopup="menu" aria-expanded="false">${state.prefs.theme==='system'?'跟随系统':state.prefs.theme==='light'?'浅色':'深色'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">玻璃交互音效</div><div class="setting-hint">滑过导航选项播放轻柔反馈音；不加载外部音频</div></div><button type="button" class="switch ${state.prefs.soundEffects===false?'':'on'}" role="switch" aria-checked="${state.prefs.soundEffects!==false}" aria-label="玻璃交互音效" data-action="toggleSound"></button></div><div class="setting-item"><div><div class="setting-label">触觉反馈</div><div class="setting-hint">${window.GZUCM_HAPTICS?.supported()?'支持震动的手机或平板可获得轻触反馈':'此浏览器不支持网页震动；设置仍可保留'}</div></div><button type="button" class="switch ${state.prefs.hapticEffects===false?'':'on'}" role="switch" aria-checked="${state.prefs.hapticEffects!==false}" aria-label="触觉反馈" data-action="toggleHaptics"></button></div><div class="setting-item"><div><div class="setting-label">默认启动页</div><div class="setting-hint">下次进入时打开的页面</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="start" aria-haspopup="menu" aria-expanded="false">${({today:'今日',schedule:'课表',grades:'成绩',power:'电费'})[state.prefs.start]||'今日'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">自定义课表背景</div><div class="setting-hint">仅存储在当前浏览器内</div></div><button class="btn small" data-action="wallpaper">${I('upload')} 选择图片</button></div><div class="setting-item"><div><div class="setting-label">背景透明度</div><div class="setting-hint">调整课表图片显示强度</div></div><input class="range" id="opacity-range" type="range" min="0" max="1" step="0.05" value="${state.prefs.wallOpacity}" aria-label="课表背景透明度" /></div>${state.prefs.wallpaper?`<button class="btn small ghost" data-action="clearWallpaper">移除课表背景</button>`:''}</div><div class="card"><div class="card-heading">${I('shield',18)} 隐私与安全</div><div class="note"><strong>数据与隐私</strong><p class="mb-0">${PUBLIC?'公开网站不默认保存学业数据到浏览器 localStorage；服务器内存短暂保存你的教务会话，学校密码仅在官方页面填写。云服务商可能处理访问信息，请勿在公共设备使用。':'私人版本使用浏览器 localStorage 缓存数据，并在本地 Node 服务进程内保存学校会话。'}</p></div><div class="setting-item"><div><div class="setting-label">清除本地数据</div><div class="setting-hint">恢复演示数据，不会删除官方账号信息</div></div><button class="btn small danger" data-action="reset">清除</button></div></div></div>
  <div class="grid-gap"><div class="card"><div class="card-heading">${I('cloud',18)} 连接与同步</div><div class="setting-item"><div><div class="setting-label">同步状态</div><div class="setting-hint">${state.connected?'本科教务已认证':'尚未连接学校系统'}</div></div><span class="status-pill ${state.connected?'':'demo'}">${state.connected?'已连接':'未连接'}</span></div><div class="setting-item"><div><div class="setting-label">学习阶段</div><div class="setting-hint">本科同步为试验性；研究生可导入数据</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="campus" aria-haspopup="menu" aria-expanded="false">${state.data.campus==='graduate'?'研究生':'本科'}${I('chevronRight',14)}</button></div><div class="grid-gap mt-12"><button class="btn primary block" data-action="connect">${I('link')} ${PUBLIC?'登录学校教务':'连接学校教务'}</button><button class="btn block" data-action="refresh">${I('refresh')} 尝试同步课表与成绩</button>${state.connected?`<button class="btn danger block" data-action="logout">退出当前学校会话</button>`:''}</div><div class="note warning mt-12"><strong>实验性接口</strong><p class="mb-0">密码登录暂不支持，请截图二维码后通过微信扫一扫（相册识别）登录。扫码授权可同步课表；一卡通电费需要另行查询。</p></div></div><div class="card"><div class="card-heading">${I('file',18)} 数据备份</div><div class="grid-gap"><button class="btn block" data-action="import">${I('upload')} 导入 JSON 数据</button><button class="btn block" data-action="export">${I('download')} 导出当前 JSON 备份</button><button class="btn block" data-action="demo">${I('sparkle')} 切换到演示数据</button></div><div class="setting-hint mt-12">支持本项目 schemaVersion: 1 的 JSON 格式。导入的本地记录不会自动与学校系统核对。</div></div><div class="card"><div class="card-heading">${I('info',18)} 关于</div><p class="tiny muted" style="line-height:1.9">广中医口袋 Web 1.3 · Safari / PWA 适配<br>参考 <a href="https://github.com/Hello-Minecraft/gzucm-pocket" target="_blank" rel="noopener noreferrer">Hello-Minecraft/gzucm-pocket</a>，独立非官方实现。<br>不属于广州中医药大学，不代表学校意见。<br>液态玻璃效果使用 CSS 仿真，不是苹果原生私有 API。</p></div></div></div>`;}
 /* Glass dialog expansion uses the pressed control as its visual source.
  * The source is kept so closing collapses back toward that same point. */
@@ -1037,6 +1040,7 @@ function bottomSwipeMove(event){
   sw.lastTab=index;
   sw.layout.tabs.forEach((tab,i)=>tab.classList.toggle('is-scrubbed',i===index));
   playLiquidTick(index);
+  window.GZUCM_HAPTICS?.pulse('selection');
  }
  if(sw.frame)return;
  sw.frame=requestAnimationFrame(()=>{
@@ -1076,7 +1080,7 @@ function bottomSwipeClickCapture(event){
  event.preventDefault();
  event.stopImmediatePropagation();
 }
-function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay')closeModal();return;}if(target.matches('a'))event.preventDefault();
+function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay'){window.GZUCM_HAPTICS?.pulse('close');closeModal();}return;}if(target.matches('a'))event.preventDefault();
  if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
  if(target.dataset.view){if(target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
@@ -1095,6 +1099,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'toggleSound':state.prefs.soundEffects=state.prefs.soundEffects===false;storePrefs();if(state.prefs.soundEffects)armLiquidSound();render();break;
+ case'toggleHaptics':window.GZUCM_HAPTICS?.pulse('toggle',true);state.prefs.hapticEffects=state.prefs.hapticEffects===false;storePrefs();render();break;
  case'toggleLanguage':toggleLanguage();break;
   case'refresh':if(state.connected)syncAcademic();else{connectModal();toast('需要先连接学校教务');}break;
  case'logout':logout();break;case'import':$('#import-file').click();break;case'export':exportData();break;

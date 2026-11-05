@@ -104,7 +104,7 @@ test('same-tab swipe confirms with a shadow without navigation or stale glass st
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
  assert.ok(h.classes.has('is-confirmed'));
- assert.equal(h.navClasses.has('is-dock-dropping'),true);
+ assert.equal(h.navClasses.has('is-dock-dropping'),false,'swipe release cannot trigger a container spring');
 });
 test('Dock base and its selected button grow together; swipe geometry compensates visual scale',()=>{
  const section=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
@@ -123,7 +123,7 @@ test('Dock base and its selected button grow together; swipe geometry compensate
  assert.ok(h.navClasses.has('is-dock-dragging'));
  h.frame();
  h.output.bottomSwipeFinish(h.event(258,20));
- assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:true});
+ assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:false});
 });
 
 test('narrow Dock keeps centered safe margins while the active lens slightly crosses its rim',()=>{
@@ -138,6 +138,47 @@ test('narrow Dock keeps centered safe margins while the active lens slightly cro
  assert.match(app,/const targetX=current\.offsetLeft\+inset/);
  assert.match(app,/const targetW=Math\.max\(12,current\.offsetWidth-inset\*2\)/);
  assert.match(app,/sw\.glass\.style\.transform='translate3d\('/);
+});
+
+test('small finger wobble stays a tap while clear horizontal movement becomes drag',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(53,23));
+ assert.equal(h.navClasses.has('is-dock-dragging'),false,'7px is not a swipe');
+ h.output.bottomSwipeMove(h.event(65,23));
+ assert.equal(h.navClasses.has('is-dock-dragging'),true,'19px is an intentional swipe');
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(65,23));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+ assert.equal(h.navClasses.has('is-dock-dropping'),false);
+});
+test('diagonal or vertical movements never accidentally switch Dock modules',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(61,37));
+ assert.equal(h.navClasses.has('is-dock-dragging'),false);
+ h.output.bottomSwipeMove(h.event(66,65));
+ assert.equal(h.navClasses.has('is-dock-dragging'),false);
+ h.output.bottomSwipeFinish(h.event(66,65));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+});
+test('Dock measures once before press and does not read DOM geometry in each frame',()=>{
+ const h=harness();
+ h.nav.offsetWidth=500;
+ const getRect=h.nav.getBoundingClientRect;
+ let reads=0;
+ h.nav.getBoundingClientRect=()=>{reads++;return getRect();};
+ h.output.bottomSwipeDown(h.event(46,20));
+ const initially=reads;
+ h.output.bottomSwipeMove(h.event(255,20));h.frame();
+ h.output.bottomSwipeMove(h.event(310,20));h.frame();
+ assert.equal(reads,initially,'live geometry reads inside a swipe cause layout thrash');
+ const x=parseFloat(h.glass.style.transform.match(/translate3d\(([-\d.]+)px/)[1]);
+ const expected=250+(310-250)/1.027-47;
+ assert.ok(Math.abs(x-expected)<.1,'glass stays under the finger after base magnification');
+ h.output.bottomSwipeFinish(h.event(310,20));
 });
 
 test('finger drag follows the pointer and selects nearest bottom module on release',()=>{
@@ -199,27 +240,29 @@ test('ordinary Dock click switches view without a rail spring, while drag still 
  assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface\{\s*animation:none!important;/);
 });
 
-test('a Dock swipe still lowers smoothly while taps have no bounce',()=>{
+test('Dock swipe releases directly without an extra bounce',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
  h.output.bottomSwipeMove(h.event(85,20));
  h.frame();
  h.output.bottomSwipeFinish(h.event(46,20));
- assert.equal(h.navClasses.has('is-dock-dropping'),true);
+ assert.equal(h.navClasses.has('is-dock-dropping'),false);
  assert.equal(h.navClasses.has('is-dock-releasing'),false);
  assert.equal(h.classes.has('is-edge-rebound'),false);
- assert.match(css,/@keyframes pocketDockDrop\{\s*0%\{scale:1\.042;\}\s*100%\{scale:1;\}/);
- assert.match(css,/@keyframes pocketDockLensDrop\{\s*0%\{scale:1\.105;\}\s*100%\{scale:1;\}/);
+ const motion=css.slice(css.indexOf('/* UNIFIED V-SYNC GESTURES v2'));
+ assert.match(motion,/\.bottom-nav\.is-dock-dropping,/);
+ assert.match(motion,/animation:none!important;/);
+ assert.match(motion,/transition:scale var\(--pocket-gesture-release\)/);
 });
-test('swiping to another Dock module requests drop landing instead of spring',()=>{
+test('swiping to another Dock module commits the lens without bouncing the whole Dock',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
  h.output.bottomSwipeMove(h.event(265,20));
  h.frame();
  h.output.bottomSwipeFinish(h.event(265,20));
  assert.equal(h.state.view,'grades');
- assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:true});
- assert.match(app,/drop\?' is-dock-dropping'/);
+ assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:false});
+ assert.match(app,/dockRemountDrop=false; \/\/ swipe changes the lens only/);
 });
 test('dragged Dock buttons never render their own borders or outlines',()=>{
  assert.match(css,/\.bottom-nav\.is-dock-dragging \.bottom-item::before/);

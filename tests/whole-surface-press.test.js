@@ -48,14 +48,14 @@ function harness(){
  const flush=()=>{for(const [id,fn] of [...timers]){timers.delete(id);fn();}};
  return {f,makeSurface,event,flush};
 }
-test('a control visibly enlarges on pointerdown without any pointer movement',()=>{
+test('a tapped control receives optical feedback without resizing',()=>{
  const h=harness(),b=h.makeSurface();
  h.f.wholeSurfacePressDown(h.event(b.target));
  assert.equal(b.classes.has('pocket-full-press'),true);
- assert.match(css,/@keyframes pocketFullSurfacePress\{\s*0%\{scale:1\.065;\}/);
- assert.match(css,/@keyframes pocketCardSurfacePress\{\s*0%\{scale:1\.012;\}/);
+ const effective=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
+ assert.match(effective,/#app \.pocket-full-press,[\s\S]*?animation:none!important;[\s\S]*?scale:1!important;/);
 });
-test('full interactive button surface rises and springs back on release',()=>{
+test('button release shows short shadow feedback without a return spring',()=>{
  const h=harness(),b=h.makeSurface();
  h.f.wholeSurfacePressDown(h.event(b.target));
  assert.equal(b.classes.has('pocket-full-press'),true);
@@ -65,7 +65,7 @@ test('full interactive button surface rises and springs back on release',()=>{
  h.flush();
  assert.equal(b.classes.has('pocket-full-release'),false);
 });
-test('full card surface lifts slightly but remains a static card',()=>{
+test('cards stay at a fixed size while tapped',()=>{
  const h=harness(),c=h.makeSurface('card');
  h.f.wholeSurfacePressDown(h.event(c.target));
  assert.equal(c.classes.has('pocket-full-card'),true);
@@ -95,11 +95,14 @@ test('press only follows the primary pointer',()=>{
  h.f.wholeSurfacePressDown({...h.event(b.target),isPrimary:false});
  assert.equal(b.classes.has('pocket-full-press'),false);
 });
-test('styles animate whole-element scale, honor reduce motion, and avoid popup roots',()=>{
+test('final material overrides old scale keyframes and respects reduced motion',()=>{
  assert.match(css,/#app \.pocket-full-press\{/);
- assert.match(css,/@keyframes pocketFullSurfacePress/);
- assert.match(css,/@keyframes pocketCardSurfacePress/);
- assert.match(css,/@keyframes pocketFullSurfaceRelease/);
+ const effective=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
+ assert.match(effective,/#app \.pocket-full-press,/);
+ assert.match(effective,/animation:none!important;/);
+ assert.match(effective,/transform:none!important;/);
+ assert.match(effective,/#app \.pocket-full-card\.pocket-full-release/);
+ assert.match(effective,/prefers-reduced-motion:reduce/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(app,/const WHOLE_SURFACE_POPUP=/);
  assert.match(css,/\.bottom-nav\.is-dock-pressed\{/);
@@ -115,7 +118,7 @@ test('cancelled pointer immediately resets and never animates a delayed spring',
  assert.equal(b.classes.has('pocket-full-release'),false);
 });
 
-test('weekday tap rebound is transferred to the recreated button after render',()=>{
+test('weekday tap transfers only a subtle confirmed shadow across a re-render',()=>{
  const h=harness(),old=h.makeSurface();
  old.surface.dataset={day:'4'};
  h.f.wholeSurfacePressDown(h.event(old.target));

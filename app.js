@@ -714,11 +714,26 @@ function renderScheduleContent(confirm=false){
   const lens=selector.querySelector('.liquid-choice-highlight');
   const active=selector.querySelector('button.active');
   if(lens&&active){
+   const target={x:active.offsetLeft,y:active.offsetTop,
+    width:active.offsetWidth,height:active.offsetHeight};
+   const smooth=confirm&&state.prefs.scheduleLayout!=='original'&&
+    !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    lens.classList.add('is-instant');
-   setSelectorGlass(lens,{x:active.offsetLeft,y:active.offsetTop,
-    width:active.offsetWidth,height:active.offsetHeight});
-   if(confirm)confirmGlassSelection(lens);
-   requestAnimationFrame(()=>{if(lens.isConnected)lens.classList.remove('is-instant');});
+   if(smooth){
+    // Commit the old glass position in its new but identical fixed header
+    // before letting the shared capsule glide to the other option.
+    void lens.offsetWidth;
+    requestAnimationFrame(()=>{
+     if(!lens.isConnected)return;
+     lens.classList.remove('is-instant');
+     setSelectorGlass(lens,target);
+     confirmGlassSelection(lens);
+    });
+   }else{
+    setSelectorGlass(lens,target);
+    if(confirm)confirmGlassSelection(lens);
+    requestAnimationFrame(()=>{if(lens.isConnected)lens.classList.remove('is-instant');});
+   }
   }
  }
  enhanceLiquidSelectors(pageRoot);

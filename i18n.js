@@ -242,6 +242,8 @@ pairs.push(...[
  ['宿舍实时电量、用电统计与可用天数预测；仅对已确认的数据进行计算。','Dorm electricity, usage insights and estimates based only on confirmed records.'],
  ['当前剩余电量','Current electricity balance'],
  ['尚无有效电量','No verified electricity balance'],
+ ['导入备份（非实时）','Imported backup (not live)'],
+ ['导入记录','Imported record'],
  ['官方接口实时读取','Verified official live API'],
  ['官网页面读取（待核验）','School page reading (verify on official site)'],
  ['暂无更新时间','No update time'],

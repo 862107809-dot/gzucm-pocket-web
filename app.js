@@ -770,13 +770,18 @@ function transitionScheduleMode(afterRender){
   return;
  }
  const width=pageRoot.getBoundingClientRect?.().width||pageRoot.clientWidth||0;
- const scale=width>=900?.974:width>=600?.966:.958;
- const outDuration=width>=900?180:width>=600?190:200;
- const inDuration=width>=900?300:width>=600?325:345;
+ const scale=fixedLayout?(width>=900?.974:width>=600?.966:.958):
+  (width>=900?.987:width>=600?.980:.973);
+ const outDuration=fixedLayout?(width>=900?180:width>=600?190:200):(width>=900?80:95);
+ const inDuration=fixedLayout?(width>=900?300:width>=600?325:345):
+  (width>=900?165:width>=600?180:195);
  const contracted='scale('+scale+')';
- const incoming=[
+ const incoming=fixedLayout?[
   {opacity:.18,transform:contracted},
   {opacity:.72,transform:'scale(.994)',offset:.67},
+  {opacity:1,transform:'scale(1)'}
+ ]:[
+  {opacity:.12,transform:contracted},
   {opacity:1,transform:'scale(1)'}
  ];
  const enter=()=>{
@@ -785,7 +790,7 @@ function transitionScheduleMode(afterRender){
   if(pageRoot.isConnected===false||!incomingTarget)return;
   try{
    const animation=incomingTarget.animate(incoming,{
-    duration:inDuration,easing:'cubic-bezier(.24,.68,.30,1)',fill:'both'
+    duration:inDuration,easing:fixedLayout?'cubic-bezier(.24,.68,.30,1)':'cubic-bezier(.20,.82,.30,1)',fill:'both'
    });
    scheduleSwitchAnimation=animation;
    Promise.resolve(animation.finished).then(()=>{
@@ -801,8 +806,9 @@ function transitionScheduleMode(afterRender){
  try{
   const outgoing=outgoingTarget.animate([
    {opacity:1,transform:'scale(1)'},
-   {opacity:.18,transform:contracted}
-  ],{duration:outDuration,easing:'cubic-bezier(.36,0,.65,1)',fill:'forwards'});
+   {opacity:fixedLayout?.18:.12,transform:contracted}
+  ],{duration:outDuration,easing:fixedLayout?'cubic-bezier(.36,0,.65,1)':
+   'cubic-bezier(.34,0,.75,.55)',fill:'forwards'});
   scheduleSwitchAnimation=outgoing;
   Promise.resolve(outgoing.finished).then(()=>{
    if(epoch!==scheduleSwitchEpoch)return;

@@ -207,10 +207,10 @@
   });
   item.el.appendChild(canvas);
  }
- function draw(item){
+ function draw(item,rectOverride=null){
   const {canvas,gl,program,buffer,names}=item;
   if(!canvas||!gl||!canvas.isConnected||gl.isContextLost?.())return;
-  const rect=item.el.getBoundingClientRect();
+  const rect=rectOverride||item.el.getBoundingClientRect();
   if(!rect.width||!rect.height)return;
   const dpr=Math.max(1,Math.min(MAX_DPR,global.devicePixelRatio||1));
   const pixels=rect.width*rect.height*dpr*dpr;
@@ -296,17 +296,28 @@
  }
  function pointerMove(e){
   if(engine!=='webgl')return;
-  const item=live.get(e.target?.closest?.(candidates));
+  // Touch scrubbing is handled by the Dock/selector animation. Re-rendering
+  // its WebGL shader on every input event competes with the travelling lens.
+  const target=e.target?.closest?.(candidates);
+  if(target?.classList?.contains?.('is-dock-dragging')||
+     target?.classList?.contains?.('is-rail-dragging')||
+     document.documentElement.dataset.motionRate==='economy')return;
+  const item=live.get(target);
   if(!item?.gl)return;
-  const rect=item.el.getBoundingClientRect();
-  if(!rect.width||!rect.height)return;
-  item.touch=[
-   Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)),
-   Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height))];
+  item.nextTouch=[e.clientX,e.clientY];
   if(item.frame)return;
   item.frame=global.requestAnimationFrame?.(()=>{
    item.frame=0;
-   if(item.gl&&item.el.isConnected){try{draw(item);}catch{brokenGL=true;schedule();}}
+   if(!item.gl||!item.el.isConnected)return;
+   try{
+    const rect=item.el.getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+    const [x,y]=item.nextTouch;
+    item.touch=[
+     Math.max(0,Math.min(1,(x-rect.left)/rect.width)),
+     Math.max(0,Math.min(1,(y-rect.top)/rect.height))];
+    draw(item,rect);
+   }catch{brokenGL=true;schedule();}
   })||0;
  }
  function listenMedia(query){

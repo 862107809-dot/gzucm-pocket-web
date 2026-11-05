@@ -984,3 +984,39 @@ body{
   opacity:0!important;
  }
 }
+
+
+/* UNMARKED POPOVER SELECTION v1
+ * The current choice is indicated by its accessible checkmark, not by a
+ * grey/opaque rectangular pill. Keep text, optical menu shell, tap/drag
+ * handling and keyboard focus, across all three glass material engines. */
+:root .safari-floating-menu .safari-menu-option.selected,
+:root .safari-floating-menu .safari-menu-option:is(:hover,:focus-visible),
+:root[data-glass-engine="frosted"] .safari-floating-menu .safari-menu-option.selected,
+:root[data-active-theme="dark"] .safari-floating-menu .safari-menu-option.selected,
+:root[data-glass-engine="frosted"][data-active-theme="dark"] .safari-floating-menu .safari-menu-option.selected{
+ background:transparent!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+:root .safari-floating-menu .safari-menu-glider,
+:root[data-glass-engine="frosted"] .safari-floating-menu .safari-menu-glider,
+:root[data-active-theme="dark"] .safari-floating-menu .safari-menu-glider{
+ opacity:0!important;
+ background:transparent!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+:root .safari-floating-menu .safari-menu-glider::before,
+:root .safari-floating-menu .safari-menu-glider::after{
+ content:none!important;
+ display:none!important;
+}
+:root .safari-floating-menu .safari-menu-option:focus-visible{
+ outline:2px solid var(--accent)!important;
+ outline-offset:-2px;
+}

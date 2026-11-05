@@ -51,10 +51,10 @@
   return compact([...sameRoom,value],now);
  }
  function cachedPower(power){
-  if(!power||!['ecard-live','ecard-page','ios-native','ecard-cache'].includes(power.source))return null;
+  if(!power||!['ecard-live','ecard-page','ios-native','ios-native-cache','ecard-cache'].includes(power.source))return null;
   const balance=Number(power.balance),updatedAt=power.updatedAt,roomLabel=String(power.roomLabel||'').slice(0,64);
   if(!Number.isFinite(balance)||balance<0||balance>1e6||!Number.isFinite(Date.parse(updatedAt))||!roomLabel)return null;
-  return {balance,unit:'度',roomLabel,updatedAt,source:'ecard-cache'};
+  return {balance,unit:power.unit||'度',roomLabel,updatedAt,source:power.source.startsWith('ios-native')?'ios-native-cache':'ecard-cache'};
  }
  return Object.freeze({normalize,compact,append,cachedPower});
 });

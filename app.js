@@ -261,8 +261,8 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  group.style?.setProperty?.('--rail-edge-energy','0');
  p.glass.style?.setProperty?.('--rail-edge-shift','0px');
  p.glass.style?.setProperty?.('--rail-edge-scale','1');
- if(cancelled)return;
- const className=p.dragging?'is-rail-dropping':'is-rail-releasing'; // CSS release is non-elastic
+ if(cancelled||!p.dragging)return; // taps do not animate the entire bar on release
+ const className='is-rail-dropping'; // CSS release is non-elastic
  group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
  group.classList.add(className);
@@ -354,7 +354,7 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   }
   if(rail&&pendingHorizontalRailLanding?.id===id&&
      Date.now()-pendingHorizontalRailLanding.at<700){
-   const landing=pendingHorizontalRailLanding.dragged?'is-rail-dropping':'is-rail-settling';
+   const landing='is-rail-dropping';
    group.classList.add(landing);
    group.addEventListener?.('animationend',event=>{
     if(['pocketRailSettle','pocketDockClickConfirm'].includes(event.animationName))group.classList.remove('is-rail-settling');
@@ -489,8 +489,8 @@ function liquidPointerFinish(event,cancelled=false){
  p.buttons.forEach(button=>button.classList.remove('is-scrubbed'));
  p.pressed?.classList?.remove?.('is-pressed');
  releaseHorizontalLiquidRail(p,cancelled||p.scroll);
- if(p.rail&&!cancelled&&!p.scroll){
-  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:p.dragging};
+ if(p.rail&&p.dragging&&!cancelled&&!p.scroll){
+  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:true};
  }
  if(!p.dragging)return;
  if(event.cancelable)event.preventDefault();
@@ -1716,7 +1716,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
   if(group&&target.classList.contains('active'))confirmGlassSelection(group.querySelector('.liquid-choice-highlight'));
  }
  if(target.dataset.view){if(target.closest('.bottom-nav')){
-  dockRemountPulse=target.dataset.view!==state.view;
+  dockRemountPulse=false; // tap navigation keeps a smooth lens glide, no rail rebound
   if(target.dataset.view===state.view)confirmGlassSelection(target.closest('.bottom-nav')?.querySelector('.bottom-liquid-indicator'));
   armLiquidSound();playLiquidTick();
  }navigateBottomModule(target.dataset.view);return;}

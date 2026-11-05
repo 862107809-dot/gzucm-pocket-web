@@ -51,12 +51,12 @@ function harness(){
  const document={};
  const win={matchMedia:()=>({matches:false}),scrollTo:()=>{}};
  const output=new Function('state','window','document','requestAnimationFrame',
-   'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek','armLiquidSound','playLiquidTick',
+   'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek','armLiquidSound','playLiquidTick','confirmGlassSelection',
    'let liquidGestureSnap=false;let dockRemountPulse=false;let dockRemountDrop=false;let pendingBottomSwipeGeometry=null;\n'+app.slice(start,end)+
    'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule,getDockFlags:()=>({pulse:dockRemountPulse,drop:dockRemountDrop}),getLanding:()=>pendingBottomSwipeGeometry};')(
     state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
     ()=>{closed++},()=>{renders++;transformOnRender=glass.style.transform;},()=>{scheduleLoads++},()=>{scheduleLoads++},
-    ()=>{armed++},()=>{tones++}
+    ()=>{armed++},()=>{tones++},lens=>lens?.classList?.add('is-confirmed')
    );
  const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
   cancelable:true,preventDefault(){this.prevented=true;},
@@ -82,6 +82,30 @@ test('compact navigation adapts to iPad portrait, landscape, Mac and desktop wid
  assert.match(app,/class="bottom-nav\$\{settle/);
 });
 
+test('Dock stays within its border at rest, expands only while dragged, then contracts after landing',()=>{
+ const section=css.slice(css.indexOf('/* CONFIRM-ONLY DOCK OVERHANG v2'));
+ assert.ok(section.length>1500);
+ assert.match(section,/#app \.bottom-nav \.bottom-liquid-indicator \.bottom-liquid-surface\{\s*inset:0;/);
+ assert.match(section,/#app \.bottom-nav\.is-dock-dragging \.bottom-liquid-indicator \.bottom-liquid-surface,/);
+ assert.match(section,/\.bottom-liquid-indicator\.is-dragging \.bottom-liquid-surface\{\s*inset:-10px -13px;/);
+ assert.match(section,/#app \.bottom-nav\.is-dock-pressed \.bottom-liquid-indicator\{\s*scale:1!important;/);
+ assert.match(section,/@keyframes pocketDockGlassReturn\{\s*0%\{inset:-10px -13px;\}\s*100%\{inset:0;\}/);
+ assert.match(section,/\.bottom-nav\.is-dock-releasing,[\s\S]*?animation:pocketDockClickConfirm/);
+ assert.match(app,/if\(shouldConfirm\)confirmGlassSelection\(glass\)/);
+ assert.match(app,/pocketDockDragReturn'\].includes\(event.animationName\)/);
+});
+
+test('same-tab swipe confirms with a shadow without navigation or stale glass state',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(84,20));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(46,20));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+ assert.ok(h.classes.has('is-confirmed'));
+ assert.equal(h.navClasses.has('is-dock-dropping'),true);
+});
 test('narrow Dock keeps centered safe margins while the active lens slightly crosses its rim',()=>{
  const section=css.slice(css.indexOf('/* COMPACT DOCK WITH CONTROLLED PILL OVERHANG'));
  assert.ok(section.length>0,'compact mobile Dock rules should exist');

@@ -13,7 +13,7 @@ function harness(){
  let now=0;
  const f=new Function('setTimeout','clearTimeout',
   app.slice(start,end)+
-  'return {wholeSurfacePressDown,wholeSurfacePressMove,wholeSurfacePressEnd};')(
+  'return {wholeSurfacePressDown,wholeSurfacePressMove,wholeSurfacePressEnd,restoreSurfaceBounce};')(
   fn=>{const id=++now;timers.set(id,fn);return id;},
   id=>timers.delete(id));
  const makeSurface=(kind='button',options={})=>{
@@ -48,6 +48,13 @@ function harness(){
  const flush=()=>{for(const [id,fn] of [...timers]){timers.delete(id);fn();}};
  return {f,makeSurface,event,flush};
 }
+test('a control visibly enlarges on pointerdown without any pointer movement',()=>{
+ const h=harness(),b=h.makeSurface();
+ h.f.wholeSurfacePressDown(h.event(b.target));
+ assert.equal(b.classes.has('pocket-full-press'),true);
+ assert.match(css,/@keyframes pocketFullSurfacePress\{\s*0%\{scale:1\.065;\}/);
+ assert.match(css,/@keyframes pocketCardSurfacePress\{\s*0%\{scale:1\.012;\}/);
+});
 test('full interactive button surface rises and springs back on release',()=>{
  const h=harness(),b=h.makeSurface();
  h.f.wholeSurfacePressDown(h.event(b.target));
@@ -106,4 +113,26 @@ test('cancelled pointer immediately resets and never animates a delayed spring',
  h.f.wholeSurfacePressEnd(h.event(b.target),true);
  assert.equal(b.classes.has('pocket-full-press'),false);
  assert.equal(b.classes.has('pocket-full-release'),false);
+});
+
+test('weekday tap rebound is transferred to the recreated button after render',()=>{
+ const h=harness(),old=h.makeSurface();
+ old.surface.dataset={day:'4'};
+ h.f.wholeSurfacePressDown(h.event(old.target));
+ h.f.wholeSurfacePressEnd(h.event(old.target));
+ const classes=new Set();
+ const newButton={
+  dataset:{day:'4'},
+  classList:{add:x=>classes.add(x),remove:x=>classes.delete(x)},
+  closest:()=>null
+ };
+ const otherButton={
+  dataset:{day:'3'},
+  classList:{add:()=>{throw Error('wrong day rebounded');},remove:()=>{}},
+  closest:()=>null
+ };
+ h.f.restoreSurfaceBounce({querySelectorAll:()=>[otherButton,newButton]});
+ assert.equal(classes.has('pocket-full-release'),true);
+ h.flush();
+ assert.equal(classes.has('pocket-full-release'),false);
 });

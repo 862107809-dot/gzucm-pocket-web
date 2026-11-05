@@ -145,7 +145,7 @@
   ' light+=vec3(.05,.19,.10)*edge*iridescence*.25;',
   ' light=mix(light,light*.66,u_dark);',
   ' float alpha=min(.35,(edge*.21+top*.38+glint*.37))*inside;',
-  ' gl_FragColor=vec4(light,alpha);',
+  ' gl_FragColor=vec4(light*alpha,alpha);',
   '}'
  ].join('\n');
  function compile(gl,type,src){
@@ -185,10 +185,14 @@
   item.touch=[.25,.18];
   canvas.addEventListener('webglcontextlost',e=>{
    e.preventDefault();
+   if(item.disposing)return; // deliberate teardown is not a GPU failure
    brokenGL=true;
    schedule();
   });
-  canvas.addEventListener('webglcontextrestored',()=>{brokenGL=false;webglAvailable=null;schedule();});
+  canvas.addEventListener('webglcontextrestored',()=>{
+   if(item.disposing)return;
+   brokenGL=false;webglAvailable=null;schedule();
+  });
   item.el.appendChild(canvas);
  }
  function draw(item){
@@ -216,8 +220,15 @@
    (document.documentElement.dataset.theme!=='light'&&media('(prefers-color-scheme: dark)'));
   gl.uniform1f(names.dark,dark?1:0);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  if(gl.getError?.()===gl.OUT_OF_MEMORY){
+   brokenGL=true;
+   schedule();
+  }
  }
  function destroy(item){
+  item.disposing=true;
+  if(item.frame&&typeof global.cancelAnimationFrame==='function')global.cancelAnimationFrame(item.frame);
+  item.frame=0;
   item.svg?.remove();
   item.canvas?.remove();
   try{
@@ -263,7 +274,7 @@
     }
    }
    setSVGGeometry(item,rect);
-   if(item.gl)draw(item);
+   if(item.gl){try{draw(item);}catch{brokenGL=true;schedule();}}
   }
  }
  function schedule(){
@@ -283,7 +294,7 @@
   if(item.frame)return;
   item.frame=global.requestAnimationFrame?.(()=>{
    item.frame=0;
-   if(item.gl&&item.el.isConnected)draw(item);
+   if(item.gl&&item.el.isConnected){try{draw(item);}catch{brokenGL=true;schedule();}}
   })||0;
  }
  function listenMedia(query){

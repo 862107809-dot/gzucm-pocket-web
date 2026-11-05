@@ -1403,12 +1403,12 @@ function placeBottomSwipeGlass(sw,x){
  sw.glass.style.width=l.width+'px';
  sw.glass.style.transform='translate3d('+pos+'px,0,0)';
 }
-function releaseBottomEdge(sw){
+function releaseBottomEdge(sw,allowRebound=true){
  sw.nav.classList?.remove?.('edge-left','edge-right');
  sw.nav.style?.setProperty?.('--edge-energy','0');
  sw.glass.style?.setProperty?.('--edge-shift','0px');
  sw.glass.style?.setProperty?.('--edge-scale','1');
- if(sw.edge){
+ if(sw.edge&&allowRebound){
   sw.glass.classList?.add?.('is-edge-rebound');
   setTimeout(()=>sw.glass.classList?.remove?.('is-edge-rebound'),500);
  }
@@ -1423,6 +1423,15 @@ function animateDockRelease(nav){
   if(event.animationName==='pocketDockRelease')nav.classList?.remove?.('is-dock-releasing');
  },{once:true});
 }
+function animateDockDrop(nav){
+ if(!nav)return;
+ nav.classList?.remove?.('is-dock-dropping');
+ void nav.offsetWidth;
+ nav.classList?.add?.('is-dock-dropping');
+ nav.addEventListener?.('animationend',event=>{
+  if(event.animationName==='pocketDockDrop')nav.classList?.remove?.('is-dock-dropping');
+ },{once:true});
+}
 function bottomSwipeDown(event){
  const nav=event.target.closest?.('.bottom-nav');
  if(!nav||event.isPrimary===false||event.button>0||!nav.getClientRects().length)return;
@@ -1432,7 +1441,7 @@ function bottomSwipeDown(event){
  if(!glass||!active)return;
  // A touch-down immediately magnifies the entire rail, before the
  // layout work needed for optional horizontal scrubbing. Never wait for move.
- nav.classList?.remove?.('is-dock-settling','is-dock-releasing');
+ nav.classList?.remove?.('is-dock-settling','is-dock-releasing','is-dock-dropping');
  nav.classList?.add?.('is-dock-pressed');
  const pressed=event.target.closest?.('.bottom-item');
  pressed?.classList?.add?.('is-pressed');
@@ -1491,15 +1500,16 @@ function bottomSwipeFinish(event,cancelled=false){
  sw.layout.tabs.forEach(tab=>tab.classList.remove('is-scrubbed'));
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
  if(!sw.dragging){
-  releaseBottomEdge(sw);
-  animateDockRelease(sw.nav);
+  releaseBottomEdge(sw,false);
+  // Scrolling and cancellation are not taps; they never bounce.
+  if(!cancelled&&!sw.vertical)animateDockRelease(sw.nav);
   return;
  }
  if(event.cancelable)event.preventDefault();
  ignoreBottomClickUntil=Date.now()+420;
  // Commit the final finger position before the navigation re-renders.
  placeBottomSwipeGlass(sw,event.clientX);
- releaseBottomEdge(sw);
+ releaseBottomEdge(sw,false);
  const index=bottomSwipeNearest(sw,event.clientX);
  const next=sw.layout.tabs[index]?.dataset.view;
  if(cancelled||!next||next===state.view){
@@ -1509,11 +1519,12 @@ function bottomSwipeFinish(event,cancelled=false){
    sw.glass.style.width=Math.max(12,active.offsetWidth-6)+'px';
    sw.glass.style.transform='translate3d('+(active.offsetLeft+3)+'px,0,0)';
   }
-  animateDockRelease(sw.nav);
+  animateDockDrop(sw.nav);
   return;
  }
  liquidGestureSnap=true;
- dockRemountPulse=true;
+ dockRemountPulse=false;
+ dockRemountDrop=true;
  navigateBottomModule(next);
 }
 function bottomSwipeClickCapture(event){
@@ -1607,7 +1618,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  const act=target.dataset.action;
  switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;}
  case'thisWeek':state.week=weekNow();state.weekday=today().getDay();if(state.weekday===0)state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;
- case'scheduleView':{const nextMode=target.dataset.mode==='month'?'month':'week';if(nextMode===state.scheduleMode)break;if(nextMode==='month'){const chosen=dayDate(state.week,state.weekday);state.monthSelected=iso(chosen);state.monthCursor=iso(new Date(chosen.getFullYear(),chosen.getMonth(),1));}else{const chosen=dt(state.monthSelected);state.weekday=chosen.getDay();state.week=clamp(calcWeek(state.weekday===0?addDays(chosen,1):chosen),1,(term().totalWeeks||19)+1);}state.scheduleMode=nextMode;if(nextMode==='month'){state.monthLoading=false;state.monthLoadError=0;}state.prefs.calendarView=nextMode;storePrefs();render();if(nextMode==='month')loadMonth();else{if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();}break;}
+ case'scheduleView':{const nextMode=target.dataset.mode==='month'?'month':'week';if(nextMode===state.scheduleMode)break;if(nextMode==='month'){const chosen=dayDate(state.week,state.weekday);state.monthSelected=iso(chosen);state.monthCursor=iso(new Date(chosen.getFullYear(),chosen.getMonth(),1));}else{const chosen=dt(state.monthSelected);state.weekday=chosen.getDay();state.week=clamp(calcWeek(state.weekday===0?addDays(chosen,1):chosen),1,(term().totalWeeks||19)+1);}state.scheduleMode=nextMode;if(nextMode==='month'){state.monthLoading=false;state.monthLoadError=0;}state.prefs.calendarView=nextMode;storePrefs();transitionScheduleMode(()=>{if(nextMode==='month')loadMonth();else{if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();}});break;}
  case'prevMonth':case'nextMonth':{const d=dt(state.monthCursor);d.setDate(1);d.setMonth(d.getMonth()+(act==='nextMonth'?1:-1));state.monthCursor=iso(d);state.monthSelected=iso(d);state.monthLoading=false;state.monthLoadError=0;render();loadMonth();break;}
  case'retryMonth':loadMonth();break;
  case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());state.monthLoading=false;state.monthLoadError=0;render();loadMonth();break;

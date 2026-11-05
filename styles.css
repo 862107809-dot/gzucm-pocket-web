@@ -2420,6 +2420,11 @@
  transform:none!important;
  scale:1!important;
 }
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > button.is-pressed:not(.is-scrubbed){
+ transform:none!important;
+ scale:1!important;
+ filter:brightness(.98)!important;
+}
 #app .bottom-nav .bottom-item:not(.is-scrubbed):is(:active,.is-pressed),
 #app .bottom-nav .bottom-item.is-landing{
  transform:none!important;

@@ -886,3 +886,40 @@ body{
   backdrop-filter:none!important;
  }
 }
+
+
+/* VIDEO-MATCHED WEEKDAY LENS: the reusable selected capsule sits behind
+   all seven date buttons, never introducing an eighth grid column. */
+:root .day-strip.liquid-selector > .liquid-choice-highlight{
+ display:block!important;
+ background:linear-gradient(145deg,var(--lg-sheen),transparent 65%),var(--lg-optic)!important;
+ border:1px solid var(--lg-rim)!important;
+ box-shadow:inset 0 1px 0 var(--lg-specular),0 4px 11px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(10px) saturate(1.12);
+ backdrop-filter:blur(10px) saturate(1.12);
+}
+:root .day-strip.liquid-selector > .day-tab.active,
+:root .day-strip.liquid-selector > .day-tab.is-scrubbed{
+ background:transparent!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+ color:var(--accent)!important;
+}
+:root[data-active-theme="dark"] .day-strip.liquid-selector > .liquid-choice-highlight{
+ background:var(--night-lens)!important;
+ border-color:var(--night-rim)!important;
+ box-shadow:inset 0 1px 0 var(--night-sheen),0 4px 11px var(--night-shadow)!important;
+}
+:root[data-active-theme="dark"] .day-strip.liquid-selector > .day-tab.active,
+:root[data-active-theme="dark"] .day-strip.liquid-selector > .day-tab.is-scrubbed{
+ background:transparent!important;
+ border-color:transparent!important;
+ box-shadow:none!important;
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ :root .day-strip.liquid-selector > .liquid-choice-highlight{
+  background:var(--readable-active)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+ }
+}

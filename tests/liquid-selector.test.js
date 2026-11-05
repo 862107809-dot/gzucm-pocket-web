@@ -135,15 +135,18 @@ test('a vertical scroll ends rail enlargement without selecting anything',()=>{
  assert.equal(h.group.classList.contains('is-rail-releasing'),false);
  assert.equal(h.stats().clicks,0);
 });
-test('horizontal rail spring follows into a freshly rendered view',()=>{
+test('horizontal rail dragging lands gently across rerender, with no elastic bounce',()=>{
  const h=harness('grade');
  h.selectors.liquidPointerDown(h.event(0,40,20));
  h.selectors.liquidPointerMove(h.event(0,230,20));
  h.runFrame();
  h.selectors.liquidPointerFinish(h.event(0,230,20));
+ assert.ok(h.group.classList.contains('is-rail-dropping'));
+ assert.ok(!h.group.classList.contains('is-rail-releasing'));
  h.selectors.enhanceLiquidSelectors({querySelectorAll:()=>[h.group]});
- assert.ok(h.group.classList.contains('is-rail-settling'));
- assert.match(css,/@keyframes pocketRailSettle/);
+ assert.ok(h.group.classList.contains('is-rail-dropping'));
+ assert.ok(!h.group.classList.contains('is-rail-settling'));
+ assert.match(css,/@keyframes pocketRailDrop\{from\{scale:1\.046;\}to\{scale:1;\}\}/);
 });
 test('popovers and weekday choice tiles never use the horizontal rail animation',()=>{
  const menu=harness('menu',true);

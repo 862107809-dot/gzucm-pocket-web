@@ -136,6 +136,22 @@ test('video style dark/light weekday lens and PWA gesture assets are consistent'
  assert.match(material,/prefers-reduced-transparency:reduce/);
 });
 
+test('confirmed choices gain a material shadow without a white glow in dark mode',()=>{
+ const section=material.slice(material.indexOf('/* NATURAL SELECTION SHADOW v1'));
+ assert.ok(section.length>1200,'confirmation shadow material must exist');
+ assert.match(section,/--pocket-selected-shadow:/);
+ assert.match(section,/--pocket-confirm-shadow:/);
+ assert.match(section,/:root\[data-active-theme="dark"\]\{/);
+ assert.match(section,/:root\[data-glass-engine\] \.bottom-nav \.bottom-liquid-surface/);
+ assert.match(section,/\.liquid-selector > \.liquid-choice-highlight/);
+ assert.match(section,/\.safari-floating-menu \.safari-menu-glider/);
+ assert.match(section,/\.bottom-liquid-indicator\.is-confirmed::after/);
+ assert.match(section,/@keyframes pocketNaturalConfirmation/);
+ assert.match(section,/\.pocket-full-release/);
+ assert.match(section,/prefers-reduced-motion:reduce/);
+ assert.doesNotMatch(section,/#fff|rgba\(255,255,255/,'confirmation material must not add white rims');
+});
+
 test('visual design change does not rewrite timing or gesture handling',()=>{
  assert.doesNotMatch(material,/(^|[\n\r])[ \t]*(?:animation|transition)(?:-[a-z]+)?\s*:/m);
  assert.match(app,/function bottomSwipeDown\(/);

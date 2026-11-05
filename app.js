@@ -523,7 +523,7 @@ function commitLiquidSwitch(button,on){
  storePrefs();
  // Animate the thumb's settling independently from its horizontal travel;
  // no rerender means dragging/tapping never causes a visual rewind.
- if(!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
+ if(typeof window==='undefined'||!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
   button.classList?.remove?.('is-settling');
   void button.offsetWidth; // restart the tiny one-shot spring on rapid toggles
   button.classList?.add?.('is-settling');

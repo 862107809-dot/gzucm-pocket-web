@@ -216,10 +216,8 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
   if(typeof glass.animate==='function'){
-   const duration=fromSwipe?290:400;
-   const frames=fromSwipe?
-    liquidDropFrames(startX,startW,targetX,targetW):
-    liquidSpringFrames(startX,startW,targetX,targetW,duration);
+   const duration=fromSwipe?290:330;
+   const frames=liquidDropFrames(startX,startW,targetX,targetW); // smooth, monotone for taps and swipes
    glass.classList.add('is-instant');
    glass.style.width=targetW+'px';
    glass.style.transform='translate3d('+targetX+'px,0,0)';
@@ -264,7 +262,7 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  p.glass.style?.setProperty?.('--rail-edge-shift','0px');
  p.glass.style?.setProperty?.('--rail-edge-scale','1');
  if(cancelled)return;
- const className=p.dragging?'is-rail-dropping':'is-rail-releasing';
+ const className=p.dragging?'is-rail-dropping':'is-rail-releasing'; // CSS release is non-elastic
  group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
  group.classList.add(className);
@@ -1452,7 +1450,7 @@ async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch
 function navigateBottomModule(view){
  if(!['today','schedule','grades','power','settings'].includes(view))return;
  if(state.view===view){
-  // A repeated tap uses only the Dock's own press-and-bounce feedback.
+  // A repeated tap keeps selection feedback without scaling or bouncing the page.
   return;
  }
  state.view=view;
@@ -1599,8 +1597,10 @@ function bottomSwipeFinish(event,cancelled=false){
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
  if(!sw.dragging){
   releaseBottomEdge(sw,false);
-  // Scrolling and cancellation are not taps; they never bounce.
-  if(!cancelled&&!sw.vertical)animateDockRelease(sw.nav);
+  // A tap may confirm the selected glass, but never triggers a scale rebound.
+  if(!cancelled&&!sw.vertical){
+   confirmGlassSelection(sw.glass);
+  }
   return;
  }
  if(event.cancelable)event.preventDefault();
@@ -1634,8 +1634,8 @@ function bottomSwipeClickCapture(event){
  event.preventDefault();
  event.stopImmediatePropagation();
 }
-/* Unified full-surface tactile feedback for non-popup interactive elements.
- * Scale the actual hit surface (or a standalone card) without changing layout.
+/* Unified no-bounce tactile feedback for non-popup interactive elements.
+ * Use optical shadow/brightness on tap, never scale the content or trigger a spring.
  * Pointer tracking yields immediately to page scrolling and liquid scrub gestures.
  * Dialogs and floating popovers retain their existing zoom/return animations. */
 let wholeSurfacePress=null;

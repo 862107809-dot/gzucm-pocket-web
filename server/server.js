@@ -8,6 +8,7 @@ const crypto=require('node:crypto');
 const {SchoolClient,qrSvg}=require('./school');
 const {EcardClient,PORTAL}=require('./ecard');
 const CAS=require('./cas');
+const PowerBridge=require('./power-bridge');
 const ROOT=path.resolve(__dirname,'..');
 const PORT=Number(process.env.PORT)||4173;
 // Loopback by default. Do not expose school session cookies to public networks.
@@ -27,6 +28,7 @@ function readSmallForm(req){return new Promise((resolve,reject)=>{let size=0,chu
 const TTL=12*60*60*1000;
 const sessions=new Map();
 const SESSION_COOKIE=PUBLIC?'__Host-gzsid':'gzsid';
+const BRIDGE_COOKIE=PUBLIC?'__Host-gzpb':'gzpb';
 const MAX_SESSIONS=300;
 const qrStarts=[]; // Shared limiter reduces unintended school QR traffic on a public host.
 const powerAttempts=[]; // Avoid overloading the official ecard server from a public service.
@@ -54,6 +56,7 @@ function finishCasCallback(res,ok){
 function qrAllowed(){const now=Date.now();while(qrStarts.length&&qrStarts[0]<now-60000)qrStarts.shift();if(qrStarts.length>=18)return false;qrStarts.push(now);return true;}
 function powerAllowed(){const now=Date.now();while(powerAttempts.length&&powerAttempts[0]<now-60000)powerAttempts.shift();if(powerAttempts.length>=24)return false;powerAttempts.push(now);return true;}
 function isHttps(req){return req.socket.encrypted || (PUBLIC && req.headers['x-forwarded-proto']==='https');}
+function bridgeCookie(value,ttl=30*86400){return `${BRIDGE_COOKIE}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${ttl}${(PUBLIC||LAN)?'; Secure':''}`;}
 function sessionCookie(value){return `${SESSION_COOKIE}=${value}; HttpOnly; Path=/; SameSite=Strict; Max-Age=43200${(PUBLIC||LAN)?'; Secure':''}`;}
 const allowedFiles=new Map(Object.entries({
  '/':'index.html','/index.html':'index.html','/boot-check.js':'boot-check.js','/i18n.js':'i18n.js','/vendor/liquid-glass.js':'vendor/liquid-glass.js','/glass-effects.js':'glass-effects.js','/haptics.js':'haptics.js','/power-insights.js':'power-insights.js','/power-snapshots.js':'power-snapshots.js','/cas-complete.js':'cas-complete.js','/privacy.html':'privacy.html','/styles.css':'styles.css','/app.js':'app.js','/data.js':'data.js','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/assets/icon.svg':'assets/icon.svg','/assets/apple-touch-icon.png':'assets/apple-touch-icon.png'
@@ -62,6 +65,7 @@ const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8'
 function secureHeaders(res){if(PUBLIC)res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Cross-Origin-Resource-Policy','same-origin');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');res.setHeader('Content-Security-Policy',"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; form-action 'self'");}
 function reply(res,status,value,extras={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...extras});res.end(JSON.stringify(value));}
 function sendFile(res,filename){const full=path.join(ROOT,filename);fs.readFile(full,(err,buf)=>{if(err){reply(res,404,{error:'文件不存在'});return;}res.writeHead(200,{'Content-Type':TYPES[path.extname(filename)]||'application/octet-stream','Cache-Control':(filename==='sw.js'||filename==='index.html')?'no-cache':'private, max-age=300'});res.end(buf);});}
+function readJSON(req,limit=32000){return new Promise((resolve,reject)=>{let size=0;const chunks=[];req.on('data',part=>{size+=part.length;if(size>limit){reject(Object.assign(Error('请求体过大'),{status:413}));req.destroy();return;}chunks.push(part);});req.on('end',()=>{try{resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))}catch{reject(Object.assign(Error('JSON 无效'),{status:400}))}});req.on('error',reject);});}
 function readCookies(req){return Object.fromEntries((req.headers.cookie||'').split(';').map(s=>{const i=s.indexOf('=');return i>0?[s.slice(0,i).trim(),s.slice(i+1).trim()]:['',''];}).filter(x=>x[0]));}
 function getSession(req,res){let sid=readCookies(req)[SESSION_COOKIE],stored=sid&&sessions.get(sid);if(stored&&Date.now()-stored.accessed>TTL){stored.client.clear();stored.ecard.clear();sessions.delete(sid);stored=null;}if(!stored){if(sessions.size>=MAX_SESSIONS)throw Object.assign(Error('当前登录人数较多，请稍后重试'),{status:503});sid=crypto.randomBytes(32).toString('base64url');stored={id:sid,client:new SchoolClient(),ecard:new EcardClient(),accessed:Date.now(),lastRequest:0,lastPowerRequest:0,rotated:false};sessions.set(sid,stored);res.setHeader('Set-Cookie',sessionCookie(sid));}stored.accessed=Date.now();return stored;}
 function isPostAllowed(req){const origin=req.headers.origin;if(!origin)return !PUBLIC;try{const u=new URL(origin);return u.host===req.headers.host&&u.protocol===(isHttps(req)?'https:':'http:')&&(req.headers['sec-fetch-site']!=='cross-site');}catch{return false;}}
@@ -120,7 +124,44 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
  if(url.pathname==='/favicon.ico'){res.writeHead(302,{Location:'/assets/icon.svg'});res.end();return;}
  if(!url.pathname.startsWith('/api/')){if(req.method!=='GET'&&req.method!=='HEAD'){reply(res,405,{error:'不支持的方法'});return;}const file=allowedFiles.get(url.pathname);if(!file){reply(res,404,{error:'页面不存在'});return;}sendFile(res,file);return;}
  if(req.method!=='GET'&&req.method!=='POST'){reply(res,405,{error:'不支持的方法'});return;}
- if(req.method==='POST'&&(!isPostAllowed(req)||(PUBLIC&&!String(req.headers['content-type']||'').startsWith('application/json')))){reply(res,403,{error:'非法跨站请求'});return;}
+ // Native URLSession does not set browser Origin or Sec-Fetch-Site headers.
+ // Only allow that exception for the high-entropy one-time code and push-only
+ // bearer endpoints, never for a browser session or its readable history.
+ const nativeBridgePost=req.method==='POST'&&
+  ['/api/power/bridge/claim','/api/power/bridge/push'].includes(url.pathname)&&
+  !req.headers.origin&&!req.headers.referer&&!req.headers['sec-fetch-site'];
+ if(req.method==='POST'&&
+  ((!nativeBridgePost&&!isPostAllowed(req))||
+   (PUBLIC&&!String(req.headers['content-type']||'').startsWith('application/json')))){
+  reply(res,403,{error:'非法跨站请求'});return;
+ }
+ const bridgeID=readCookies(req)[BRIDGE_COOKIE]||'';
+ if(url.pathname==='/api/power/bridge/start'&&req.method==='POST'){
+  if(bridgeID)PowerBridge.revoke(bridgeID);
+  const pairing=PowerBridge.create();
+  appendCookie(res,bridgeCookie(pairing.id));
+  return reply(res,200,{code:pairing.code,expiresAt:pairing.expiresAt,
+   message:'请在 iOS App 的设置中输入此配对码。网站只接收电量展示数据。'});
+ }
+ if(url.pathname==='/api/power/bridge/read'&&req.method==='GET'){
+  if(!bridgeID)return reply(res,200,{status:'not-paired'});
+  return reply(res,200,PowerBridge.read(bridgeID));
+ }
+ if(url.pathname==='/api/power/bridge/claim'&&req.method==='POST'){
+  const body=await readJSON(req,2048);
+  return reply(res,200,PowerBridge.claim(body.code));
+ }
+ if(url.pathname==='/api/power/bridge/push'&&req.method==='POST'){
+  const auth=String(req.headers.authorization||'');
+  const token=auth.startsWith('Bearer ')?auth.slice(7):'';
+  const body=await readJSON(req,32000);
+  return reply(res,200,PowerBridge.push(token,body));
+ }
+ if(url.pathname==='/api/power/bridge/revoke'&&req.method==='POST'){
+  if(bridgeID)PowerBridge.revoke(bridgeID);
+  appendCookie(res,bridgeCookie('',0));
+  return reply(res,200,{ok:true});
+ }
  const s=getSession(req,res);
  try{
   const p=url.pathname;

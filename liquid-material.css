@@ -383,6 +383,21 @@ body{
  backdrop-filter:blur(13px) saturate(1.35);
 }
 
+/* Smooth preference: lightweight frosted material without SVG or GPU.
+ * Favor cheaper small blur radii and remove repeated card backdrop sampling. */
+:root[data-glass-preference="smooth"][data-glass-engine="frosted"] :is(
+ .topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu,.segmented,
+ .schedule-view-switch,.theme-option,.safari-select,.topbar .icon-btn,
+ .language-switch,.liquid-selector > .liquid-choice-highlight,
+ .bottom-nav .bottom-liquid-surface){
+ -webkit-backdrop-filter:blur(8px) saturate(1.08);
+ backdrop-filter:blur(8px) saturate(1.08);
+}
+:root[data-glass-preference="smooth"] :is(.card,.page-schedule .card){
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
+}
+
 /* Browsers WITHOUT native background sampling: preserve the frosted
  * appearance with a denser translucent pigment and diffuse texture.
  * It cannot truly blur live DOM pixels, so we do not claim refraction. */

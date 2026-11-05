@@ -707,6 +707,18 @@ function render(){
  previousBottomTab=state.view;
  if(state.view==='settings')updateGlassModeIndicator();
 }
+/* Grade and credit selectors update only the grade page. Rebuilding
+ * sidebar, top bar, Dock and optical surfaces for every filter change
+ * interrupted finger-following and wasted high-refresh compositor frames. */
+function renderGradesContent(){
+ const pageRoot=$('#page-content');
+ if(!pageRoot||state.view!=='grades'){render();return;}
+ const previous=snapshotLiquidSelectors(pageRoot);
+ pageRoot.innerHTML=gradesPage();
+ enhanceLiquidSelectors(pageRoot,previous);
+ window.GZUCM_I18N?.apply(pageRoot,state.prefs.language==='en'?'en':'zh');
+ restoreSurfaceBounce(pageRoot);
+}
 /* Week/month switches are DOM-local: do not repaint the app shell or take
  * large View Transition snapshots of blurred course cards (slow on Safari).
  * Keep the actual glass selector mounted, so touch/drag never resets.
@@ -1890,8 +1902,14 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  }navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
- if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}
- if(target.dataset.credit){state.creditMode=target.dataset.credit;render();return;}
+ if(target.dataset.gradeTab){
+  if(state.gradeTab!==target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;renderGradesContent();}
+  return;
+ }
+ if(target.dataset.credit){
+  if(state.creditMode!==target.dataset.credit){state.creditMode=target.dataset.credit;renderGradesContent();}
+  return;
+ }
  const act=target.dataset.action;
  switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;}
  case'thisWeek':state.week=weekNow();state.weekday=today().getDay();if(state.weekday===0)state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;

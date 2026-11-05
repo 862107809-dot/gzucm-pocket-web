@@ -1418,7 +1418,8 @@ async function loadWeek(week){
   state.data.sessions=[...(state.data.sessions||[]).filter(s=>Number(s.week)!==week),...(result.sessions||[])];
   state.loadedWeeks.add(week);
   store();
-  render();
+  if(state.view==='schedule')renderScheduleContent();
+  else render();
  }catch(e){toast('本周课表同步失败：'+e.message);}
 }
 function loadSundayWeek(){
@@ -1464,7 +1465,7 @@ async function loadMonth(){
  if(serial===state.monthSerial){
   state.monthLoading=false;
   state.monthLoadError=failures;
-  if(state.view==='schedule'&&state.scheduleMode==='month')render();
+  if(state.view==='schedule'&&state.scheduleMode==='month')renderScheduleContent();
   if(failures)toast('部分教学周加载失败，可重新切换月份或重试');
  }
 }

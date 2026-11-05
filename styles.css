@@ -2387,3 +2387,73 @@
   opacity:0!important;
  }
 }
+
+
+/* NO-BOUNCE CLICK FEEDBACK v1
+ * Click and tap responses use color, depth and smooth travel, not elastic
+ * resizing. Real scrubbing/dragging, thumb toggles and dialog transitions
+ * retain their dedicated motion. */
+#app .pocket-full-press,
+#app .pocket-full-release,
+#app .pocket-full-card.pocket-full-press,
+#app .pocket-full-card.pocket-full-release{
+ animation:none!important;
+ scale:1!important;
+ transform:none!important;
+ transition:filter .16s ease-out,box-shadow .18s ease-out,
+   background-color .18s ease-out!important;
+}
+#app .pocket-full-press,
+#app .pocket-full-card.pocket-full-press{
+ filter:brightness(.965) drop-shadow(0 2px 5px rgba(26,91,53,.09))!important;
+}
+#app .pocket-full-release,
+#app .pocket-full-card.pocket-full-release{
+ filter:drop-shadow(0 4px 9px rgba(27,80,47,.12))!important;
+}
+:root[data-active-theme="dark"] #app :is(.pocket-full-press,.pocket-full-release){
+ filter:brightness(.98) drop-shadow(0 3px 8px rgba(0,10,5,.22))!important;
+}
+#app :is(.btn,.hero-button,.icon-btn,.small-action,.language-switch,
+ .safari-select,.agenda-row,.month-cell,.day-tab,.nav-item,
+ .segmented button,.schedule-view-switch button):not(.is-scrubbed):active{
+ transform:none!important;
+ scale:1!important;
+}
+#app .bottom-nav .bottom-item:not(.is-scrubbed):is(:active,.is-pressed),
+#app .bottom-nav .bottom-item.is-landing{
+ transform:none!important;
+ scale:1!important;
+ filter:none!important;
+ animation:none!important;
+}
+#app .bottom-nav .bottom-item:not(.is-scrubbed):is(:active,.is-pressed)::before{
+ display:none!important;
+}
+#app .bottom-liquid-indicator.is-moving .bottom-liquid-surface{
+ animation:none!important;
+}
+/* A click must not scale either the whole bar or its selected capsule. */
+#app .bottom-nav:is(.is-dock-releasing,.is-dock-settling),
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-releasing,.is-rail-settling){
+ animation:none!important;
+ scale:1!important;
+}
+#app .bottom-nav:is(.is-dock-releasing,.is-dock-settling) .bottom-liquid-indicator,
+:is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-releasing,.is-rail-settling) > .liquid-choice-highlight{
+ animation:none!important;
+ scale:1!important;
+}
+/* Horizontal swipe still has a one-way landing; it never picks up the
+ * resting click rule, even if an old tab happens to remain :active. */
+#app .bottom-nav.is-dock-dragging .bottom-item.is-scrubbed{
+ transform:scale(1.04);
+}
+@media(prefers-reduced-motion:reduce){
+ #app .pocket-full-press,#app .pocket-full-release,
+ #app .pocket-full-card.pocket-full-press,
+ #app .pocket-full-card.pocket-full-release{
+  transition:none!important;
+  filter:none!important;
+ }
+}

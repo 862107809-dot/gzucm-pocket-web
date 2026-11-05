@@ -40,7 +40,9 @@ test('Authorized power flow uses balance API, not fake static tips',async()=>{
  assert.equal(data.source,'ecard-live');
  assert.equal(data.power.balance,16.83);
  assert.equal(data.power.roomLabel,'测试宿舍');
- assert.equal(requested.length,3);
+ assert.equal(requested.length,4);
+ assert.equal(requested[2].form.lastDate,'2026-11');
+ assert.equal(requested[3].form.lastDate,'2026-10');
  assert.equal(requested[1].form.roomNum,'5770');
  assert.equal(requested[1].form.buildingNo,'5754');
  assert.equal(requested[1].form.token,'t_123');

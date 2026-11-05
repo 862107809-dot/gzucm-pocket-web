@@ -171,7 +171,7 @@ function liquidDropFrames(startX,startW,endX,endW){
  }
  return frames;
 }
-function alignBottomLiquid(previousTab,previousRect){
+function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const nav=document.querySelector('#app .bottom-nav');
  if(nav?.classList?.contains?.('is-dock-settling')||nav?.classList?.contains?.('is-dock-dropping')){
   nav.addEventListener?.('animationend',event=>{
@@ -196,9 +196,10 @@ function alignBottomLiquid(previousTab,previousRect){
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
  // Only the glass lens travels; no independently outlined tab landing.
- const oldX=swipeAnchor?swipeAnchor.x:previousRect?.width?previousRect.left-navRect.left
-   :previous?.offsetLeft+inset;
- const oldW=swipeAnchor?swipeAnchor.width:previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
+ const oldX=swipeAnchor?swipeAnchor.x:previousGeometry?.x!==undefined?previousGeometry.x:
+  previousRect?.width?previousRect.left-navRect.left:previous?.offsetLeft+inset;
+ const oldW=swipeAnchor?swipeAnchor.width:previousGeometry?.width||previousRect?.width||
+  Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
  const startX=Number.isFinite(oldX)?oldX:targetX;
  const startW=Number.isFinite(oldW)?oldW:targetW;
  glass.classList.add('is-instant');
@@ -236,7 +237,7 @@ function alignBottomLiquid(previousTab,previousRect){
 
 /* The same touch-following glass selection for week/month mode,
  * grade filters, credit filters, login choices and desktop sidebar tabs.
- * Weekday buttons intentionally remain independent press-only controls.
+ * Weekdays use the same scrub lens but retain seven independent grid cells.
  * The indicator is decorative; native buttons keep their click/ARIA semantics. */
 let liquidSelectorPointer=null;
 let ignoreLiquidSelectorClickUntil=0;
@@ -650,6 +651,9 @@ function render(){
  const previousLiquidSelectors=snapshotLiquidSelectors(root);
  const oldGlass=root.querySelector('.bottom-liquid-indicator');
  const oldRect=oldGlass?.getBoundingClientRect();
+ // CSS transforms reflect layout-space translation; screen rects are enlarged by touch scale.
+ const oldMatch=oldGlass?.style?.transform?.match?.(/translate3d\((-?[0-9.]+)px, *(-?[0-9.]+)px,/);
+ const oldInlineGeometry=oldMatch?{x:Number(oldMatch[1]),width:parseFloat(oldGlass?.style?.width)||0}:null;
  const oldView=previousBottomTab;
  const modeEntrance=scheduleModeFallbackEntrance&&state.view==='schedule';
  scheduleModeFallbackEntrance=false;
@@ -658,7 +662,7 @@ function render(){
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);
  restoreSurfaceBounce(root);
- alignBottomLiquid(oldView,oldRect);
+ alignBottomLiquid(oldView,oldRect,oldInlineGeometry);
  previousBottomTab=state.view;
  if(state.view==='settings')updateGlassModeIndicator();
 }

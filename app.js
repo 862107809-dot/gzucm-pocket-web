@@ -1293,11 +1293,18 @@ function bottomSwipeDown(event){
  const glass=nav.querySelector('.bottom-liquid-indicator');
  const active=nav.querySelector('.bottom-item.active');
  if(!glass||!active)return;
+ // A touch-down immediately magnifies the entire rail, before the
+ // layout work needed for optional horizontal scrubbing. Never wait for move.
+ nav.classList?.remove?.('is-dock-settling');
+ nav.classList?.add?.('is-dock-pressed');
  const pressed=event.target.closest?.('.bottom-item');
  pressed?.classList?.add?.('is-pressed');
  const layout=bottomSwipeLayout(nav);
- if(!layout){pressed?.classList?.remove?.('is-pressed');return;}
- nav.classList?.add?.('is-dock-pressed');
+ if(!layout){
+  nav.classList?.remove?.('is-dock-pressed');
+  pressed?.classList?.remove?.('is-pressed');
+  return;
+ }
  armLiquidSound();
  bottomSwipe={pointerId:event.pointerId,nav,glass,layout,pressed,
   startX:event.clientX,startY:event.clientY,

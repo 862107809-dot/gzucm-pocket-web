@@ -218,6 +218,25 @@ function alignBottomLiquid(previousTab,previousRect){
  * The indicator is decorative; native buttons keep their click/ARIA semantics. */
 let liquidSelectorPointer=null;
 let ignoreLiquidSelectorClickUntil=0;
+let pendingHorizontalRailLanding=null;
+function isHorizontalLiquidRail(group,menu){
+ return !menu&&!group.matches?.('.sidebar nav')&&!group.classList?.contains?.('day-strip');
+}
+function releaseHorizontalLiquidRail(p,cancelled=false){
+ if(!p?.rail)return;
+ const group=p.group;
+ group.classList.remove('is-rail-pressed','is-rail-dragging','is-rail-edge-left','is-rail-edge-right');
+ group.style?.setProperty?.('--rail-edge-energy','0');
+ p.glass.style?.setProperty?.('--rail-edge-shift','0px');
+ p.glass.style?.setProperty?.('--rail-edge-scale','1');
+ if(cancelled)return;
+ group.classList.remove('is-rail-releasing');
+ void group.offsetWidth;
+ group.classList.add('is-rail-releasing');
+ group.addEventListener?.('animationend',event=>{
+  if(event.animationName==='pocketRailRelease')group.classList.remove('is-rail-releasing');
+ },{once:true});
+}
 function liquidSelectorId(group){
  if(group.classList.contains('schedule-view-switch'))return 'schedule-mode';
  if(group.querySelector('[data-grade-tab]'))return 'grade-type';
@@ -270,6 +289,8 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   const id=liquidSelectorId(group),active=liquidSelectorActive(group);
   if(!id||!active)continue;
   group.classList.add('liquid-selector');
+  const rail=isHorizontalLiquidRail(group,false);
+  if(rail)group.classList.add('is-horizontal-rail');
   const glass=document.createElement('span');
   glass.className='liquid-choice-highlight is-instant';
   glass.setAttribute('aria-hidden','true');
@@ -290,7 +311,15 @@ function enhanceLiquidSelectors(root,previous=new Map()){
     setSelectorGlass(glass,target);
    });
   }
+  if(rail&&pendingHorizontalRailLanding?.id===id&&
+     Date.now()-pendingHorizontalRailLanding.at<700){
+   group.classList.add('is-rail-settling');
+   group.addEventListener?.('animationend',event=>{
+    if(event.animationName==='pocketRailSettle')group.classList.remove('is-rail-settling');
+   },{once:true});
+  }
  }
+ pendingHorizontalRailLanding=null;
 }
 function liquidClosestButton(buttons,x,y,vertical){
  let best=null,distance=Infinity,index=-1;
@@ -322,6 +351,17 @@ function placeLiquidPointerGlass(pointer,x,y){
  const pos=Math.max(base,Math.min(limit,raw));
  setSelectorGlass(pointer.glass,{x:pointer.vertical?target.offsetLeft:pos,
   y:pointer.vertical?pos:target.offsetTop,width:target.offsetWidth,height:target.offsetHeight});
+ if(pointer.rail){
+  const centers=pointer.centers;
+  const left=Math.max(0,centers[0]-12-x),right=Math.max(0,x-centers[centers.length-1]-12);
+  const edge=left>0?-1:right>0?1:0;
+  const energy=Math.min(1,Math.max(left,right)/80);
+  pointer.group.classList?.toggle?.('is-rail-edge-left',edge<0);
+  pointer.group.classList?.toggle?.('is-rail-edge-right',edge>0);
+  pointer.group.style?.setProperty?.('--rail-edge-energy',energy.toFixed(3));
+  pointer.glass.style?.setProperty?.('--rail-edge-shift',(edge*energy*6).toFixed(2)+'px');
+  pointer.glass.style?.setProperty?.('--rail-edge-scale',(1-energy*.09).toFixed(3));
+ }
 }
 function selectorGlassFor(group){
  return group.querySelector('.liquid-choice-highlight,.safari-menu-glider');
@@ -338,25 +378,36 @@ function liquidPointerDown(event){
  if(!glass)return;
  armLiquidSound();
  const vertical=!!menu||group.matches('.sidebar nav');
+ // Cache hit rectangles before changing the whole bar's visual size.
  const bounds=buttons.map(button=>button.getBoundingClientRect());
+ const rail=isHorizontalLiquidRail(group,!!menu);
  liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
   x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
   vertical,dragging:false,scroll:false,groupRect:group.getBoundingClientRect(),
   centers:bounds.map(r=>vertical?r.top+r.height/2:r.left+r.width/2),
   firstLeft:buttons[0].offsetLeft,lastLeft:buttons[buttons.length-1].offsetLeft,
   firstTop:buttons[0].offsetTop,lastTop:buttons[buttons.length-1].offsetTop,
-  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu};
+  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu,rail};
+ if(rail){
+  group.classList?.remove?.('is-rail-releasing','is-rail-settling');
+  group.classList?.add?.('is-rail-pressed');
+ }
 }
 function liquidPointerMove(event){
  const p=liquidSelectorPointer;
  if(!p||p.pointerId!==event.pointerId||p.scroll)return;
  const dx=event.clientX-p.x,dy=event.clientY-p.y;
  if(!p.dragging){
-  if(!p.vertical&&Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.15){p.scroll=true;return;}
+  if(!p.vertical&&Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.15){
+   p.scroll=true;
+   releaseHorizontalLiquidRail(p,true);
+   return;
+  }
   if(p.vertical&&!p.menu&&Math.abs(dx)>11&&Math.abs(dx)>Math.abs(dy)*1.15){p.scroll=true;return;}
   const travelled=p.vertical?Math.abs(dy):Math.abs(dx);
   if(travelled<8)return;
   p.dragging=true;
+  if(p.rail)p.group.classList.add('is-rail-dragging');
   p.glass.classList.add('is-instant','is-dragging');
   p.glass.classList.remove('is-moving');
   try{p.group.setPointerCapture(event.pointerId);}catch{}
@@ -383,6 +434,10 @@ function liquidPointerFinish(event,cancelled=false){
  if(p.raf)cancelAnimationFrame(p.raf);
  try{if(p.group.hasPointerCapture?.(event.pointerId))p.group.releasePointerCapture(event.pointerId);}catch{}
  p.buttons.forEach(button=>button.classList.remove('is-scrubbed'));
+ releaseHorizontalLiquidRail(p,cancelled||p.scroll);
+ if(p.rail&&!cancelled&&!p.scroll){
+  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now()};
+ }
  if(!p.dragging)return;
  if(event.cancelable)event.preventDefault();
  if(cancelled){
@@ -1477,6 +1532,7 @@ function wholeSurfacePressDown(event){
  if(!surface)surface=target.closest('.card');
  if(!surface||!surface.closest?.('#app')||surface.closest(WHOLE_SURFACE_POPUP))return;
  if(surface.closest('.bottom-nav'))return; // Dock scales on its own rail.
+ if(surface.closest('.is-horizontal-rail'))return; // A horizontal bar scales as one piece.
  if(surface.matches?.(':disabled,[aria-disabled="true"],input,textarea,select'))return;
  if(surface.closest('input,textarea,select,[contenteditable="true"]'))return;
  const timer=wholeSurfaceTimers.get(surface);

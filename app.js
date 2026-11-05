@@ -69,7 +69,19 @@ const icons={
 };
 const I = (name,size=20) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.info}</svg>`;
 const E = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt = (date,opts) => new Intl.DateTimeFormat(state.prefs.language==='en'?'en-US':'zh-CN',opts).format(date);
+// Calendar renders many dates: reuse Intl formatters instead of constructing
+// 35-42 new formatters for each month switch.
+const dateFormatters=new Map();
+const fmt=(date,opts)=>{
+ const locale=state.prefs.language==='en'?'en-US':'zh-CN';
+ const key=locale+'|'+JSON.stringify(opts);
+ let formatter=dateFormatters.get(key);
+ if(!formatter){
+  formatter=new Intl.DateTimeFormat(locale,opts);
+  dateFormatters.set(key,formatter);
+ }
+ return formatter.format(date);
+};
 const today = () => new Date();
 const dt = iso => new Date(String(iso).slice(0,10)+'T12:00:00');
 const iso = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -801,15 +813,21 @@ function calendarGrid(){
  }).join('')}`).join('')}
  </div></div>`;
 }
+let monthIndexCache=null;
 function monthCoursesIndex(){
+ const sessions=state.data.sessions||[];
+ const semesterKey=term().firstMondayIso;
+ if(monthIndexCache&&monthIndexCache.sessions===sessions&&monthIndexCache.semesterKey===semesterKey)
+  return monthIndexCache.index;
  const map=new Map();
- for(const course of state.data.sessions||[]){
+ for(const course of sessions){
   const date=courseDate(course);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
   if(!map.has(date))map.set(date,[]);
   map.get(date).push(course);
  }
  for(const courses of map.values())courses.sort((a,b)=>Number(a.startUnit)-Number(b.startUnit));
+ monthIndexCache={sessions,semesterKey,index:map};
  return map;
 }
 /* Safari Calendar-style: seven columns fully visible, daily details on tap. */

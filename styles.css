@@ -1446,3 +1446,51 @@
   animation:none!important;
  }
 }
+
+/* The whole Dock rail now grows together with the travelling capsule.
+ * Individual scale composition preserves the existing translateX(-50%)
+ * centering transform and does not resize or reflow any tab hit areas. */
+@media(max-width:900px){
+ .bottom-nav{
+  scale:1;
+  transform-origin:center bottom;
+  transition:
+   scale .32s cubic-bezier(.18,.76,.22,1.23),
+   border-color .24s ease,
+   box-shadow .30s ease!important;
+ }
+ .bottom-nav.is-dock-pressed{
+  scale:1.032;
+  border-color:rgba(255,255,255,.93);
+  box-shadow:
+   inset 0 1px 1px rgba(255,255,255,.48),
+   0 20px 55px rgba(21,59,40,.21),
+   0 0 0 1px rgba(165,233,190,.26);
+ }
+ .bottom-nav.is-dock-dragging{
+  scale:1.042;
+  box-shadow:
+   inset 0 1px 1px rgba(255,255,255,.56),
+   0 22px 60px rgba(21,59,40,.24),
+   0 0 0 1px rgba(165,233,190,.38);
+ }
+ .bottom-nav.is-dock-settling{
+  animation:pocketDockSettle .42s cubic-bezier(.22,.80,.25,1) both;
+ }
+}
+@keyframes pocketDockSettle{
+ 0%{scale:1.042;}
+ 40%{scale:.992;}
+ 73%{scale:1.007;}
+ 100%{scale:1;}
+}
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav,
+ .bottom-nav.is-dock-pressed,
+ .bottom-nav.is-dock-dragging,
+ .bottom-nav.is-dock-settling{
+  scale:1!important;
+  transition:none!important;
+  animation:none!important;
+ }
+}

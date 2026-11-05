@@ -212,13 +212,13 @@ function alignBottomLiquid(previousTab,previousRect){
  });
 }
 
-/* The same touch-following glass selection for week/month, weekdays,
+/* The same touch-following glass selection for week/month mode,
  * grade filters, credit filters, login choices and desktop sidebar tabs.
+ * Weekday buttons intentionally remain independent press-only controls.
  * The indicator is decorative; native buttons keep their click/ARIA semantics. */
 let liquidSelectorPointer=null;
 let ignoreLiquidSelectorClickUntil=0;
 function liquidSelectorId(group){
- if(group.classList.contains('day-strip'))return 'days';
  if(group.classList.contains('schedule-view-switch'))return 'schedule-mode';
  if(group.querySelector('[data-grade-tab]'))return 'grade-type';
  if(group.querySelector('[data-credit]'))return 'credit-type';
@@ -242,7 +242,7 @@ function liquidSelectorValue(button){
 }
 function snapshotLiquidSelectors(root){
  const values=new Map();
- for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.sidebar nav')){
   const active=liquidSelectorActive(group),id=liquidSelectorId(group);
   if(id&&active){
    const lens=group.querySelector('.liquid-choice-highlight');
@@ -266,7 +266,7 @@ function setSelectorGlass(glass,geometry){
 }
 function enhanceLiquidSelectors(root,previous=new Map()){
  if(!root)return;
- for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.sidebar nav')){
   const id=liquidSelectorId(group),active=liquidSelectorActive(group);
   if(!id||!active)continue;
   group.classList.add('liquid-selector');
@@ -328,7 +328,7 @@ function selectorGlassFor(group){
 }
 function liquidPointerDown(event){
  if(event.isPrimary===false||event.button>0)return;
- if(event.target.closest?.('.bottom-nav')||event.target.closest?.('input,textarea,select'))return;
+ if(event.target.closest?.('.bottom-nav,.day-strip')||event.target.closest?.('input,textarea,select'))return;
  const menu=event.target.closest?.('.safari-floating-menu');
  const group=menu||event.target.closest?.('.liquid-selector');
  if(!group)return;
@@ -477,6 +477,7 @@ function render(){
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);
+ restoreSurfaceBounce(root);
  alignBottomLiquid(oldView,oldRect);
  previousBottomTab=state.view;
 }
@@ -518,7 +519,7 @@ function dayDate(week,day){return addDays(dt(term().firstMondayIso),(week-1)*7+d
 function displayDaySessions(week,day){return day===0?currentSessions(week-1,7):currentSessions(week,day);}
 function selectedDaySessions(){return displayDaySessions(state.week,state.weekday);}
 function dayStrip(){
- return `<div class="day-strip">${calendarDays.map(([label,day])=>{
+ return `<div class="day-strip" role="group" aria-label="选择星期">${calendarDays.map(([label,day])=>{
   const date=dayDate(state.week,day),count=displayDaySessions(state.week,day).length;
   return `<button class="day-tab ${state.weekday===day?'active':''} ${iso(date)===iso(today())?'today':''} ${count?'has-class':''}"
   aria-label="${label} ${fmt(date,{month:'numeric',day:'numeric'})} ${count}节课"
@@ -1385,7 +1386,29 @@ function bottomSwipeClickCapture(event){
  * Pointer tracking yields immediately to page scrolling and liquid scrub gestures.
  * Dialogs and floating popovers retain their existing zoom/return animations. */
 let wholeSurfacePress=null;
+let pendingSurfaceBounce=null;
 const wholeSurfaceTimers=new WeakMap();
+function captureSurfaceBounce(surface){
+ const node=surface?.dataset;
+ if(!node)return;
+ const keys=['day','gradeTab','credit','date','action','view','course'];
+ const name=keys.find(key=>node[key]!==undefined);
+ if(!name)return;
+ pendingSurfaceBounce={name,value:String(node[name]),at:Date.now()};
+}
+function restoreSurfaceBounce(root){
+ const pending=pendingSurfaceBounce;
+ pendingSurfaceBounce=null;
+ if(!pending||Date.now()-pending.at>700)return;
+ const candidates=root.querySelectorAll?.('[data-day],[data-grade-tab],[data-credit],[data-date],[data-action],[data-view],[data-course]')||[];
+ for(const button of candidates){
+  if(String(button.dataset?.[pending.name])!==pending.value)continue;
+  if(button.closest?.('.modal-card,.safari-floating-menu,.bottom-nav'))continue;
+  button.classList.add('pocket-full-release');
+  setTimeout(()=>button.classList?.remove?.('pocket-full-release'),340);
+  return;
+ }
+}
 const WHOLE_SURFACE_TARGET='button,a[href],[role="button"],[role="switch"],[role="tab"],[data-action],[data-view],[data-day],[data-credit],[data-grade-tab],[data-course],[data-date]';
 const WHOLE_SURFACE_POPUP='#modal-root,#popover-root,.modal-backdrop,.modal-card,.safari-floating-menu,.toast-root';
 function wholeSurfacePressDown(event){
@@ -1417,6 +1440,7 @@ function wholeSurfacePressEnd(event,cancelled=false){
   return;
  }
  p.surface.classList?.add?.('pocket-full-release');
+ captureSurfaceBounce(p.surface);
  const handle=setTimeout(()=>{
   p.surface.classList?.remove?.('pocket-full-release','pocket-full-card');
   wholeSurfaceTimers.delete(p.surface);

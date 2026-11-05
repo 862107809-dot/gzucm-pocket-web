@@ -19,12 +19,26 @@ function harness(){
   getBoundingClientRect:()=>({left:x,width:100})
  }));
  const classes=new Set();
+ const navClasses=new Set(),navVars={};
+ const tabClasses=left.map(()=>new Set());
+ tabs.forEach((tab,i)=>{
+  tab.classList={
+   add:(...names)=>names.forEach(x=>tabClasses[i].add(x)),
+   remove:(...names)=>names.forEach(x=>tabClasses[i].delete(x)),
+   toggle:(name,on)=>on?tabClasses[i].add(name):tabClasses[i].delete(name)
+  };
+ });
  const glass={
   classList:{add:(...x)=>x.forEach(c=>classes.add(c)),remove:(...x)=>x.forEach(c=>classes.delete(c))},
-  style:{},isConnected:true
+  style:{setProperty(name,value){this[name]=value;}},isConnected:true
  };
  let captured=null;
  const nav={
+  classList:{
+   toggle:(name,on)=>on?navClasses.add(name):navClasses.delete(name),
+   remove:(...names)=>names.forEach(name=>navClasses.delete(name))
+  },
+  style:{setProperty(name,value){navVars[name]=value;}},
   getClientRects:()=>[{}],
   getBoundingClientRect:()=>({left:0,width:500}),
   setPointerCapture:id=>{captured=id;},
@@ -46,7 +60,7 @@ function harness(){
  const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
   cancelable:true,preventDefault(){this.prevented=true;},
   target:{closest:sel=>sel==='.bottom-nav'?nav:null}});
- return {state,glass,classes,nav,tabs,event,output,
+ return {state,glass,classes,nav,navClasses,navVars,tabClasses,tabs,event,output,
   frame:()=>{const next=frame;frame=null;next?.();},
   counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
 }
@@ -120,4 +134,41 @@ test('dragging back to the already-selected tab does not repaint the entire page
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
  assert.equal(h.glass.style.transform,'translate3d(3px,0,0)');
+});
+
+test('entire bottom tab visibly lifts on pointer press, then releases',()=>{
+ const h=harness();
+ const press=h.event(46,20);
+ press.target.closest=sel=>sel==='.bottom-nav'?h.nav:sel==='.bottom-item'?h.tabs[0]:null;
+ h.output.bottomSwipeDown(press);
+ assert.ok(h.tabClasses[0].has('is-pressed'));
+ h.output.bottomSwipeFinish(press);
+ assert.equal(h.tabClasses[0].has('is-pressed'),false);
+ assert.equal(h.counts().renders,0);
+});
+test('overswiping left and right reveals light while glass remains clamped',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(-120,20));
+ h.frame();
+ assert.ok(h.navClasses.has('edge-left'));
+ assert.equal(h.glass.style.transform,'translate3d(3px,0,0)');
+ assert.ok(Number(h.navVars['--edge-energy'])>0);
+ assert.ok(Number(h.glass.style['--edge-scale'])<1);
+ h.output.bottomSwipeMove(h.event(730,21));
+ h.frame();
+ assert.equal(h.navClasses.has('edge-left'),false);
+ assert.ok(h.navClasses.has('edge-right'));
+ assert.equal(h.glass.style.transform,'translate3d(403px,0,0)');
+ h.output.bottomSwipeFinish(h.event(480,21));
+ assert.equal(h.navClasses.has('edge-right'),false);
+ assert.equal(h.state.view,'settings');
+});
+test('App Store-style whole-tab visuals include spring and reduced-motion fallback',()=>{
+ assert.match(css,/\.bottom-nav \.bottom-item\.is-pressed/);
+ assert.match(css,/\.bottom-nav\.edge-left::before/);
+ assert.match(css,/\.bottom-nav\.edge-right::after/);
+ assert.match(css,/\.bottom-liquid-indicator\.is-edge-rebound/);
+ assert.match(css,/@keyframes pocketTabLanding/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });

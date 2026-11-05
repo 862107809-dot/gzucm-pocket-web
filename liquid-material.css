@@ -986,15 +986,14 @@ body{
 }
 
 
-/* UNMARKED POPOVER SELECTION v1
- * The current choice is indicated by its accessible checkmark, not by a
- * grey/opaque rectangular pill. Keep text, optical menu shell, tap/drag
- * handling and keyboard focus, across all three glass material engines. */
+/* GREY POPOVER SELECTION v2
+ * Visible neutral-grey rounded rectangle under the current menu option.
+ * Only choices INSIDE floating menus receive this treatment: the language
+ * button and theme quick-toggle in the TOP BAR keep their original glass.
+ * The existing glider follows touch scrub; checkmark remains accessible. */
 :root .safari-floating-menu .safari-menu-option.selected,
-:root .safari-floating-menu .safari-menu-option:is(:hover,:focus-visible),
-:root[data-glass-engine="frosted"] .safari-floating-menu .safari-menu-option.selected,
-:root[data-active-theme="dark"] .safari-floating-menu .safari-menu-option.selected,
-:root[data-glass-engine="frosted"][data-active-theme="dark"] .safari-floating-menu .safari-menu-option.selected{
+:root .safari-floating-menu .safari-menu-option:hover,
+:root .safari-floating-menu .safari-menu-option:focus-visible{
  background:transparent!important;
  border-color:transparent!important;
  box-shadow:none!important;
@@ -1004,13 +1003,21 @@ body{
 :root .safari-floating-menu .safari-menu-glider,
 :root[data-glass-engine="frosted"] .safari-floating-menu .safari-menu-glider,
 :root[data-active-theme="dark"] .safari-floating-menu .safari-menu-glider{
- opacity:0!important;
- background:transparent!important;
- border-color:transparent!important;
- box-shadow:none!important;
- -webkit-backdrop-filter:none!important;
- backdrop-filter:none!important;
+ opacity:1!important;
+ background:linear-gradient(145deg,rgba(108,115,111,.28),rgba(115,121,117,.20))!important;
+ border:1px solid rgba(99,107,101,.30)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.10),
+  0 3px 9px rgba(45,52,46,.10)!important;
+ -webkit-backdrop-filter:blur(6px) saturate(1.01);
+ backdrop-filter:blur(6px) saturate(1.01);
 }
+:root[data-active-theme="dark"] .safari-floating-menu .safari-menu-glider{
+ background:linear-gradient(145deg,rgba(143,149,146,.36),rgba(115,125,118,.31))!important;
+ border-color:rgba(171,179,172,.26)!important;
+ box-shadow:inset 0 1px 0 rgba(175,185,177,.10),
+  0 3px 11px rgba(0,13,6,.19)!important;
+}
+/* Keep the chosen row visually distinct without a bright white frame. */
 :root .safari-floating-menu .safari-menu-glider::before,
 :root .safari-floating-menu .safari-menu-glider::after{
  content:none!important;
@@ -1019,4 +1026,20 @@ body{
 :root .safari-floating-menu .safari-menu-option:focus-visible{
  outline:2px solid var(--accent)!important;
  outline-offset:-2px;
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ :root .safari-floating-menu .safari-menu-glider{
+  background:#c8cfcb!important;
+  border-color:#828e87!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+ }
+ :root[data-active-theme="dark"] .safari-floating-menu .safari-menu-glider{
+  background:#58655e!important;
+  border-color:#91a096!important;
+ }
+}
+:root[data-glass-backdrop="no"] .safari-floating-menu .safari-menu-glider{
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
 }

@@ -433,9 +433,9 @@ function liquidSwitchFinish(event,cancelled=false){
  if(cancelled)return;
  const r=p.button.getBoundingClientRect();
  const on=event.clientX>=r.left+r.width/2;
- const key=p.button.dataset.action==='toggleHaptics'?'hapticEffects':'soundEffects';
+ const key=p.button.dataset?.action==='toggleHaptics'?'hapticEffects':'soundEffects';
  if(on!==(state.prefs[key]!==false)){
-  window.GZUCM_HAPTICS?.pulse('toggle',true);
+  window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
   state.prefs[key]=on;
   storePrefs();
   if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}
@@ -1212,7 +1212,7 @@ function navigateBottomModule(view){
  state.view=view;
  closeModal();
  render();
- if(view==='power'){if(state.ecardReady&&Date.now()-state.powerLastAttempt>120000)syncPower(true);refreshPowerBridge(true);}
+ if(view==='power'){if(state.ecardReady&&Date.now()-state.powerLastAttempt>120000)syncPower(true);if(typeof refreshPowerBridge==='function')refreshPowerBridge(true);}
  if(view==='schedule')state.scheduleMode==='month'?loadMonth():loadSundayWeek();
  window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }

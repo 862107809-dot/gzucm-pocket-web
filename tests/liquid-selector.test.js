@@ -148,13 +148,14 @@ test('horizontal rail dragging lands gently across rerender, with no elastic bou
  assert.ok(!h.group.classList.contains('is-rail-settling'));
  assert.match(css,/@keyframes pocketRailDrop\{from\{scale:1\.046;\}to\{scale:1;\}\}/);
 });
-test('popovers and weekday choice tiles never use the horizontal rail animation',()=>{
+test('popovers remain vertically scrubbed while weekdays use horizontal glass navigation',()=>{
  const menu=harness('menu',true);
  menu.selectors.liquidPointerDown(menu.event(0,30,20));
  assert.equal(menu.group.classList.contains('is-rail-pressed'),false);
  const days=harness('days');
- assert.equal(days.group.classList.contains('is-horizontal-rail'),false);
- assert.match(css,/\.day-strip > \.liquid-choice-highlight\{display:none!important/);
+ assert.ok(days.group.classList.contains('is-horizontal-rail'));
+ assert.ok(days.group.glass,'weekday choices need a shared moving glass lens');
+ assert.match(css,/\.day-strip\.liquid-selector > \.liquid-choice-highlight\{/);
 });
 test('horizontal rail grows both the whole segment and its selected glass on first touch',()=>{
  const h=harness('grade');
@@ -191,19 +192,21 @@ test('horizontal rail snapshots preserve unscaled lens geometry while expanded',
  assert.equal(snapshot.width,100);
  assert.equal(snapshot.height,50);
 });
-test('weekly weekday choices are ordinary tap-only controls: no sliding lens or drag-to-select',()=>{
+test('weekdays glide across seven dates and commit nearest on release without an eighth grid cell',()=>{
  const h=harness('days');
- assert.equal(h.group.glass,null,'weekday strip must not gain a travelling glass lens');
- assert.equal(h.group.classList.contains('liquid-selector'),false);
+ assert.ok(h.group.glass,'weekday strip must gain a travelling glass lens');
+ assert.ok(h.group.classList.contains('liquid-selector'));
  h.selectors.liquidPointerDown(h.event(0,40,20));
  h.selectors.liquidPointerMove(h.event(0,243,22));
  h.runFrame();
+ assert.equal(h.group.glass.style.transform,'translate3d(193px,0px,0)');
+ assert.ok(h.group.buttons[2].classList.contains('is-scrubbed'));
  h.selectors.liquidPointerFinish(h.event(0,243,22));
- assert.equal(h.stats().clicks,0,'dragging across weekdays cannot change selection');
- assert.equal(h.stats().sounds,0);
+ assert.equal(h.group.clicked,2,'dragging across weekdays must select last hovered date');
+ assert.equal(h.stats().sounds,1);
  assert.match(app,/return `<div class="day-strip" role="group"/);
- assert.doesNotMatch(app,/\.segmented,\.schedule-view-switch,\.day-strip,\.sidebar nav/);
- assert.match(css,/\.day-strip \.day-tab\.active/);
+ assert.match(app,/\.segmented,\.schedule-view-switch,\.day-strip,\.sidebar nav/);
+ assert.match(css,/\.day-strip\.liquid-selector > \.liquid-choice-highlight\{/);
 });
 test('vertical page scroll never activates a horizontal selection',()=>{
  const h=harness('schedule');

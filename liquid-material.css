@@ -296,3 +296,134 @@ body{
     background:var(--readable-active)!important;
   }
 }
+
+/* AUTO-RENDER FROSTED MATERIAL MODES
+ * Renderer chooses webgl -> svg -> frosted at runtime; CSS is always
+ * responsible for actual background blur, legibility and contrast.
+ * Pure CSS fallback uses optical shimmer and fine texture, not a flat slab.
+ * No interaction timing/gesture properties are changed by this stylesheet. */
+:root{
+ --lg-frost-chrome:rgba(240,250,243,.79);
+ --lg-frost-sheet:rgba(246,252,247,.89);
+ --lg-frost-control:rgba(239,250,243,.78);
+ --lg-frost-light:rgba(255,255,255,.52);
+}
+:root[data-theme="dark"]{
+ --lg-frost-chrome:rgba(28,49,38,.83);
+ --lg-frost-sheet:rgba(25,43,34,.93);
+ --lg-frost-control:rgba(39,67,50,.83);
+ --lg-frost-light:rgba(205,247,222,.16);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]){
+  --lg-frost-chrome:rgba(28,49,38,.83);
+  --lg-frost-sheet:rgba(25,43,34,.93);
+  --lg-frost-control:rgba(39,67,50,.83);
+  --lg-frost-light:rgba(205,247,222,.16);
+ }
+}
+/* Optical SVG/WebGL layers never consume touch input and cannot obscure text. */
+.lg-optic-svg,.lg-optic-canvas{
+ position:absolute;
+ inset:0;
+ display:block;
+ width:100%;
+ height:100%;
+ overflow:hidden;
+ pointer-events:none!important;
+ border-radius:inherit;
+}
+.lg-optic-svg{z-index:0;opacity:.78;color:var(--lg-rim-low);}
+.lg-optic-canvas{z-index:0;opacity:.85;}
+:is(.topbar,.sidebar) > :not(.lg-optic-svg):not(.lg-optic-canvas){
+ position:relative;
+ z-index:1;
+}
+:root:not([data-glass-engine="webgl"]) .lg-optic-canvas,
+:root[data-glass-engine="frosted"] .lg-optic-svg{display:none!important;}
+:root[data-glass-engine="svg"] .lg-optic-svg,
+:root[data-glass-engine="webgl"] .lg-optic-svg{display:block;}
+
+/* CSS-only path: light is diffused through the shell, giving unmistakable
+ * frosted glass even when SVG/WebGL are unavailable. */
+:root[data-glass-engine="frosted"] :is(.topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu){
+ background:
+  radial-gradient(ellipse 92% 80% at 21% 0%,var(--lg-frost-light),transparent 76%),
+  repeating-linear-gradient(132deg,rgba(255,255,255,.015) 0 1px,transparent 1px 5px),
+  linear-gradient(150deg,var(--lg-sheen),transparent 47%),
+  var(--lg-frost-chrome)!important;
+ border:1px solid var(--lg-rim)!important;
+ box-shadow:inset 0 1px 0 var(--lg-specular),
+            inset 0 -1px 0 var(--lg-rim-low),
+            0 15px 35px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(19px) saturate(1.25);
+ backdrop-filter:blur(19px) saturate(1.25);
+}
+:root[data-glass-engine="frosted"] :is(.modal-card,.safari-floating-menu){
+ background:
+  radial-gradient(ellipse 80% 35% at 24% -4%,var(--lg-frost-light),transparent 94%),
+  repeating-linear-gradient(135deg,rgba(255,255,255,.012) 0 1px,transparent 1px 5px),
+  var(--lg-frost-sheet)!important;
+}
+:root[data-glass-engine="frosted"] :is(.segmented,.schedule-view-switch,.theme-option,.safari-select,.topbar .icon-btn,.language-switch){
+ background:
+  radial-gradient(ellipse 100% 75% at 22% 0%,var(--lg-frost-light),transparent 90%),
+  linear-gradient(145deg,var(--lg-sheen),transparent 59%),
+  var(--lg-frost-control)!important;
+ -webkit-backdrop-filter:blur(14px) saturate(1.20);
+ backdrop-filter:blur(14px) saturate(1.20);
+}
+:root[data-glass-engine="frosted"] .liquid-selector > .liquid-choice-highlight,
+:root[data-glass-engine="frosted"] .bottom-nav .bottom-liquid-surface{
+ background:
+  radial-gradient(ellipse 86% 46% at 25% 3%,var(--lg-frost-light),transparent 93%),
+  linear-gradient(146deg,var(--lg-sheen),transparent 61%),
+  var(--lg-optic)!important;
+ -webkit-backdrop-filter:blur(13px) saturate(1.35);
+ backdrop-filter:blur(13px) saturate(1.35);
+}
+
+/* Browsers WITHOUT native background sampling: preserve the frosted
+ * appearance with a denser translucent pigment and diffuse texture.
+ * It cannot truly blur live DOM pixels, so we do not claim refraction. */
+:root[data-glass-backdrop="no"]{
+ --lg-frost-chrome:rgba(240,249,242,.93);
+ --lg-frost-sheet:rgba(246,252,247,.95);
+ --lg-frost-control:rgba(241,249,242,.92);
+}
+:root[data-theme="dark"][data-glass-backdrop="no"]{
+ --lg-frost-chrome:rgba(27,47,37,.94);
+ --lg-frost-sheet:rgba(25,43,35,.96);
+ --lg-frost-control:rgba(39,66,50,.93);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"])[data-glass-backdrop="no"]{
+  --lg-frost-chrome:rgba(27,47,37,.94);
+  --lg-frost-sheet:rgba(25,43,35,.96);
+  --lg-frost-control:rgba(39,66,50,.93);
+ }
+}
+:root[data-glass-backdrop="no"] :is(.topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu,.segmented,.schedule-view-switch,.theme-option,.safari-select,.topbar .icon-btn,.language-switch,.liquid-selector > .liquid-choice-highlight,.bottom-nav .bottom-liquid-surface){
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+
+/* Respect reduced-transparency and contrast: a dense but still optically
+ * textured frosted appearance, with readable text and no GPU allocation. */
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+ :root{
+  --lg-frost-chrome:rgba(241,250,243,.96);
+  --lg-frost-sheet:rgba(247,252,248,.97);
+  --lg-frost-control:rgba(241,250,244,.95);
+ }
+ :root[data-theme="dark"]{
+  --lg-frost-chrome:rgba(27,45,36,.96);
+  --lg-frost-sheet:rgba(23,41,33,.97);
+  --lg-frost-control:rgba(40,66,50,.95);
+ }
+ :root[data-glass-engine="frosted"] :is(.topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu,.segmented,.schedule-view-switch,.theme-option,.safari-select,.topbar .icon-btn,.language-switch){
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  border-color:var(--readable-border)!important;
+ }
+}

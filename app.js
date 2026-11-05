@@ -195,7 +195,7 @@ function alignBottomLiquid(previousTab,previousRect){
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
   if(typeof glass.animate==='function'){
-   const duration=540;
+   const duration=650;
    const frames=liquidSpringFrames(startX,startW,targetX,targetW,duration);
    glass.classList.add('is-instant');
    glass.style.width=targetW+'px';
@@ -450,6 +450,8 @@ function liquidPointerFinish(event,cancelled=false){
  // Place the old lens at the actual finger-up coordinate BEFORE a click
  // triggers render(), then FLIP the new lens from that point without a reset.
  placeLiquidPointerGlass(p,event.clientX,event.clientY);
+ // Finger-up may re-light the rail edge after the initial cleanup.
+ releaseHorizontalLiquidRail(p,true);
  const nearest=liquidNearestCached(p,event.clientX,event.clientY).button;
  ignoreLiquidSelectorClickUntil=Date.now()+450;
  if(nearest?.isConnected)nearest.click();
@@ -888,8 +890,8 @@ function openModal(title,body,actions=''){
   card.style.setProperty('--dialog-from-y',Math.round(origin.y-rect.top-rect.height/2)+'px');
   if(typeof card.animate==='function'){
    try{
-    const animation=card.animate(liquidDialogFrames(rect,origin,false,430),
-      {duration:430,fill:'none',easing:'linear'});
+    const animation=card.animate(liquidDialogFrames(rect,origin,false,580),
+      {duration:580,fill:'none',easing:'linear'});
     dialogAnimation=animation;
     animation.finished.then(()=>{
      if(dialogAnimation===animation)dialogAnimation=null;
@@ -931,8 +933,8 @@ function closeModal(immediate=false){
  const origin=dialogSource||{x:rect.left+rect.width/2,y:rect.top+rect.height/2,width:16,height:16};
  if(typeof card.animate==='function'){
   try{
-   const animation=card.animate(liquidDialogFrames(rect,origin,true,300),
-    {duration:300,fill:'none',easing:'linear'});
+   const animation=card.animate(liquidDialogFrames(rect,origin,true,460),
+    {duration:460,fill:'none',easing:'linear'});
    dialogAnimation=animation;
    animation.finished.then(finish,finish);
    return;
@@ -941,7 +943,7 @@ function closeModal(immediate=false){
  card.style.setProperty('--dialog-from-x',Math.round(origin.x-rect.left-rect.width/2)+'px');
  card.style.setProperty('--dialog-from-y',Math.round(origin.y-rect.top-rect.height/2)+'px');
  card.classList.add('liquid-dialog-closing');
- setTimeout(finish,310);
+ setTimeout(finish,480);
 }
 let toastTimer=null;
 function toast(text){const root=$('#toast-root');root.innerHTML=`<div class="toast">${E(text)}</div>`;applyLanguage();clearTimeout(toastTimer);toastTimer=setTimeout(()=>root.innerHTML='',2800);}
@@ -974,7 +976,7 @@ function hideSafariMenu(focus=false){
  menu.style.pointerEvents='none';
  menu.classList.add('is-closing');
  menu.addEventListener('animationend',finish,{once:true});
- setTimeout(finish,320);
+ setTimeout(finish,510);
 }
 function safariMenuItems(kind){
  const en=state.prefs.language==='en';
@@ -1377,7 +1379,7 @@ function releaseBottomEdge(sw){
  sw.glass.style?.setProperty?.('--edge-scale','1');
  if(sw.edge){
   sw.glass.classList?.add?.('is-edge-rebound');
-  setTimeout(()=>sw.glass.classList?.remove?.('is-edge-rebound'),360);
+  setTimeout(()=>sw.glass.classList?.remove?.('is-edge-rebound'),500);
  }
 }
 function animateDockRelease(nav){
@@ -1513,7 +1515,7 @@ function restoreSurfaceBounce(root){
   if(String(button.dataset?.[pending.name])!==pending.value)continue;
   if(button.closest?.('.modal-card,.safari-floating-menu,.bottom-nav'))continue;
   button.classList.add('pocket-full-release');
-  setTimeout(()=>button.classList?.remove?.('pocket-full-release'),340);
+  setTimeout(()=>button.classList?.remove?.('pocket-full-release'),540);
   return;
  }
 }
@@ -1556,7 +1558,7 @@ function wholeSurfacePressEnd(event,cancelled=false){
  const handle=setTimeout(()=>{
   p.surface.classList?.remove?.('pocket-full-release','pocket-full-card');
   wholeSurfaceTimers.delete(p.surface);
- },340);
+ },540);
  wholeSurfaceTimers.set(p.surface,handle);
 }
 function wholeSurfacePressMove(event){

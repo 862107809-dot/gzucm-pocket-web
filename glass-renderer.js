@@ -93,9 +93,9 @@
   });
   const defs=mark('defs');
   const gradient=mark('linearGradient',{id:id+'-top',x1:'0%',y1:'0%',x2:'95%',y2:'70%'});
-  gradient.append(mark('stop',{offset:'0%','stop-color':'#fff','stop-opacity':'.75'}),
-   mark('stop',{offset:'32%','stop-color':'#fff','stop-opacity':'.43'}),
-   mark('stop',{offset:'68%','stop-color':'#d6f6e5','stop-opacity':'.14'}),
+  gradient.append(mark('stop',{offset:'0%','stop-color':'#fff','stop-opacity':'.49'}),
+   mark('stop',{offset:'32%','stop-color':'#fff','stop-opacity':'.25'}),
+   mark('stop',{offset:'68%','stop-color':'#d6f6e5','stop-opacity':'.08'}),
    mark('stop',{offset:'100%','stop-color':'#fff','stop-opacity':'0'}));
   const mask=mark('mask',{id:id+'-clip',maskUnits:'userSpaceOnUse'});
   const maskRect=mark('rect',{fill:'#fff'});
@@ -105,7 +105,7 @@
   const top=mark('path',{fill:'none',stroke:'url(#'+id+'-top)',
    'stroke-linecap':'round'});
   const bottom=mark('path',{fill:'none',stroke:'currentColor',
-   'stroke-opacity':'.16','stroke-linecap':'round'});
+   'stroke-opacity':'.07','stroke-linecap':'round'});
   group.append(top,bottom);
   svg.append(defs,group);
   target.appendChild(svg);
@@ -121,10 +121,10 @@
   for(const [k,v] of Object.entries({x:0,y:0,width:w,height:h,rx:radius,ry:radius}))
    maskRect.setAttribute(k,v);
   top.setAttribute('d','M '+(x+r)+' '+y+' H '+(w-x-r)+' Q '+(w-x)+' '+y+' '+(w-x)+' '+(y+r));
-  top.setAttribute('stroke-width',Math.max(1.1,Math.min(2.1,h*.027)));
+  top.setAttribute('stroke-width',Math.max(.75,Math.min(1.4,h*.019)));
   bottom.setAttribute('d','M '+x+' '+(h-r-1)+' Q '+x+' '+(h-1)+' '+(x+r)+' '+(h-1)+
    ' H '+(w-r-1));
-  bottom.setAttribute('stroke-width',Math.max(.6,Math.min(1.1,h*.015)));
+  bottom.setAttribute('stroke-width',Math.max(.45,Math.min(.8,h*.012)));
  }
  const VERTEX=[
   'attribute vec2 a_position;',
@@ -148,15 +148,15 @@
   ' vec2 center=u_resolution*.5;',
   ' float d=sdRounded(p-center,center-vec2(1.5),min(u_radius,min(center.x,center.y)));',
   ' float inside=1.0-smoothstep(-.6,1.6,d);',
-  ' float edge=exp(-abs(d+1.2)/3.3);',
-  ' float top=pow(1.0-uv.y,5.0)*.22;',
+  ' float edge=exp(-abs(d+1.2)/4.5);',
+  ' float top=pow(1.0-uv.y,5.0)*.13;',
   ' vec2 diff=uv-u_touch;',
-  ' float glint=exp(-dot(diff*vec2(2.0,2.5),diff*vec2(2.0,2.5))*10.0)*.17;',
+  ' float glint=exp(-dot(diff*vec2(2.0,2.5),diff*vec2(2.0,2.5))*10.0)*.11;',
   ' float iridescence=sin(uv.x*5.5+uv.y*7.0)*.5+.5;',
-  ' vec3 light=vec3(.92,1.0,.95)*(edge*.35+top+glint);',
-  ' light+=vec3(.05,.19,.10)*edge*iridescence*.25;',
+  ' vec3 light=vec3(.94,1.0,.96)*(edge*.21+top+glint);',
+  ' light+=vec3(.035,.10,.06)*edge*iridescence*.16;',
   ' light=mix(light,light*.66,u_dark);',
-  ' float alpha=min(.35,(edge*.21+top*.38+glint*.37))*inside;',
+  ' float alpha=min(.23,(edge*.12+top*.32+glint*.27))*inside;',
   ' gl_FragColor=vec4(light*alpha,alpha);',
   '}'
  ].join('\n');

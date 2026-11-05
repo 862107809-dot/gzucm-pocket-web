@@ -273,8 +273,8 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  group.style?.setProperty?.('--rail-edge-energy','0');
  p.glass.style?.setProperty?.('--rail-edge-shift','0px');
  p.glass.style?.setProperty?.('--rail-edge-scale','1');
- if(cancelled)return;
- const className=p.dragging?'is-rail-dropping':'is-rail-releasing'; // soft nonlinear return
+ if(cancelled||p.dragging)return; // swipes settle without a second rail animation
+ const className='is-rail-releasing'; // taps alone receive the gentle spring
  group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
  group.classList.add(className);
@@ -368,12 +368,13 @@ function enhanceLiquidSelectors(root,previous=new Map()){
    });
   }
   if(rail&&pendingHorizontalRailLanding?.id===id&&
-     Date.now()-pendingHorizontalRailLanding.at<700){
-   const landing=pendingHorizontalRailLanding.dragged?'is-rail-dropping':'is-rail-settling';
-   group.classList.add(landing);
+     Date.now()-pendingHorizontalRailLanding.at<700&&!pendingHorizontalRailLanding.dragged){
+   // Only a tap can bounce a remounted rail. A drag lands its glass lens
+   // directly via the existing FLIP, without replaying a container spring.
+   group.classList.add('is-rail-settling');
    group.addEventListener?.('animationend',event=>{
-    if(['pocketRailSettle','pocketDockClickConfirm','pocketRailSoftSpring'].includes(event.animationName))group.classList.remove('is-rail-settling');
-    if(['pocketRailDrop','pocketDockDragReturn','pocketRailSoftDrop'].includes(event.animationName))group.classList.remove('is-rail-dropping');
+    if(['pocketRailSettle','pocketRailSoftSpring'].includes(event.animationName))
+     group.classList.remove('is-rail-settling');
    },{once:true});
   }
  }
@@ -403,18 +404,21 @@ function placeLiquidPointerGlass(pointer,x,y){
  if(!target)return;
  const base=pointer.vertical?pointer.firstTop:pointer.firstLeft;
  const limit=pointer.vertical?pointer.lastTop:pointer.lastLeft;
- const size=pointer.vertical?target.offsetHeight:target.offsetWidth;
- // Visual rail scale is accounted for only while finger-following.
- // This avoids a side-anchored feeling as the whole bar grows symmetrically.
- const current=pointer.rail?pointer.group.getBoundingClientRect?.():null;
- const scale=pointer.rail&&current?.width&&pointer.group.offsetWidth?
-  current.width/pointer.group.offsetWidth:1;
- const rect=current||pointer.groupRect;
- const raw=(pointer.vertical?(y-rect.top)/scale:(x-rect.left)/scale)-size/2+
+ const index=pointer.buttons.indexOf(target);
+ const measure=pointer.boxes?.[index];
+ const width=measure?.width??target.offsetWidth;
+ const height=measure?.height??target.offsetHeight;
+ const size=pointer.vertical?height:width;
+ // Invert the known rail scale using only the pointerdown snapshot.
+ // Reading a live DOMRect every rAF tick caused repeated Safari layouts.
+ const rect=pointer.groupRect;
+ const scale=pointer.rail&&pointer.baseWidth?1.026:1;
+ const localX=rect.width/2+(x-(rect.left+rect.width/2))/scale;
+ const raw=(pointer.vertical?y-rect.top:localX)-size/2+
   (pointer.vertical?pointer.group.scrollTop:0);
  const pos=Math.max(base,Math.min(limit,raw));
- setSelectorGlass(pointer.glass,{x:pointer.vertical?target.offsetLeft:pos,
-  y:pointer.vertical?pos:target.offsetTop,width:target.offsetWidth,height:target.offsetHeight});
+ setSelectorGlass(pointer.glass,{x:pointer.vertical?(measure?.x??target.offsetLeft):pos,
+  y:pointer.vertical?pos:(measure?.y??target.offsetTop),width,height});
  if(pointer.rail){
   const centers=pointer.centers;
   const left=Math.max(0,centers[0]-12-x),right=Math.max(0,x-centers[centers.length-1]-12);
@@ -431,7 +435,7 @@ function selectorGlassFor(group){
  return group.querySelector('.liquid-choice-highlight,.safari-menu-glider');
 }
 function liquidPointerDown(event){
- if(event.isPrimary===false||event.button>0)return;
+ if(liquidSelectorPointer||event.isPrimary===false||event.button>0)return;
  if(event.target.closest?.('.bottom-nav')||event.target.closest?.('input,textarea,select'))return;
  const menu=event.target.closest?.('.safari-floating-menu');
  const group=menu||event.target.closest?.('.liquid-selector');
@@ -446,13 +450,19 @@ function liquidPointerDown(event){
  const bounds=buttons.map(button=>button.getBoundingClientRect());
  const rail=isHorizontalLiquidRail(group,!!menu);
  const pressed=rail?buttons.find(button=>button.contains(event.target)):null;
+ const groupRect=group.getBoundingClientRect();
  liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
+  pointerType:event.pointerType||'touch',
   x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
-  vertical,dragging:false,scroll:false,groupRect:group.getBoundingClientRect(),
+  vertical,dragging:false,scroll:false,groupRect,
+  baseWidth:group.offsetWidth||0,
+  boxes:buttons.map(button=>({x:button.offsetLeft,y:button.offsetTop,
+   width:button.offsetWidth,height:button.offsetHeight})),
   centers:bounds.map(r=>vertical?r.top+r.height/2:r.left+r.width/2),
   firstLeft:buttons[0].offsetLeft,lastLeft:buttons[buttons.length-1].offsetLeft,
   firstTop:buttons[0].offsetTop,lastTop:buttons[buttons.length-1].offsetTop,
-  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu,rail,pressed};
+  index:rail?buttons.indexOf(pressed):-1,raf:0,
+  source:liquidSelectorActive(group),menu:!!menu,rail,pressed};
  if(rail){
   group.classList?.remove?.('is-rail-releasing','is-rail-settling','is-rail-dropping');
   group.classList?.add?.('is-rail-pressed');
@@ -464,7 +474,7 @@ function liquidPointerMove(event){
  if(!p||p.pointerId!==event.pointerId||p.scroll)return;
  const dx=event.clientX-p.x,dy=event.clientY-p.y;
  if(!p.dragging){
-  if(!p.vertical&&Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.15){
+  if(!p.vertical&&Math.abs(dy)>=8&&Math.abs(dy)>Math.abs(dx)*1.15){
    p.scroll=true;
    p.pressed?.classList?.remove?.('is-pressed');
    releaseHorizontalLiquidRail(p,true);
@@ -472,7 +482,9 @@ function liquidPointerMove(event){
   }
   if(p.vertical&&!p.menu&&Math.abs(dx)>11&&Math.abs(dx)>Math.abs(dy)*1.15){p.scroll=true;return;}
   const travelled=p.vertical?Math.abs(dy):Math.abs(dx);
-  if(travelled<6)return;
+  const threshold=p.pointerType==='mouse'?5:10;
+  if(travelled<threshold||
+     Math.abs(p.vertical?dy:dx)<=Math.abs(p.vertical?dx:dy)*1.35)return;
   p.dragging=true;
   p.pressed?.classList?.remove?.('is-pressed');
   if(p.rail)p.group.classList.add('is-rail-dragging');
@@ -503,24 +515,27 @@ function liquidPointerFinish(event,cancelled=false){
  try{if(p.group.hasPointerCapture?.(event.pointerId))p.group.releasePointerCapture(event.pointerId);}catch{}
  p.buttons.forEach(button=>button.classList.remove('is-scrubbed'));
  p.pressed?.classList?.remove?.('is-pressed');
- releaseHorizontalLiquidRail(p,cancelled||p.scroll);
- if(p.rail&&!cancelled&&!p.scroll){
-  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:p.dragging};
+ if(!p.dragging){
+  releaseHorizontalLiquidRail(p,cancelled||p.scroll);
+  if(p.rail&&!cancelled&&!p.scroll)
+   pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:false};
+  return;
  }
- if(!p.dragging)return;
  if(event.cancelable)event.preventDefault();
  if(cancelled){
+  releaseHorizontalLiquidRail(p,true);
   p.glass.classList.remove('is-instant','is-dragging');
   const selected=p.source||liquidSelectorActive(p.group);
   if(selected)setSelectorGlass(p.glass,{x:selected.offsetLeft,y:selected.offsetTop,
    width:selected.offsetWidth,height:selected.offsetHeight});
   return;
  }
- // Place the old lens at the actual finger-up coordinate BEFORE a click
- // triggers render(), then FLIP the new lens from that point without a reset.
+ // Keep a single continuous finger-up glass position for the next view.
+ // No spring is created on an actual drag; CSS scale eases back to 1.
  placeLiquidPointerGlass(p,event.clientX,event.clientY);
- // Finger-up may re-light the rail edge after the initial cleanup.
  releaseHorizontalLiquidRail(p,true);
+ if(p.rail)
+  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:true};
  const nearest=liquidNearestCached(p,event.clientX,event.clientY).button;
  ignoreLiquidSelectorClickUntil=Date.now()+450;
  if(nearest?.isConnected)nearest.click();

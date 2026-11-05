@@ -9,6 +9,7 @@ const material=fs.readFileSync(path.join(root,'liquid-material.css'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const cache=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const server=fs.readFileSync(path.join(root,'server','server.js'),'utf8');
 
 test('optical material sheet is layered after app layout styles and cached for PWA',()=>{
  const base=html.indexOf('/styles.css?v=');
@@ -24,7 +25,6 @@ test('optical material sheet is layered after app layout styles and cached for P
 });
 
 test('HTTP static whitelist serves both automatic glass resources',()=>{
- const server=fs.readFileSync(path.join(root,'server','server.js'),'utf8');
  assert.ok(server.includes("'/glass-renderer.js':'glass-renderer.js'"));
  assert.ok(server.includes("'/liquid-material.css':'liquid-material.css'"));
  for(const asset of ['/glass-renderer.js','/liquid-material.css']){

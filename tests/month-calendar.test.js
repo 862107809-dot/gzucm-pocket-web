@@ -119,11 +119,12 @@ test('mobile month grid never forces horizontal scrolling or 1050px content',()=
  assert.doesNotMatch(css,/\.month-calendar \.month-grid\{\s*min-width:1050px/);
  assert.doesNotMatch(css,/\.month-calendar \.month-event\{[\s\S]*?min-height:48px/);
 });
-test('monthly data loading does not render twice before a single fetch finishes',()=>{
+test('monthly data refresh only updates timetable once after a batch, without rebuilding the app shell',()=>{
  const from=code.indexOf('async function loadMonth(){');
  const until=code.indexOf('async function logout(){',from);
  const body=code.slice(from,until);
  assert.match(body,/const status=\$\('\.month-brief\[role="status"\]'\)/);
  assert.match(body,/if\(serial===state\.monthSerial\)/);
- assert.equal((body.match(/\brender\(\)/g)||[]).length,1);
+ assert.equal((body.match(/\brender\(\)/g)||[]).length,0);
+ assert.equal((body.match(/\brenderScheduleContent\(\)/g)||[]).length,1);
 });

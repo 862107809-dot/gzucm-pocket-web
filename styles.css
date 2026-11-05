@@ -1432,3 +1432,17 @@
  }
  .bottom-nav::before,.bottom-nav::after{transition:none!important;}
 }
+
+/* Later press rules must not re-enable motion after the accessibility fallback. */
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav .bottom-item,
+ .bottom-nav .bottom-item svg,
+ .bottom-liquid-indicator,
+ .bottom-liquid-surface,
+ :where(.btn,.hero-button,.icon-btn,.small-action,.language-switch,.safari-select,
+        .agenda-row,.month-cell,.safari-menu-option,.day-tab,.segmented button,
+        .liquid-selector > button,.nav-item){
+  transition:none!important;
+  animation:none!important;
+ }
+}

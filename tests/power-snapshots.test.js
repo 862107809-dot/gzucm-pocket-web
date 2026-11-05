@@ -51,7 +51,7 @@ test('website loads snapshots and stores them on successful reads',()=>{
  const html=get('index.html'),sw=get('sw.js'),server=get('server/server.js'),app=get('app.js');
  assert.ok(html.indexOf('power-snapshots.js?')>html.indexOf('power-insights.js?'));
  assert.ok(html.indexOf('power-snapshots.js?')<html.indexOf('app.js?'));
- assert.match(server,/\/'power-snapshots\.js'/); // intentionally not a real request
+ assert.ok(server.includes("'/power-snapshots.js':'power-snapshots.js'"));
  assert.match(sw,/power-snapshots\.js\?/);
  assert.match(app,/localStorage\.setItem\(LIVE_POWER_DB/);
  assert.match(app,/powerSnapshots=window\.GZUCM_POWER_SNAPSHOTS\?\.append/);

@@ -17,7 +17,7 @@
  const MAX_DPR=1.5;
  const candidates='.bottom-nav,.schedule-view-switch,.segmented,.topbar,.sidebar';
  const live=new Map();
- let engine='frosted',backdrop=false,brokenGL=false,raf=0,started=false;
+ let engine='frosted',backdrop=false,brokenGL=false,webglAvailable=null,raf=0,started=false;
  let nextId=0;
 
  function media(query){
@@ -56,7 +56,10 @@
   backdrop=cssBackdrop();
   if(preferContrast||reduceTransparency||!backdrop)return 'frosted';
   if(!svgSupported())return 'frosted';
-  if(!brokenGL&&webglSupported())return 'webgl';
+  if(!brokenGL){
+   if(webglAvailable===null)webglAvailable=webglSupported();
+   if(webglAvailable)return 'webgl';
+  }
   return 'svg';
  }
  function rootMode(){
@@ -185,7 +188,7 @@
    brokenGL=true;
    schedule();
   });
-  canvas.addEventListener('webglcontextrestored',()=>{brokenGL=false;schedule();});
+  canvas.addEventListener('webglcontextrestored',()=>{brokenGL=false;webglAvailable=null;schedule();});
   item.el.appendChild(canvas);
  }
  function draw(item){
@@ -234,7 +237,10 @@
   const chosen=chooseEngine();
   if(chosen!==engine){clear();engine=chosen;}
   rootMode();
+  const priority=['bottom-nav','schedule-view-switch','segmented','topbar','sidebar'];
   const targets=Array.from(document.querySelectorAll(candidates));
+  targets.sort((a,b)=>priority.indexOf(priority.find(x=>a.classList?.contains(x))||'sidebar')-
+   priority.indexOf(priority.find(x=>b.classList?.contains(x))||'sidebar'));
   for(const [el,item] of live){
    if(!el.isConnected||!targets.includes(el)||!el.getBoundingClientRect().width){
     destroy(item);live.delete(el);

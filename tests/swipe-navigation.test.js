@@ -65,6 +65,23 @@ function harness(){
   frame:()=>{const next=frame;frame=null;next?.();},
   counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
 }
+test('compact navigation adapts to iPad portrait, landscape, Mac and desktop widths',()=>{
+ const responsive=css.slice(css.indexOf('/* CROSS-DEVICE COMPACT NAVIGATION v1'));
+ assert.ok(responsive.length>1200,'responsive navigation rules must exist');
+ assert.match(responsive,/@media \(min-width:601px\) and \(max-width:900px\)/);
+ assert.match(responsive,/width:min\(calc\(100% - 64px\),540px\)/);
+ assert.match(responsive,/max-width:calc\(100% - 64px\)/);
+ assert.match(responsive,/inset:-10px -13px/);
+ assert.match(responsive,/@media \(min-width:901px\)/);
+ assert.match(responsive,/grid-template-columns:244px minmax\(0,1fr\)/);
+ assert.match(responsive,/\.sidebar \.liquid-selector > \.liquid-choice-highlight\{[\s\S]*?scale:1\.04 1\.05/);
+ assert.match(responsive,/@media \(min-width:901px\) and \(max-width:1180px\)/);
+ assert.match(responsive,/grid-template-columns:212px minmax\(0,1fr\)/);
+ assert.match(responsive,/@media \(prefers-reduced-motion:reduce\)/);
+ assert.match(app,/class="sidebar-nav-main"/);
+ assert.match(app,/class="bottom-nav\$\{settle/);
+});
+
 test('narrow Dock keeps centered safe margins while the active lens slightly crosses its rim',()=>{
  const section=css.slice(css.indexOf('/* COMPACT DOCK WITH CONTROLLED PILL OVERHANG'));
  assert.ok(section.length>0,'compact mobile Dock rules should exist');

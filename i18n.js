@@ -318,6 +318,35 @@ pairs.push(...[
  ['官网页面','Official page'],
  ['最近 7 天','Last 7 days']
 ]);
+pairs.push(...[
+ ['绑定 iOS App · 自动同步电量','Pair iOS app for electricity sync'],
+ ['生成设备配对码','Create device pairing code'],
+ ['获取设备同步结果','Fetch device sync'],
+ ['解除配对','Disconnect'],
+ ['设备配对失败','Device pairing failed'],
+ ['已配对 iOS App，正在接收设备同步的余额','iOS app paired; waiting for a power update'],
+ ['网页版没有学校一卡通授权；可配对 iOS App 获取自动同步记录','Web does not have a separate school E-card session; link the native iOS app for updates'],
+ ['当前配对：','Device link: '],
+ ['尚未配对','Not paired'],
+ ['等待在 App 中输入配对码','Waiting for code entry in the app'],
+ ['已连接 iOS App','iOS app linked'],
+ ['配对服务已重启或授权过期','Pairing has expired or the server restarted'],
+ ['检查中','Checking'],
+ ['iOS App 已配对推送','Received from paired iOS app'],
+ ['iOS App 历史缓存','Cached iOS app reading'],
+ ['已经同步设备数据','Device data synchronized'],
+ ['配对 iOS App · 自动同步','Pair iOS app'],
+ ['一次性配对码 · 五分钟内有效','One-time code · valid for five minutes'],
+ ['复制配对码','Copy pairing code'],
+ ['配对码已复制','Pairing code copied'],
+ ['检查配对及同步状态','Check pairing status'],
+ ['已获取配对 iOS App 的电量数据','Received electricity reading from paired iOS app'],
+ ['已解除网站与 iOS App 配对','Unlinked the iOS app from the website'],
+ ['已收到 iOS 电量，但本地缓存写入失败','Received iOS reading, but saving the local cache failed'],
+ ['设备已配对，请先在 iOS App 读取电量','Device paired. Open the iOS app to collect a reading'],
+ ['已检查设备推送的电量','Checked the device reading'],
+ ['仅在 App 实际打开并成功读取学校电量后自动推送。当前服务采用内存配对：若云服务重启或授权到期，需重新配对；关闭 App 后不保证定时刷新。','The iOS app sends updates when it is running and has read actual data. In-memory pairing must be repeated after a server restart or expiry. Background refresh is not guaranteed.']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

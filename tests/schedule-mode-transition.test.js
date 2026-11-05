@@ -273,6 +273,14 @@ test('the original variant retains the previous shorter timing and page-level an
  assert.match(app,/easing:fixedLayout\?'cubic-bezier\(\.24,\.68,\.30,1\)'/);
 });
 
+test('weekday, week arrows and month arrows use the same locally updated timetable',()=>{
+ assert.match(app,/if\(target\.dataset\.day!==undefined\)\{state\.weekday=Number\(target\.dataset\.day\);renderScheduleContent\(\);/);
+ assert.match(app,/state\.week=clamp\(state\.week\+\(act==='nextWeek'\?1:-1\),1,\(term\(\)\.totalWeeks\|\|19\)\+1\);renderScheduleContent\(\)/);
+ assert.match(app,/state\.monthLoading=false;state\.monthLoadError=0;renderScheduleContent\(\);loadMonth\(\);break;/);
+ assert.match(app,/const previousSelectors=snapshotLiquidSelectors\(pageRoot\);/);
+ assert.match(app,/enhanceLiquidSelectors\(pageRoot,previousSelectors\)/);
+});
+
 test('timetable optimization leaves all three glass options, weeks and month grid intact',()=>{
  assert.match(app,/data-schedule-content="week"/);
  assert.match(app,/data-schedule-content="month"/);

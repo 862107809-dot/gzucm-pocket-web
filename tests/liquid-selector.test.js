@@ -78,8 +78,8 @@ function harness(kind='schedule',vertical=false){
  return {group,selectors,event,runFrame:()=>{const cb=frame;frame=null;cb?.();},
   stats:()=>({sounds,armed,clicks})};
 }
-test('all horizontal segmented choices drag to the nearest item with glass and sound',()=>{
- for(const kind of ['schedule','days','grade']){
+test('segmented mode and grade filters still support swipe and liquid glass',()=>{
+ for(const kind of ['schedule','grade']){
   const h=harness(kind);
   h.selectors.liquidPointerDown(h.event(0,40,20));
   h.selectors.liquidPointerMove(h.event(0,243,22));
@@ -93,6 +93,20 @@ test('all horizontal segmented choices drag to the nearest item with glass and s
   assert.equal(h.stats().armed,1);
   assert.equal(h.stats().clicks,1);
  }
+});
+test('weekly weekday choices are ordinary tap-only controls: no sliding lens or drag-to-select',()=>{
+ const h=harness('days');
+ assert.equal(h.group.glass,null,'weekday strip must not gain a travelling glass lens');
+ assert.equal(h.group.classList.contains('liquid-selector'),false);
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ h.selectors.liquidPointerMove(h.event(0,243,22));
+ h.runFrame();
+ h.selectors.liquidPointerFinish(h.event(0,243,22));
+ assert.equal(h.stats().clicks,0,'dragging across weekdays cannot change selection');
+ assert.equal(h.stats().sounds,0);
+ assert.match(app,/return `<div class="day-strip" role="group"/);
+ assert.doesNotMatch(app,/\.segmented,\.schedule-view-switch,\.day-strip,\.sidebar nav/);
+ assert.match(css,/\.day-strip \.day-tab\.active/);
 });
 test('vertical page scroll never activates a horizontal selection',()=>{
  const h=harness('schedule');

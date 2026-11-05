@@ -184,3 +184,13 @@ test('material engine respects original animation/gesture logic and is refreshed
  assert.match(material,/pointer-events:none!important/);
  assert.doesNotMatch(material,/(^|[\r\n])[ \t]*(?:animation|transition)(?:-[a-z]+)?\s*:/m);
 });
+
+test('WebGL and specular updates yield to active Dock gestures instead of reading layout every pointer event',()=>{
+ assert.match(source,/target\?\.classList\?\.contains\?\.\('is-dock-dragging'\)/);
+ assert.match(source,/document\.documentElement\.dataset\.motionRate==='economy'/);
+ assert.match(source,/function draw\(item,rectOverride=null\)/);
+ assert.match(source,/draw\(item,rect\)/);
+ assert.match(observer,/let lightFrame=0,pendingLight=null/);
+ assert.match(observer,/lightFrame=global\.requestAnimationFrame/);
+ assert.match(observer,/is-dock-dragging/);
+});

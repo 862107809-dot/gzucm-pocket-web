@@ -613,7 +613,7 @@ function updateGlassModeIndicator(){
   const mode=info?.mode;
   const names={webgl:'增强液态',svg:'液态玻璃',frosted:'毛玻璃'};
   label.textContent=names[mode]||'检测不可用';
-  const wanted={enhanced:'webgl',standard:'svg',smooth:'frosted'}[state.prefs.glassMode]||'webgl';
+  const wanted={enhanced:'webgl',standard:'svg',smooth:'frosted'}[info?.requested]||mode;
   const downgraded=mode&&mode!==wanted;
   const blur=info?.backdrop?'原生背景模糊':'模拟毛玻璃纹理';
   if(mode==='webgl'){

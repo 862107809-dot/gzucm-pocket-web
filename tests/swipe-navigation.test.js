@@ -52,8 +52,8 @@ function harness(){
  const win={matchMedia:()=>({matches:false}),scrollTo:()=>{}};
  const output=new Function('state','window','document','requestAnimationFrame',
    'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek','armLiquidSound','playLiquidTick',
-   'let liquidGestureSnap=false;let dockRemountPulse=false;let dockRemountDrop=false;\n'+app.slice(start,end)+
-   'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule,getDockFlags:()=>({pulse:dockRemountPulse,drop:dockRemountDrop})};')(
+   'let liquidGestureSnap=false;let dockRemountPulse=false;let dockRemountDrop=false;let pendingBottomSwipeGeometry=null;\n'+app.slice(start,end)+
+   'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule,getDockFlags:()=>({pulse:dockRemountPulse,drop:dockRemountDrop}),getLanding:()=>pendingBottomSwipeGeometry};')(
     state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
     ()=>{closed++},()=>{renders++;transformOnRender=glass.style.transform;},()=>{scheduleLoads++},()=>{scheduleLoads++},
     ()=>{armed++},()=>{tones++}
@@ -81,6 +81,18 @@ test('finger drag follows the pointer and selects nearest bottom module on relea
  assert.equal(h.counts().closed,1);
  assert.equal(h.counts().captured,null);
 });
+test('finger-up anchor is stored unscaled so a re-render cannot snap the lens backwards',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(236,21));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(355,21));
+ assert.deepEqual(h.output.getLanding(),{x:308,width:94});
+ assert.equal(h.counts().transformOnRender,'translate3d(308px,0,0)');
+ assert.match(app,/const swipeAnchor=fromSwipe\?pendingBottomSwipeGeometry:null/);
+ assert.match(app,/previousGeometry\?\.x!==undefined/);
+});
+
 test('vertical scrolling is never converted to bottom tab swipe',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(45,25));

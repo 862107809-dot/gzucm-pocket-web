@@ -1616,7 +1616,7 @@ function bottomSwipeLayout(nav){
  const tabs=[...nav.querySelectorAll('.bottom-item')];
  const rect=nav.getBoundingClientRect();
  if(!tabs.length)return null;
- return {tabs,rect,
+ return {tabs,rect,baseWidth:nav.offsetWidth||0,
   width:Math.max(12,tabs[0].offsetWidth-6),
   first:tabs[0].offsetLeft+3,last:tabs[tabs.length-1].offsetLeft+3,
   centers:tabs.map(tab=>{const r=tab.getBoundingClientRect();return r.left+r.width/2;})};
@@ -1628,11 +1628,11 @@ function bottomSwipeNearest(sw,x){
  return index;
 }
 function bottomSwipeLocalX(sw,x){
- // The entire Dock enlarges during touch. Convert visual client coordinates
- // back to unscaled layout space to keep the lens exactly under the finger.
- const rect=sw.nav.getBoundingClientRect?.()||sw.layout.rect;
- const ratio=sw.nav.offsetWidth&&rect.width?rect.width/sw.nav.offsetWidth:1;
- return (x-rect.left)/(ratio||1);
+ // Pointer frames use geometry captured before magnification, avoiding
+ // synchronous layout reads while the Dock is animating.
+ const l=sw.layout,center=l.rect.left+l.rect.width/2;
+ const scale=l.baseWidth?(sw.dragging?1.027:1.018):1;
+ return l.rect.width/2+(x-center)/scale;
 }
 function placeBottomSwipeGlass(sw,x){
  const l=sw.layout;
@@ -1682,40 +1682,37 @@ function animateDockDrop(nav){
 }
 function bottomSwipeDown(event){
  const nav=event.target.closest?.('.bottom-nav');
- if(!nav||event.isPrimary===false||event.button>0||!nav.getClientRects().length)return;
+ if(bottomSwipe||!nav||event.isPrimary===false||event.button>0||!nav.getClientRects().length)return;
  if(event.target.closest('input,select,textarea'))return;
  const glass=nav.querySelector('.bottom-liquid-indicator');
  const active=nav.querySelector('.bottom-item.active');
  if(!glass||!active)return;
- // A touch-down immediately magnifies the entire rail, before the
- // layout work needed for optional horizontal scrubbing. Never wait for move.
+ // Measure once BEFORE applying the pressed magnification.
  nav.classList?.remove?.('is-dock-settling','is-dock-releasing','is-dock-dropping');
+ const layout=bottomSwipeLayout(nav);
+ if(!layout)return;
  nav.classList?.add?.('is-dock-pressed');
  const pressed=event.target.closest?.('.bottom-item');
  pressed?.classList?.add?.('is-pressed');
- const layout=bottomSwipeLayout(nav);
- if(!layout){
-  nav.classList?.remove?.('is-dock-pressed');
-  pressed?.classList?.remove?.('is-pressed');
-  return;
- }
  armLiquidSound();
  bottomSwipe={pointerId:event.pointerId,nav,glass,layout,pressed,
-  startX:event.clientX,startY:event.clientY,
-  dragging:false,vertical:false,frame:0,lastX:event.clientX,lastTab:-1,edge:0};
+  startX:event.clientX,startY:event.clientY,pointerType:event.pointerType||'touch',
+  dragging:false,vertical:false,frame:0,lastX:event.clientX,
+  lastTab:Math.max(0,layout.tabs.indexOf(pressed)),edge:0};
 }
 function bottomSwipeMove(event){
  const sw=bottomSwipe;
  if(!sw||sw.pointerId!==event.pointerId||sw.vertical)return;
  const dx=event.clientX-sw.startX,dy=event.clientY-sw.startY;
  if(!sw.dragging){
-  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.12){
+  const threshold=sw.pointerType==='mouse'?5:10;
+  if(Math.abs(dy)>=8&&Math.abs(dy)>Math.abs(dx)*1.15){
    sw.vertical=true;
    sw.nav.classList?.remove?.('is-dock-pressed','is-dock-dragging');
    sw.pressed?.classList?.remove?.('is-pressed');
    return;
   }
-  if(Math.abs(dx)<6||Math.abs(dx)<Math.abs(dy)*1.2)return;
+  if(Math.abs(dx)<threshold||Math.abs(dx)<=Math.abs(dy)*1.35)return;
   sw.dragging=true;
   sw.nav.classList?.add?.('is-dock-dragging');
   sw.pressed?.classList?.remove?.('is-pressed');
@@ -1765,6 +1762,7 @@ function bottomSwipeFinish(event,cancelled=false){
  const index=bottomSwipeNearest(sw,event.clientX);
  const next=sw.layout.tabs[index]?.dataset.view;
  if(cancelled||!next||next===state.view){
+  // Swipe release never bounces, including when it lands on the same tab.
   sw.glass.classList.remove('is-instant','is-dragging');
   const active=sw.nav.querySelector('.bottom-item.active');
   if(active){
@@ -1772,14 +1770,13 @@ function bottomSwipeFinish(event,cancelled=false){
    sw.glass.style.transform='translate3d('+(active.offsetLeft+3)+'px,0,0)';
   }
   if(!cancelled)confirmGlassSelection(sw.glass);
-  animateDockDrop(sw.nav);
   return;
  }
  pendingBottomSwipeGeometry={x:Math.max(sw.layout.first,Math.min(sw.layout.last,
   bottomSwipeLocalX(sw,event.clientX)-sw.layout.width/2)),width:sw.layout.width};
  liquidGestureSnap=true;
  dockRemountPulse=false;
- dockRemountDrop=true;
+ dockRemountDrop=false; // swipe changes the lens only, not the rail spring
  navigateBottomModule(next);
 }
 function bottomSwipeClickCapture(event){

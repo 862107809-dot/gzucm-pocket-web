@@ -155,21 +155,26 @@ test('confirmed choices gain a material shadow without a white glow in dark mode
  assert.doesNotMatch(section,/#fff|rgba\(255,255,255/,'confirmation material must not add white rims');
 });
 
-test('appearance popover displays a checkmark without a filled grey selected background',()=>{
- const section=material.slice(material.indexOf('/* UNMARKED POPOVER SELECTION v1'));
- assert.ok(section.length>900,'popover visual normalization must be present');
- assert.match(section,/\.safari-floating-menu \.safari-menu-option\.selected/);
- assert.match(section,/:root\[data-glass-engine="frosted"\] \.safari-floating-menu \.safari-menu-option\.selected/);
- assert.match(section,/:root\[data-active-theme="dark"\] \.safari-floating-menu \.safari-menu-option\.selected/);
- assert.match(section,/background:transparent!important/);
- assert.match(section,/border-color:transparent!important/);
- assert.match(section,/box-shadow:none!important/);
- assert.match(section,/\.safari-floating-menu \.safari-menu-glider::before/);
+test('floating menus visibly highlight the selected choice with a grey rounded rectangle',()=>{
+ const section=material.slice(material.indexOf('/* GREY POPOVER SELECTION v2'));
+ assert.ok(section.length>1300,'menu highlight must be present');
+ assert.match(section,/:root \.safari-floating-menu \.safari-menu-glider,/);
+ assert.match(section,/opacity:1!important/);
+ assert.match(section,/background:linear-gradient\(145deg,rgba\(108,115,111,\.28\),rgba\(115,121,117,\.20\)\)!important/);
+ assert.match(section,/border:1px solid rgba\(99,107,101,\.30\)!important/);
+ assert.match(section,/:root\[data-active-theme="dark"\] \.safari-floating-menu \.safari-menu-glider/);
+ assert.match(section,/:root\[data-glass-engine="frosted"\] \.safari-floating-menu \.safari-menu-glider/);
+ assert.match(section,/prefers-reduced-transparency:reduce/);
+ assert.match(section,/:root\[data-glass-backdrop="no"\] \.safari-floating-menu \.safari-menu-glider/);
  assert.match(section,/\.safari-menu-option:focus-visible\{\s*outline:2px solid var\(--accent\)!important;/);
  assert.match(app,/safari-menu-check/);
  assert.match(app,/aria-checked/);
+ // Only the option rows inside the popover are tinted. Header language and
+ // appearance quick toggle remain their normal independent glass controls.
+ assert.doesNotMatch(section,/(?:^|\n)\s*:root[^\n]*\s\.topbar\b/m);
+ assert.doesNotMatch(section,/(?:^|\n)\s*:root[^\n]*\s\.language-switch\b/m);
  assert.doesNotMatch(section,/(^|\n)\s*(?:animation|transition)(?:-[a-z]+)?\s*:/m,
-  'optical material file must not define motion');
+  'material rules must not redefine motion');
 });
 
 test('visual design change does not rewrite timing or gesture handling',()=>{

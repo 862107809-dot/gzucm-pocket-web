@@ -1694,6 +1694,112 @@
  100%{scale:1;}
 }
 
+/* A drag is not a tap. On a swipe the Dock is gently put down,
+ * monotonically shrinking from the touched position without overshoot. */
+@media(max-width:900px){
+ .bottom-nav.is-dock-dropping{
+  animation:pocketDockDrop .53s cubic-bezier(.22,1,.36,1) both;
+ }
+ .bottom-nav.is-dock-dropping .bottom-liquid-indicator{
+  animation:pocketDockLensDrop .53s cubic-bezier(.22,1,.36,1) both;
+ }
+ /* The shared glass lens is the ONLY highlighted surface during a scrub.
+  * Native focus-visible remains available outside touch dragging. */
+ .bottom-nav.is-dock-dragging .bottom-item,
+ .bottom-nav.is-dock-dragging .bottom-item:active,
+ .bottom-nav.is-dock-dragging .bottom-item.is-scrubbed{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+ }
+ .bottom-nav.is-dock-dragging .bottom-item::before,
+ .bottom-nav.is-dock-dragging .bottom-item::after{
+  display:none!important;
+  content:none!important;
+  border:0!important;
+  box-shadow:none!important;
+ }
+}
+@keyframes pocketDockDrop{
+ 0%{scale:1.042;}
+ 100%{scale:1;}
+}
+@keyframes pocketDockLensDrop{
+ 0%{scale:1.105;}
+ 100%{scale:1;}
+}
+
+/* Calendar mode selection: the two choices glide to their new state while
+ * the entire timetable fades and rises into the replacement layout.
+ * Native view transitions capture both versions without flashing empty.
+ * Safari without the API gets a one-way composited entry fallback. */
+.page-schedule .schedule-view-switch{
+ view-transition-name:schedule-mode-tabs;
+}
+.page-schedule .schedule-transition-content{
+ view-transition-name:schedule-mode-panel;
+ position:relative;
+ min-width:0;
+}
+::view-transition-group(schedule-mode-tabs){
+ animation-duration:.60s;
+ animation-timing-function:cubic-bezier(.22,1,.36,1);
+}
+::view-transition-old(schedule-mode-tabs){
+ animation:scheduleTabsOut .40s ease-in both;
+}
+::view-transition-new(schedule-mode-tabs){
+ animation:scheduleTabsIn .56s cubic-bezier(.22,1,.36,1) both;
+}
+::view-transition-group(schedule-mode-panel){
+ animation-duration:.62s;
+ animation-timing-function:cubic-bezier(.22,1,.36,1);
+}
+::view-transition-old(schedule-mode-panel){
+ animation:schedulePanelOut .44s cubic-bezier(.38,0,.72,.50) both;
+}
+::view-transition-new(schedule-mode-panel){
+ animation:schedulePanelIn .62s cubic-bezier(.22,1,.36,1) both;
+}
+.schedule-mode-enter .schedule-transition-content{
+ animation:schedulePanelIn .62s cubic-bezier(.22,1,.36,1) both;
+}
+.schedule-mode-enter .schedule-view-switch{
+ animation:scheduleTabsIn .56s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes scheduleTabsOut{
+ from{opacity:1;filter:blur(0);}
+ to{opacity:.38;filter:blur(3px);}
+}
+@keyframes scheduleTabsIn{
+ from{opacity:.45;filter:blur(2px);}
+ to{opacity:1;filter:none;}
+}
+@keyframes schedulePanelOut{
+ from{opacity:1;transform:translateY(0) scale(1);}
+ to{opacity:.05;transform:translateY(-12px) scale(.985);}
+}
+@keyframes schedulePanelIn{
+ from{opacity:.05;transform:translateY(20px) scale(.976);}
+ to{opacity:1;transform:translateY(0) scale(1);}
+}
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav.is-dock-dropping,
+ .bottom-nav.is-dock-dropping .bottom-liquid-indicator,
+ .schedule-mode-enter .schedule-transition-content,
+ .schedule-mode-enter .schedule-view-switch{
+  animation:none!important;
+  scale:1!important;
+ }
+ ::view-transition-old(schedule-mode-tabs),
+ ::view-transition-new(schedule-mode-tabs),
+ ::view-transition-old(schedule-mode-panel),
+ ::view-transition-new(schedule-mode-panel){
+  animation-duration:.001ms!important;
+ }
+}
+
 /* Dock-matched horizontal selector rails.
  * The WHOLE frosted bar expands from its geometric centre on pointerdown.
  * The liquid lens follows the finger while the rail never reflows its hit area.

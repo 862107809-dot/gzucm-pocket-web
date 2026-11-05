@@ -89,12 +89,16 @@ test('vertical scrolling is never converted to bottom tab swipe',()=>{
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
 });
-test('tap without dragging delegates to existing click handler',()=>{
+test('tap without dragging delegates to existing click handler and instantly rebounds the entire Dock',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
+ assert.ok(h.navClasses.has('is-dock-pressed'),'touch-down must enlarge the Dock immediately');
+ assert.equal(h.navClasses.has('is-dock-dragging'),false);
  h.output.bottomSwipeFinish(h.event(46,20));
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
+ assert.ok(h.navClasses.has('is-dock-releasing'),'tap must spring back even without horizontal movement');
+ assert.match(css,/@keyframes pocketDockRelease/);
 });
 test('swiping to an edge clamps glass and allows last tab selection',()=>{
  const h=harness();

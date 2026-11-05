@@ -2042,7 +2042,9 @@
   color:var(--muted)!important;
   transform:translateY(0) scale(1);
  }
- .bottom-liquid-indicator.is-dropping{transition:none!important;}
+ .bottom-liquid-indicator.is-dropping{
+  transition:transform .28s cubic-bezier(.20,.86,.28,1),width .28s ease-out!important;
+ }
  /* A screen switch reads as a single light fade + small parallax, not a
     second full-page spring fighting the Dock's moving lens. */
  .page.page-enter{
@@ -2109,7 +2111,7 @@
  position:absolute;
  z-index:0;
  pointer-events:none;
- border-radius:inherit;
+ border-radius:17px;
  transition:transform .35s cubic-bezier(.20,.86,.28,1),
   width .32s ease,height .32s ease,scale .18s ease-out;
  transform-origin:center;

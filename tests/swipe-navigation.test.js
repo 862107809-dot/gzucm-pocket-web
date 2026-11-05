@@ -65,6 +65,20 @@ function harness(){
   frame:()=>{const next=frame;frame=null;next?.();},
   counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
 }
+test('narrow Dock keeps centered safe margins while the active lens slightly crosses its rim',()=>{
+ const section=css.slice(css.indexOf('/* COMPACT DOCK WITH CONTROLLED PILL OVERHANG'));
+ assert.ok(section.length>0,'compact mobile Dock rules should exist');
+ assert.match(section,/width:min\(calc\(100% - 42px\),560px\)/);
+ assert.match(section,/margin-inline:auto!important/);
+ assert.match(section,/inset:-10px -13px/);
+ assert.match(section,/\.bottom-nav \.bottom-item\{min-width:0;flex:1 1 0;\}/);
+ // Hit positions and drag geometry remain unchanged: only the optical face
+ // expands so a rightmost pill does not throw content out of the viewport.
+ assert.match(app,/const targetX=current\.offsetLeft\+inset/);
+ assert.match(app,/const targetW=Math\.max\(12,current\.offsetWidth-inset\*2\)/);
+ assert.match(app,/sw\.glass\.style\.transform='translate3d\('/);
+});
+
 test('finger drag follows the pointer and selects nearest bottom module on release',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));

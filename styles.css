@@ -1694,6 +1694,19 @@
  100%{scale:1;}
 }
 
+/* A dragged glass capsule does not inherit the spring/elastic snap
+ * that a tapped capsule uses. Its fallback movement is purely monotone. */
+@media(max-width:900px){
+ .bottom-liquid-indicator.is-dropping{
+  transition:transform .56s cubic-bezier(.22,1,.36,1),
+             width .56s cubic-bezier(.22,1,.36,1),
+             scale .53s cubic-bezier(.22,1,.36,1)!important;
+ }
+ .bottom-liquid-indicator.is-dropping .bottom-liquid-surface{
+  animation:none!important;
+  transition:transform .28s ease-out!important;
+ }
+}
 /* A drag is not a tap. On a swipe the Dock is gently put down,
  * monotonically shrinking from the touched position without overshoot. */
 @media(max-width:900px){

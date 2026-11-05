@@ -94,6 +94,65 @@ test('segmented mode and grade filters still support swipe and liquid glass',()=
   assert.equal(h.stats().clicks,1);
  }
 });
+test('Dock-like horizontal rail enlarges immediately on touch, follows drag and bounces on release',()=>{
+ const h=harness('grade');
+ assert.ok(h.group.classList.contains('is-horizontal-rail'));
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ assert.ok(h.group.classList.contains('is-rail-pressed'),'full rail must grow before any movement');
+ assert.equal(h.group.classList.contains('is-rail-dragging'),false);
+ h.selectors.liquidPointerFinish(h.event(0,40,20));
+ assert.equal(h.group.classList.contains('is-rail-pressed'),false);
+ assert.ok(h.group.classList.contains('is-rail-releasing'),'taps without swiping must bounce');
+ assert.equal(h.stats().clicks,0);
+ assert.match(css,/transform-origin:center center/);
+ assert.match(css,/@keyframes pocketRailRelease/);
+});
+test('horizontal rail edge light and glow clamp at either side then clear',()=>{
+ const h=harness('schedule');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ h.selectors.liquidPointerMove(h.event(0,-100,20));
+ h.runFrame();
+ assert.ok(h.group.classList.contains('is-rail-dragging'));
+ assert.ok(h.group.classList.contains('is-rail-edge-left'));
+ assert.equal(h.group.glass.style.transform,'translate3d(0px,0px,0)');
+ h.selectors.liquidPointerMove(h.event(0,490,20));
+ h.runFrame();
+ assert.equal(h.group.classList.contains('is-rail-edge-left'),false);
+ assert.ok(h.group.classList.contains('is-rail-edge-right'));
+ h.selectors.liquidPointerFinish(h.event(0,490,20));
+ assert.equal(h.group.classList.contains('is-rail-edge-right'),false);
+ assert.equal(h.stats().clicks,1);
+ assert.match(css,/\.is-rail-edge-left::before/);
+ assert.match(css,/\.is-rail-edge-right::after/);
+});
+test('a vertical scroll ends rail enlargement without selecting anything',()=>{
+ const h=harness('schedule');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ assert.ok(h.group.classList.contains('is-rail-pressed'));
+ h.selectors.liquidPointerMove(h.event(0,43,95));
+ assert.equal(h.group.classList.contains('is-rail-pressed'),false);
+ h.selectors.liquidPointerFinish(h.event(0,43,95));
+ assert.equal(h.group.classList.contains('is-rail-releasing'),false);
+ assert.equal(h.stats().clicks,0);
+});
+test('horizontal rail spring follows into a freshly rendered view',()=>{
+ const h=harness('grade');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ h.selectors.liquidPointerMove(h.event(0,230,20));
+ h.runFrame();
+ h.selectors.liquidPointerFinish(h.event(0,230,20));
+ h.selectors.enhanceLiquidSelectors({querySelectorAll:()=>[h.group]});
+ assert.ok(h.group.classList.contains('is-rail-settling'));
+ assert.match(css,/@keyframes pocketRailSettle/);
+});
+test('popovers and weekday choice tiles never use the horizontal rail animation',()=>{
+ const menu=harness('menu',true);
+ menu.selectors.liquidPointerDown(menu.event(0,30,20));
+ assert.equal(menu.group.classList.contains('is-rail-pressed'),false);
+ const days=harness('days');
+ assert.equal(days.group.classList.contains('is-horizontal-rail'),false);
+ assert.match(css,/\.day-strip > \.liquid-choice-highlight\{display:none!important/);
+});
 test('weekly weekday choices are ordinary tap-only controls: no sliding lens or drag-to-select',()=>{
  const h=harness('days');
  assert.equal(h.group.glass,null,'weekday strip must not gain a travelling glass lens');

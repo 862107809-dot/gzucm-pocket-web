@@ -158,18 +158,20 @@ test('a vertical scroll ends rail enlargement without selecting anything',()=>{
  assert.equal(h.group.classList.contains('is-rail-releasing'),false);
  assert.equal(h.stats().clicks,0);
 });
-test('horizontal rail dragging lands gently across rerender, with no elastic bounce',()=>{
+test('horizontal rail swipe releases without any second spring or reset',()=>{
  const h=harness('grade');
  h.selectors.liquidPointerDown(h.event(0,40,20));
  h.selectors.liquidPointerMove(h.event(0,230,20));
  h.runFrame();
  h.selectors.liquidPointerFinish(h.event(0,230,20));
- assert.ok(h.group.classList.contains('is-rail-dropping'));
- assert.ok(!h.group.classList.contains('is-rail-releasing'));
+ assert.equal(h.group.classList.contains('is-rail-dropping'),false);
+ assert.equal(h.group.classList.contains('is-rail-releasing'),false);
  h.selectors.enhanceLiquidSelectors({querySelectorAll:()=>[h.group]});
- assert.ok(h.group.classList.contains('is-rail-dropping'));
- assert.ok(!h.group.classList.contains('is-rail-settling'));
- assert.match(css,/@keyframes pocketRailDrop\{from\{scale:1\.046;\}to\{scale:1;\}\}/);
+ assert.equal(h.group.classList.contains('is-rail-dropping'),false);
+ assert.equal(h.group.classList.contains('is-rail-settling'),false);
+ const easing=css.slice(css.indexOf('/* UNIFIED V-SYNC GESTURES v2'));
+ assert.match(easing,/\.liquid-selector\.is-rail-dropping\{\s*animation:none!important;/);
+ assert.match(easing,/transition:scale var\(--pocket-gesture-release\)/);
 });
 test('popovers remain vertically scrubbed while weekdays use horizontal glass navigation',()=>{
  const menu=harness('menu',true);
@@ -218,7 +220,36 @@ test('horizontal drag magnifies outer rail and the scrubbed button but not the c
  assert.ok(h.group.classList.contains('is-rail-dragging'));
  assert.ok(h.group.buttons[2].classList.contains('is-scrubbed'));
  h.selectors.liquidPointerFinish(h.event(0,220,20));
- assert.ok(h.group.classList.contains('is-rail-dropping'));
+ assert.equal(h.group.classList.contains('is-rail-dropping'),false,'swipe must not start base spring');
+});
+
+test('grade and timetable rails use the Dock tap-or-drag direction lock',()=>{
+ for(const kind of ['grade','schedule','days']){
+  const h=harness(kind);
+  h.selectors.liquidPointerDown(h.event(0,40,20));
+  h.selectors.liquidPointerMove(h.event(0,47,24));
+  assert.equal(h.group.classList.contains('is-rail-dragging'),false);
+  h.selectors.liquidPointerMove(h.event(0,55,24));
+  assert.equal(h.group.classList.contains('is-rail-dragging'),true);
+  h.selectors.liquidPointerFinish(h.event(0,55,24));
+  assert.equal(h.group.classList.contains('is-rail-dropping'),false);
+ }
+});
+test('drag moves the glass with cached geometry rather than measuring each frame',()=>{
+ const h=harness('grade');
+ h.group.offsetWidth=300;
+ const oldRect=h.group.getBoundingClientRect;
+ let rectReads=0;
+ h.group.getBoundingClientRect=()=>{rectReads++;return oldRect();};
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ const afterDown=rectReads;
+ h.selectors.liquidPointerMove(h.event(0,245,20));h.runFrame();
+ h.selectors.liquidPointerMove(h.event(0,210,20));h.runFrame();
+ assert.equal(rectReads,afterDown,'no layout read on rAF during animated scaling');
+ const moved=parseFloat(h.group.glass.style.transform.match(/translate3d\(([-\d.]+)px/)[1]);
+ const expected=150+(210-150)/1.026-50;
+ assert.ok(Math.abs(moved-expected)<.1,'glass follows 102.6% rail scaling');
+ h.selectors.liquidPointerFinish(h.event(0,210,20));
 });
 
 test('horizontal rail snapshots preserve unscaled lens geometry while expanded',()=>{

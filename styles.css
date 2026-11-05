@@ -2532,3 +2532,71 @@
   transform:none!important;
  }
 }
+
+
+/* STABLE SIDE-BY-SIDE TIMETABLE COMPARISON v3
+ * Both fixed-layout modes use exactly the same header geometry, regardless
+ * of the academic week or calendar month content below. The selected control
+ * never scales with the changing panel; only the schedule content morphs. */
+.page-schedule .schedule-fixed-header{
+ width:100%;
+ min-height:66px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ margin:0 0 9px;
+ padding:0;
+}
+.page-schedule .schedule-fixed-header .eyebrow{
+ flex:1 1 auto;
+ min-width:0;
+ font-size:11px;
+ letter-spacing:.13em;
+ color:var(--muted);
+ font-weight:800;
+}
+.page-schedule .schedule-fixed-header .schedule-view-switch{
+ flex:0 0 auto;
+ margin:0!important;
+ max-width:min(76%,310px);
+}
+.page-schedule .schedule-transition-content{
+ transform-origin:50% 0;
+}
+.page-schedule .schedule-transition-content.schedule-soft-arrival{
+ animation:scheduleSoftArrival .345s cubic-bezier(.24,.68,.30,1) both!important;
+}
+@media(min-width:601px) and (max-width:900px){
+ .page-schedule .schedule-fixed-header{min-height:64px;}
+ .page-schedule .schedule-transition-content.schedule-soft-arrival{
+  animation-duration:.325s!important;
+ }
+}
+@media(min-width:901px){
+ .page-schedule .schedule-fixed-header{min-height:64px;}
+ .page-schedule .schedule-transition-content.schedule-soft-arrival{
+  animation-duration:.30s!important;
+ }
+}
+@media(max-width:600px){
+ .page-schedule .schedule-fixed-header{min-height:58px;}
+ .page-schedule .schedule-fixed-header .eyebrow{font-size:9px;}
+ .page-schedule .schedule-fixed-header .schedule-view-switch{
+  width:auto;max-width:76%;margin:0!important;padding:3px;
+ }
+ .page-schedule .schedule-fixed-header .schedule-view-switch button{
+  padding:8px 10px;min-width:0;gap:4px;font-size:12px;
+ }
+}
+@media(max-width:370px){
+ .page-schedule .schedule-fixed-header .eyebrow{display:none;}
+ .page-schedule .schedule-fixed-header .schedule-view-switch{
+  width:100%;max-width:100%;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .page-schedule .schedule-transition-content.schedule-soft-arrival{
+  animation:none!important;transform:none!important;opacity:1!important;
+ }
+}

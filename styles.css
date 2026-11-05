@@ -1981,3 +1981,20 @@
   animation:none!important;
  }
 }
+
+
+/* iOS-style toggle: mint track + white thumb, with a restrained elastic
+ * release. Independent scale does not interfere with thumb translate3d,
+ * dragging, or the system's Reduce Motion preference. */
+@keyframes pocketSwitchThumbBounce{
+ 0%{scale:1.10 .96;}
+ 48%{scale:.96 1.03;}
+ 76%{scale:1.015 .995;}
+ 100%{scale:1;}
+}
+.switch[role="switch"].is-settling::after{
+ animation:pocketSwitchThumbBounce .46s cubic-bezier(.22,.82,.24,1) both;
+}
+@media(prefers-reduced-motion:reduce){
+ .switch[role="switch"].is-settling::after{animation:none!important;scale:1;}
+}

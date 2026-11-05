@@ -2600,3 +2600,55 @@
   animation:none!important;transform:none!important;opacity:1!important;
  }
 }
+
+
+/* THIRD TIMETABLE LAYOUT — WIDE CENTERED RAIL v1
+ * Both week and month render the identical original WEEK heading followed by
+ * the same two-button rail. The rail stays outside .schedule-transition-content
+ * so its position and dimensions remain stable during mode switches.
+ * Unlike "fixed" (small switch near the eyebrow), this option is the original
+ * week-style full-width horizontal selector, centered within the content. */
+.page-schedule .schedule-wide-header{
+ width:100%;
+ max-width:900px;
+ margin:0 auto 18px;
+ box-sizing:border-box;
+}
+.page-schedule .schedule-wide-header .schedule-view-switch{
+ box-sizing:border-box;
+ display:flex;
+ justify-content:stretch;
+ align-items:stretch;
+ width:100%;
+ max-width:100%;
+ margin:12px 0 0!important;
+ padding:5px;
+}
+.page-schedule .schedule-wide-header .schedule-view-switch > button{
+ flex:1 1 0;
+ width:50%;
+ min-width:0;
+ justify-content:center;
+ padding:12px 14px;
+}
+@media(max-width:660px){
+ .page-schedule .schedule-wide-header{
+  max-width:100%;
+  margin-bottom:15px;
+ }
+ .page-schedule .schedule-wide-header .schedule-view-switch{
+  margin-top:8px!important;
+  padding:4px;
+ }
+ .page-schedule .schedule-wide-header .schedule-view-switch > button{
+  padding:11px 9px;
+ }
+}
+@media(min-width:661px) and (max-width:900px){
+ .page-schedule .schedule-wide-header{
+  width:100%;
+  max-width:100%;
+ }
+}
+/* Only the course panel morphs, not the rail. Existing reduced-motion and
+ * horizontal-scrubbing behavior is shared with the fixed-layout version. */

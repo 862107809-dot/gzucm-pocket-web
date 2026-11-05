@@ -223,6 +223,22 @@ test('horizontal drag magnifies outer rail and the scrubbed button but not the c
  assert.equal(h.group.classList.contains('is-rail-dropping'),false,'swipe must not start base spring');
 });
 
+test('fast flicks without a preceding move still choose grade and timetable options',()=>{
+ for(const kind of ['grade','schedule','days']){
+  const h=harness(kind);
+  h.selectors.liquidPointerDown(h.event(0,40,20));
+  h.selectors.liquidPointerFinish(h.event(0,245,20));
+  assert.equal(h.group.clicked,2);
+  assert.equal(h.stats().clicks,1);
+  assert.equal(h.group.classList.contains('is-rail-dropping'),false);
+ }
+});
+test('vertical release without move does not select a grade choice',()=>{
+ const h=harness('grade');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ h.selectors.liquidPointerFinish(h.event(0,52,120));
+ assert.equal(h.stats().clicks,0);
+});
 test('grade and timetable rails use the Dock tap-or-drag direction lock',()=>{
  for(const kind of ['grade','schedule','days']){
   const h=harness(kind);

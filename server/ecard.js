@@ -17,7 +17,7 @@ function safeUrl(v){const u=new URL(v);if(u.protocol!=='https:'||u.hostname!=='e
 function parseSetCookies(host,arr,jar){for(const raw of arr||[]){const [first,...flags]=raw.split(';');const ix=first.indexOf('=');if(ix<1)continue;const name=first.slice(0,ix).trim(),value=first.slice(ix+1);const path=flags.find(v=>/^\s*path=/i.test(v))?.split('=')[1]?.trim()||'/';const key=host+'\0'+path+'\0'+name;const del=flags.find(v=>/^\s*max-age=/i.test(v));if(!value||del&&Number(del.split('=')[1])<=0){jar.delete(key);continue;}if(path.startsWith('/'))jar.set(key,{host,path,name,value});}}
 function cookieFor(jar,url){return [...jar.values()].filter(c=>c.host===url.hostname&&url.pathname.startsWith(c.path)).sort((a,b)=>b.path.length-a.path.length).map(c=>`${c.name}=${c.value}`).join('; ');}
 class EcardClient{
- constructor(){this.cookies=new Map();this.lastRead=0;}
+ constructor(){this.cookies=new Map();this.lastRead=0;this.cachedResult=null;this.cachedMonth='';this.inflight=null;this.inflightMonth='';}
  hasAuthenticatedSession(){return [...this.cookies.values()].some(c=>c.host==='ecard.gzucm.edu.cn'&&c.name==='JSESSIONID'&&c.value&&'/user/powerfee/index'.startsWith(c.path));}
  async request(target,body=null,hop=0){
   const u=safeUrl(target);if(hop>4)throw Error('一卡通页面重定向过多');
@@ -37,42 +37,78 @@ class EcardClient{
  }
  async live(month){
   if(!this.hasAuthenticatedSession())throw needLogin();
+  const current=new Date();
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit'}).formatToParts(current);
+  const year=parts.find(x=>x.type==='year')?.value;
+  const mon=parts.find(x=>x.type==='month')?.value;
+  const requested=month||year+'-'+mon;
+  if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(requested))throw Object.assign(Error('月份格式必须为 YYYY-MM'),{status:400});
+  if(this.cachedResult&&this.cachedMonth===requested&&Date.now()-this.lastRead<45000)return this.cachedResult;
+  if(this.inflight&&this.inflightMonth===requested)return this.inflight;
+  this.inflightMonth=requested;
+  this.inflight=this.readLive(requested);
+  try{
+   const result=await this.inflight;
+   this.cachedResult=result;this.cachedMonth=requested;this.lastRead=Date.now();
+   return result;
+  }finally{this.inflight=null;this.inflightMonth='';}
+ }
+ async readLive(month){
   const html=await this.request(PORTAL);
-  // The page may render a static powerTips balance, or fetch it dynamically from
-  // getBalance using the bound room IDs and session token.
   const context=parsePowerContext(html);
-  let details=parsePowerHtml(html);
+  let details=parsePowerHtml(html),source='ecard-page';
+  const warnings=[];
+  // Prefer the authenticated API; an HTML powerTips label may be stale.
   if(context){
-    try{
-      const result=await this.request(BASE+'/user/powerfee/getBalance',{
-        implType:'CGCOMMON1001',schoolAreaNo:context.schoolAreaNo,
-        buildingNo:context.buildingNo,roomNum:context.roomNum,from:'',token:context.token
-      });
-      details=parsePowerBalanceJson(result,context);
-    }catch(err){
-      if(!details)throw err;
-      console.warn('[GZUCM ecard]','balance_api=unavailable','page_balance=available');
-    }
+   try{
+    const result=await this.request(BASE+'/user/powerfee/getBalance',{
+     implType:'CGCOMMON1001',schoolAreaNo:context.schoolAreaNo,
+     buildingNo:context.buildingNo,roomNum:context.roomNum,from:'',token:context.token
+    });
+    details=parsePowerBalanceJson(result,context);
+    source='ecard-live';
+   }catch(err){
+    if(!details)throw err;
+    warnings.push('余额接口暂不可用，当前显示学校页面上的电量；请到官网核对。');
+   }
   }
   if(!details)throw needLogin();
   const {token,schoolAreaNo,roomNum}=details;
-  const day=(month&&/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))?month:new Date().toISOString().slice(0,7);
-  const warnings=[];let powerDaily=[];
+  const recordMap=new Map();
+  let historyStatus='unavailable';
   if(token&&schoolAreaNo&&roomNum){
-   try{
-    const records=new Map();
-    for(let page=1;page<=4;page++){
-     const response=await this.request(BASE+'/user/powerfee/getDailyDetails',{roomNum,lastDate:day,type:'2',implType:'CGCOMMON1001',schoolAreaNo,pageNum:String(page),pageSize:'30',token,from:''});
-     const list=parsePowerDailyJson(response);for(const record of list)records.set(record.date,record);
-     if(list.length<30)break;
+   // A seven-day forecast at the beginning of a month needs last month's
+   // usage too. Fetch only two adjacent months and at most 3 pages each.
+   const m=new Date(month+'-01T12:00:00Z');m.setUTCMonth(m.getUTCMonth()-1);
+   const previous=m.toISOString().slice(0,7);
+   let complete=true,success=0;
+   for(const lastDate of [month,previous]){
+    for(let page=1;page<=3;page++){
+     try{
+      const response=await this.request(BASE+'/user/powerfee/getDailyDetails',{
+       roomNum,lastDate,type:'2',implType:'CGCOMMON1001',schoolAreaNo,
+       pageNum:String(page),pageSize:'30',token,from:''
+      });
+      const list=parsePowerDailyJson(response);
+      for(const record of list){
+       if(record.date.slice(0,7)===lastDate)recordMap.set(record.date,record);
+      }
+      success++;
+      if(list.length<30)break;
+     }catch(err){
+      complete=false;
+      warnings.push('用电明细部分月份读取失败，请稍后刷新。');
+      break;
+     }
     }
-    powerDaily=[...records.values()].sort((a,b)=>a.date.localeCompare(b.date));
-   }catch(err){warnings.push('实时余额已读取，但用电明细暂时无法同步：'+String(err.message).slice(0,90));}
-  }else warnings.push('一卡通页面缺少用电明细所需的房间标识或 Token');
-  this.lastRead=Date.now();
+   }
+   historyStatus=success?(complete?'complete':'partial'):'unavailable';
+  }else warnings.push('学校页面没有提供读取用电明细所需的房间标识');
+  const powerDaily=[...recordMap.values()].sort((a,b)=>a.date.localeCompare(b.date));
   const {balance,unit,roomLabel}=details;
-  return {power:{balance,unit,roomLabel,updatedAt:new Date().toISOString(),source:'ecard-live'},powerDaily,warnings,source:'ecard-live',officialUrl:PORTAL};
+  return {power:{balance,unit,roomLabel,updatedAt:new Date().toISOString(),source},
+   powerDaily,historyStatus,warnings,source,officialUrl:PORTAL};
  }
- clear(){this.cookies.clear();this.lastRead=0;}
+ clear(){this.cookies.clear();this.lastRead=0;this.cachedResult=null;this.cachedMonth='';this.inflight=null;this.inflightMonth='';}
 }
 module.exports={EcardClient,PORTAL,SIGN_IN,needLogin,safeUrl,parseSetCookies,cookieFor};

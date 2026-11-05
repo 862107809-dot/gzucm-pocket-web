@@ -331,6 +331,9 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   group.classList.add('liquid-selector');
   const rail=isHorizontalLiquidRail(group,false);
   if(rail)group.classList.add('is-horizontal-rail');
+  // A preserved mode selector already owns its moving glass; never insert
+  // a second lens or rebuild its gesture state during a local calendar swap.
+  if(group.querySelector(':scope > .liquid-choice-highlight'))continue;
   const glass=document.createElement('span');
   glass.className='liquid-choice-highlight is-instant';
   glass.setAttribute('aria-hidden','true');
@@ -677,22 +680,41 @@ function render(){
  previousBottomTab=state.view;
  if(state.view==='settings')updateGlassModeIndicator();
 }
+/* Week/month switches are DOM-local: do not repaint the app shell or take
+ * large View Transition snapshots of blurred course cards (slow on Safari).
+ * Keep the actual glass selector mounted, so touch/drag never resets.
+ * Network refreshes use this same small update without reopening the Dock. */
+function renderScheduleContent(confirm=false){
+ const pageRoot=$('#page-content');
+ if(!pageRoot||state.view!=='schedule'){render();return;}
+ const selector=pageRoot.querySelector('.schedule-view-switch');
+ pageRoot.innerHTML=schedulePage();
+ const replacement=pageRoot.querySelector('.schedule-view-switch');
+ if(selector&&replacement){
+  replacement.replaceWith(selector);
+  for(const button of selector.querySelectorAll('button[data-mode]')){
+   const active=button.dataset.mode===state.scheduleMode;
+   button.classList.toggle('active',active);
+   button.setAttribute('aria-pressed',String(active));
+  }
+  // The selector changed width between layouts: remeasure once at its new
+  // location, never animate from a stale offscreen or stretched snapshot.
+  const lens=selector.querySelector('.liquid-choice-highlight');
+  const active=selector.querySelector('button.active');
+  if(lens&&active){
+   lens.classList.add('is-instant');
+   setSelectorGlass(lens,{x:active.offsetLeft,y:active.offsetTop,
+    width:active.offsetWidth,height:active.offsetHeight});
+   if(confirm)confirmGlassSelection(lens);
+   requestAnimationFrame(()=>{if(lens.isConnected)lens.classList.remove('is-instant');});
+  }
+ }
+ enhanceLiquidSelectors(pageRoot);
+ window.GZUCM_I18N?.apply(pageRoot,state.prefs.language==='en'?'en':'zh');
+}
 function transitionScheduleMode(afterRender){
- const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
- const update=()=>{render();afterRender?.();};
- if(reduced||typeof document.startViewTransition!=='function'){
-  scheduleModeFallbackEntrance=!reduced;
-  update();
-  return;
- }
- try{
-  // Browser snapshots interpolate both the glass selector and timetable.
-  const transition=document.startViewTransition(update);
-  transition.finished?.catch?.(()=>{});
- }catch{
-  scheduleModeFallbackEntrance=true;
-  update();
- }
+ renderScheduleContent(true);
+ afterRender?.();
 }
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav class="sidebar-nav-main" aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav class="sidebar-nav-account">${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}

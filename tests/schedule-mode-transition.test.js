@@ -36,24 +36,30 @@ function harness(mode='month',hasHost=true,width=0,animate=false,reduced=false){
  };
  let reused=false;
  const newSelector={replaceWith:node=>{assert.equal(node,oldSelector);reused=true;}};
+ const originalPanel={isConnected:true};
+ const refreshedPanel={isConnected:true};
  const page={
   updates:0,
   set innerHTML(value){this.markup=value;this.updates++;},
   get innerHTML(){return this.markup;},
   querySelector:()=>this.updates?newSelector:oldSelector
  };
- // page.querySelector cannot use lexical this when called without an owner.
- page.querySelector=()=>page.updates?newSelector:oldSelector;
+ // The fixed selector persists; only the week/month content is swapped.
+ page.querySelector=selector=>selector==='.schedule-transition-content'?
+  (page.updates?refreshedPanel:originalPanel):(page.updates?newSelector:oldSelector);
  if(animate){
   page.isConnected=true;
   page.getBoundingClientRect=()=>({width});
-  page.animate=(frames,options)=>{
+  const makeAnimation=(frames,options)=>{
    let resolve;
    const finished=new Promise(res=>{resolve=res;});
    const animation={frames,options,finished,resolve,cancel(){this.cancelled=true;}};
    animations.push(animation);
    return animation;
   };
+  page.animate=makeAnimation;
+  originalPanel.animate=makeAnimation;
+  refreshedPanel.animate=makeAnimation;
  }
  const state={view:'schedule',scheduleMode:mode,prefs:{language:'zh'}};
  const doc={startViewTransition:()=>{throw Error('native snapshots must never run');}};
@@ -114,17 +120,17 @@ test('desktop Mac and wide iPad use a short shrink-then-expand visual handoff',a
  h.f.transitionScheduleMode(()=>h.calls.push(['sync']));
  assert.equal(h.page.updates,0,'old page stays visible while it shrinks');
  assert.equal(h.animations.length,1);
- assert.equal(h.animations[0].frames[1].transform,'scale(0.987)');
- assert.equal(h.animations[0].options.duration,80);
- assert.equal(h.animations[0].frames[1].opacity,.12);
+ assert.equal(h.animations[0].frames[1].transform,'scale(0.974)');
+ assert.equal(h.animations[0].options.duration,180);
+ assert.equal(h.animations[0].frames[1].opacity,.18);
  h.animations[0].resolve();
  await Promise.resolve();
  assert.equal(h.page.updates,1);
  assert.equal(h.reused(),true);
  assert.equal(h.animations.length,2);
- assert.equal(h.animations[1].frames[0].transform,'scale(0.987)');
+ assert.equal(h.animations[1].frames[0].transform,'scale(0.974)');
  assert.equal(h.animations[1].frames[1].transform,'scale(1)');
- assert.equal(h.animations[1].options.duration,165);
+ assert.equal(h.animations[1].options.duration,300);
  assert.equal(h.calls.some(x=>x[0]==='full-render'),false);
  h.animations[1].resolve();
  await Promise.resolve();
@@ -133,7 +139,7 @@ test('desktop Mac and wide iPad use a short shrink-then-expand visual handoff',a
 });
 
 test('tablet and phone get responsive zoom amplitudes without overshooting 100%',async()=>{
- for(const [width,expected,duration] of [[780,'scale(0.98)',180],[390,'scale(0.973)',195]]){
+ for(const [width,expected,duration] of [[780,'scale(0.966)',325],[390,'scale(0.958)',345]]){
   const h=harness('month',true,width,true);
   h.f.transitionScheduleMode();
   assert.equal(h.animations[0].frames[1].transform,expected);

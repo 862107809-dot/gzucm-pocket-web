@@ -1,6 +1,6 @@
 /* Cache namespace v5: old cache-first app.js caused a permanent boot screen. */
-const CACHE = 'gzucm-pocket-web-v31-20261105-bridge1';
-const ASSETS = ['/', '/index.html', '/styles.css?v=20261105-smooth-month16', '/vendor/liquid-glass.js?v=20261104-mit-glass1', '/glass-effects.js?v=20261105-smooth-month16', '/i18n.js?v=20261105-bridge1', '/data.js?v=20261104-fix2', '/haptics.js?v=20261105-haptics1', '/power-insights.js?v=20261105-power3', '/power-snapshots.js?v=20261105-bridge1', '/app.js?v=20261105-bridge1', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
+const CACHE = 'gzucm-pocket-web-v32-20261105-bridge2';
+const ASSETS = ['/', '/index.html', '/styles.css?v=20261105-smooth-month16', '/vendor/liquid-glass.js?v=20261104-mit-glass1', '/glass-effects.js?v=20261105-smooth-month16', '/i18n.js?v=20261105-bridge1', '/data.js?v=20261104-fix2', '/haptics.js?v=20261105-haptics1', '/power-insights.js?v=20261105-power3', '/power-snapshots.js?v=20261105-bridge2', '/app.js?v=20261105-bridge2', '/boot-check.js?v=20261104-fix2', '/manifest.webmanifest', '/assets/icon.svg', '/assets/apple-touch-icon.png'];
 self.addEventListener('install', event => {
  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

@@ -964,12 +964,6 @@ body{
  background:transparent;
  box-shadow:var(--pocket-confirm-shadow);
  opacity:0;
- animation:pocketNaturalConfirmation .44s ease-out both;
-}
-@keyframes pocketNaturalConfirmation{
- 0%{opacity:0;}
- 35%{opacity:.90;}
- 100%{opacity:0;}
 }
 /* Ordinary one-shot button actions use the same shadow language, but no
  * travelling selection pill. Text fields, modal and toast interaction
@@ -987,7 +981,6 @@ body{
  :root .bottom-nav .bottom-liquid-indicator.is-confirmed::after,
  :root .liquid-selector > .liquid-choice-highlight.is-confirmed::after,
  :root .safari-floating-menu .safari-menu-glider.is-confirmed::after{
-  animation:none!important;
   opacity:0!important;
  }
 }

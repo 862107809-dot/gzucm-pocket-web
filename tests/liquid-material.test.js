@@ -14,8 +14,8 @@ test('optical material sheet is layered after app layout styles and cached for P
  const base=html.indexOf('/styles.css?v=');
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
- assert.ok(cache.includes('/liquid-material.css?v=20261105-no-tap-bounce1'));
- assert.ok(cache.includes('gzucm-pocket-web-v57-20261105-fixed-switch-compare3'));
+ assert.ok(cache.includes('/liquid-material.css?v=20261105-popover-snap1'));
+ assert.ok(cache.includes('gzucm-pocket-web-v58-20261105-popover-snap1'));
  assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-material2'));
  assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-material2'));
 });
@@ -126,10 +126,10 @@ test('switch uses mint track in light mode and muted sage thumb in dark mode',()
 });
 
 test('video style dark/light weekday lens and PWA gesture assets are consistent',()=>{
- assert.ok(html.includes('/styles.css?v=20261105-fixed-switch-compare3'));
- assert.ok(html.includes('/app.js?v=20261105-fixed-switch-compare3'));
- assert.ok(cache.includes('/styles.css?v=20261105-fixed-switch-compare3'));
- assert.ok(cache.includes('/app.js?v=20261105-fixed-switch-compare3'));
+ assert.ok(html.includes('/styles.css?v=20261105-popover-snap1'));
+ assert.ok(html.includes('/app.js?v=20261105-popover-snap1'));
+ assert.ok(cache.includes('/styles.css?v=20261105-popover-snap1'));
+ assert.ok(cache.includes('/app.js?v=20261105-popover-snap1'));
  assert.match(material,/VIDEO-MATCHED WEEKDAY LENS/);
  assert.match(material,/:root \.day-strip\.liquid-selector > \.day-tab\.active/);
  assert.match(material,/:root\[data-active-theme="dark"\] \.day-strip\.liquid-selector > \.liquid-choice-highlight/);

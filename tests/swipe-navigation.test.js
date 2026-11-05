@@ -92,7 +92,7 @@ test('Dock stays within its border at rest, expands only while dragged, then con
  assert.match(section,/@keyframes pocketDockGlassReturn\{\s*0%\{inset:-10px -13px;\}\s*100%\{inset:0;\}/);
  assert.match(section,/\.bottom-nav\.is-dock-releasing,[\s\S]*?animation:pocketDockClickConfirm/);
  assert.match(app,/if\(shouldConfirm\)confirmGlassSelection\(glass\)/);
- assert.match(app,/pocketDockDragReturn'\].includes\(event.animationName\)/);
+ assert.match(app,/pocketDockSoftDrop'\].includes\(event.animationName\)/);
 });
 
 test('same-tab swipe confirms with a shadow without navigation or stale glass state',()=>{
@@ -106,6 +106,26 @@ test('same-tab swipe confirms with a shadow without navigation or stale glass st
  assert.ok(h.classes.has('is-confirmed'));
  assert.equal(h.navClasses.has('is-dock-dropping'),true);
 });
+test('Dock base and its selected button grow together; swipe geometry compensates visual scale',()=>{
+ const section=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(section,/#app \.bottom-nav\.is-dock-pressed\{scale:1\.018!important;/);
+ assert.match(section,/#app \.bottom-nav\.is-dock-dragging\{scale:1\.027!important;/);
+ assert.match(section,/\.bottom-item:not\(\.is-scrubbed\)\.is-pressed\{\s*scale:1\.045!important;/);
+ assert.match(section,/\.bottom-item\.is-scrubbed\{\s*scale:1\.065!important;/);
+ assert.match(section,/@keyframes pocketDockSoftSpring/);
+ assert.match(section,/@keyframes pocketDockSoftDrop/);
+ assert.match(app,/function bottomSwipeLocalX\(sw,x\)/);
+ assert.match(app,/bottomSwipeLocalX\(sw,event\.clientX\)/);
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ assert.ok(h.navClasses.has('is-dock-pressed'));
+ h.output.bottomSwipeMove(h.event(258,20));
+ assert.ok(h.navClasses.has('is-dock-dragging'));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(258,20));
+ assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:true});
+});
+
 test('narrow Dock keeps centered safe margins while the active lens slightly crosses its rim',()=>{
  const section=css.slice(css.indexOf('/* COMPACT DOCK WITH CONTROLLED PILL OVERHANG'));
  assert.ok(section.length>0,'compact mobile Dock rules should exist');
@@ -156,7 +176,7 @@ test('vertical scrolling is never converted to bottom tab swipe',()=>{
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
 });
-test('tap without dragging leaves Dock stationary, keeps optical confirmation and delegates to click',()=>{
+test('tap without dragging gently springs the entire Dock while preserving optical confirmation',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
  assert.ok(h.navClasses.has('is-dock-pressed'),'touch-down still tracks gesture');
@@ -164,9 +184,9 @@ test('tap without dragging leaves Dock stationary, keeps optical confirmation an
  h.output.bottomSwipeFinish(h.event(46,20));
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
- assert.equal(h.navClasses.has('is-dock-releasing'),false,'simple tap must not start a rail rebound');
+ assert.equal(h.navClasses.has('is-dock-releasing'),true,'simple tap gives the Dock a gentle spring');
  assert.ok(h.classes.has('is-confirmed'),'tap keeps a non-bouncing shadow cue');
- assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.bottom-nav:is\(\.is-dock-releasing,\.is-dock-settling\)/);
+ assert.match(css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1')),/\.bottom-nav\.is-dock-releasing,/);
 });
 test('ordinary Dock click switches view without a rail spring, while drag still requests a landing',()=>{
  const h=harness();

@@ -2157,3 +2157,27 @@
   animation:none!important;
  }
 }
+
+/* COMPACT DOCK WITH CONTROLLED PILL OVERHANG
+ * The five hit targets remain equal and reachable; only the selected glass
+ * face protrudes 2–4px beyond the Dock rim (not outside the screen).
+ * Do not alter the transform/width geometry used by pointer scrubbing. */
+@media(max-width:900px){
+ .bottom-nav{
+  width:min(calc(100% - 42px),560px);
+  max-width:calc(100% - 42px);
+  margin-inline:auto!important;
+  left:0!important;
+  right:0!important;
+  overflow:visible;
+ }
+ .bottom-nav .bottom-liquid-indicator{
+  border-radius:23px;
+ }
+ .bottom-nav .bottom-liquid-indicator .bottom-liquid-surface{
+  inset:-10px -13px;
+  border-radius:23px;
+ }
+ /* Keep focus and finger interaction hitboxes inside the centered rail. */
+ .bottom-nav .bottom-item{min-width:0;flex:1 1 0;}
+}

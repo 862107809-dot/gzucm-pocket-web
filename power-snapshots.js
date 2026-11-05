@@ -16,7 +16,12 @@
  const MAX_DAYS=90;
  function dayOf(at){
   const dt=new Date(at);
-  return Number.isFinite(dt.getTime())?dt.toISOString().slice(0,10):'';
+  if(!Number.isFinite(dt.getTime()))return '';
+  const parts=new Intl.DateTimeFormat('en-US',{
+   timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(dt);
+  const part=type=>parts.find(x=>x.type===type)?.value||'';
+  return part('year')+'-'+part('month')+'-'+part('day');
  }
  function normalize(entry) {
   if(!entry||typeof entry!=='object')return null;

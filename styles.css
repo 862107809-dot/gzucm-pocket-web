@@ -2393,8 +2393,8 @@
  * Click and tap responses use color, depth and smooth travel, not elastic
  * resizing. Real scrubbing/dragging, thumb toggles and dialog transitions
  * retain their dedicated motion. */
-#app .pocket-full-press,
-#app .pocket-full-release,
+/* Outer card frames remain still; the later button-only spring overrides
+ * the former global no-bounce rule without enabling card animation. */
 #app .pocket-full-card.pocket-full-press,
 #app .pocket-full-card.pocket-full-release{
  animation:none!important;
@@ -2652,3 +2652,184 @@
 }
 /* Only the course panel morphs, not the rail. Existing reduced-motion and
  * horizontal-scrubbing behavior is shared with the fixed-layout version. */
+
+
+/* GENTLE BUTTON AND RAIL SPRINGS v1
+ * Short nonlinear settling, never an exaggerated elastic jump. Only actual
+ * controls receive the spring. The frame of any course/card/settings panel
+ * stays motionless; the bottom Dock and horizontal choice rails are the
+ * intentional exceptions. Individual CSS scale keeps hitbox layout intact. */
+@keyframes pocketButtonSoftSpring{
+ 0%{scale:.968;}
+ 53%{scale:1.011;}
+ 82%{scale:.998;}
+ 100%{scale:1;}
+}
+#app .pocket-full-press:not(.pocket-full-card){
+ scale:.968!important;
+ transform-origin:center;
+ animation:none!important;
+ transition:scale .16s cubic-bezier(.26,.63,.32,1),
+  filter .15s ease-out!important;
+}
+#app .pocket-full-release:not(.pocket-full-card){
+ animation:pocketButtonSoftSpring .45s cubic-bezier(.22,.80,.28,1) both!important;
+ transform-origin:center;
+}
+#app :is(.card,.agenda-row,.hero-card,.calendar-visual,.month-calendar,
+ .settings-grid,.setting-item,.schedule-day,.schedule-layout,.month-compact)
+ :not(button):not(a):not([role="button"]):not([role="tab"]):not([role="switch"]).pocket-full-press,
+#app :is(.card,.agenda-row,.hero-card,.calendar-visual,.month-calendar,
+ .settings-grid,.setting-item,.schedule-day,.schedule-layout,.month-compact)
+ :not(button):not(a):not([role="button"]):not([role="tab"]):not([role="switch"]).pocket-full-release{
+ animation:none!important;
+ scale:1!important;
+ transform:none!important;
+}
+/* Menus and modal surfaces use their existing opening animation, while
+ * buttons INSIDE them still respond gently without scaling the popover. */
+#popover-root .safari-floating-menu .safari-menu-option,
+#modal-root :is(button,.btn,.icon-btn,[role="button"]){
+ transition:scale .42s cubic-bezier(.20,1.33,.32,1),
+  filter .16s ease-out!important;
+ transform-origin:center;
+}
+#popover-root .safari-floating-menu .safari-menu-option:active,
+#modal-root :is(button,.btn,.icon-btn,[role="button"]):active{
+ scale:.968;
+}
+
+/* Dock: pressing or scrubbing enlarges the shared base and the individual
+ * selected button square. The travelling optical lens keeps finger tracking
+ * independent of this scale feedback. */
+@keyframes pocketDockSoftSpring{
+ 0%{scale:1.018;}
+ 47%{scale:.996;}
+ 77%{scale:1.003;}
+ 100%{scale:1;}
+}
+@keyframes pocketDockSoftDrop{
+ 0%{scale:1.027;}
+ 54%{scale:.997;}
+ 82%{scale:1.002;}
+ 100%{scale:1;}
+}
+@media(max-width:900px){
+ #app .bottom-nav{
+  transform-origin:center;
+  transition:scale .23s cubic-bezier(.22,.86,.28,1),
+   border-color .22s ease,box-shadow .25s ease!important;
+ }
+ #app .bottom-nav.is-dock-pressed{scale:1.018!important;}
+ #app .bottom-nav.is-dock-dragging{scale:1.027!important;}
+ #app .bottom-nav.is-dock-releasing,
+ #app .bottom-nav.is-dock-settling{
+  animation:pocketDockSoftSpring .44s cubic-bezier(.20,.82,.26,1) both!important;
+ }
+ #app .bottom-nav.is-dock-dropping{
+  animation:pocketDockSoftDrop .42s cubic-bezier(.20,.82,.26,1) both!important;
+ }
+ #app .bottom-nav .bottom-item{
+  transform-origin:center;
+  transition:scale .28s cubic-bezier(.20,1.24,.31,1),
+   color .15s ease,filter .16s ease!important;
+ }
+ #app .bottom-nav .bottom-item:not(.is-scrubbed).is-pressed{
+  scale:1.045!important;
+  transform:none!important;
+ }
+ #app .bottom-nav .bottom-item.is-scrubbed{
+  scale:1.065!important;
+  transform:none!important;
+ }
+ #app .bottom-nav.is-dock-dragging .bottom-item.active:not(.is-scrubbed){
+  scale:1!important;
+ }
+ #app .bottom-nav.is-dock-dropping .bottom-liquid-indicator,
+ #app .bottom-nav.is-dock-dragging .bottom-liquid-indicator{
+  transform-origin:center;
+ }
+}
+/* Segmented grade filters, timetable week/month, day strip and other
+ * horizontal rails follow the same physical magnification, including their
+ * active glass square. No complete card around them is scaled. */
+@keyframes pocketRailSoftSpring{
+ 0%{scale:1.016;}
+ 51%{scale:.996;}
+ 78%{scale:1.003;}
+ 100%{scale:1;}
+}
+@keyframes pocketRailSoftDrop{
+ 0%{scale:1.026;}
+ 53%{scale:.997;}
+ 80%{scale:1.002;}
+ 100%{scale:1;}
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail{
+ transform-origin:center;
+ transition:scale .23s cubic-bezier(.22,.86,.28,1),
+  box-shadow .23s ease,border-color .23s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed{
+ scale:1.016!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging{
+ scale:1.026!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-releasing,.is-rail-settling){
+ animation:pocketRailSoftSpring .44s cubic-bezier(.20,.82,.26,1) both!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+ animation:pocketRailSoftDrop .42s cubic-bezier(.20,.82,.26,1) both!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > button{
+ transform-origin:center;
+ transition:scale .28s cubic-bezier(.20,1.24,.31,1),color .16s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed > button.is-pressed{
+ scale:1.045!important;
+ transform:none!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > button.is-scrubbed{
+ scale:1.065!important;
+ transform:none!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > button.active:not(.is-scrubbed){
+ scale:1!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > .liquid-choice-highlight{
+ transform-origin:center;
+ transition:scale .22s cubic-bezier(.20,1.12,.30,1),
+  transform .35s cubic-bezier(.20,.86,.28,1),
+  width .32s ease,height .32s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed > .liquid-choice-highlight{
+ scale:1.045!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > .liquid-choice-highlight{
+ scale:1.08!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > .liquid-choice-highlight.is-dragging{
+ transition:scale .19s cubic-bezier(.20,.86,.28,1)!important;
+}
+/* High-contrast focus and Reduced Motion are never replaced by spring. */
+@media(prefers-reduced-motion:reduce){
+ #app .pocket-full-press:not(.pocket-full-card),
+ #app .pocket-full-release:not(.pocket-full-card),
+ #app :is(.bottom-nav,.bottom-nav .bottom-item,
+  .segmented,.schedule-view-switch,.day-strip,.liquid-choice-highlight){
+  animation:none!important;
+  transition:none!important;
+  scale:1!important;
+ }
+ #app :is(.bottom-nav,.segmented,.schedule-view-switch,.day-strip).is-dock-pressed,
+ #app :is(.bottom-nav,.segmented,.schedule-view-switch,.day-strip).is-dock-dragging,
+ #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-pressed,.is-rail-dragging){
+  scale:1!important;
+ }
+ #popover-root .safari-floating-menu .safari-menu-option,
+ #modal-root :is(button,.btn,.icon-btn,[role="button"]){
+  transition:none!important;
+  scale:1!important;
+ }
+}

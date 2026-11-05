@@ -117,7 +117,7 @@ test('segmented mode and grade filters still support swipe and liquid glass',()=
   assert.equal(h.stats().clicks,1);
  }
 });
-test('Dock-like horizontal rail enlarges immediately on touch, follows drag and bounces on release',()=>{
+test('horizontal rail acknowledges taps without an elastic release, and keeps drag affordances',()=>{
  const h=harness('grade');
  assert.ok(h.group.classList.contains('is-horizontal-rail'));
  h.selectors.liquidPointerDown(h.event(0,40,20));
@@ -125,10 +125,10 @@ test('Dock-like horizontal rail enlarges immediately on touch, follows drag and 
  assert.equal(h.group.classList.contains('is-rail-dragging'),false);
  h.selectors.liquidPointerFinish(h.event(0,40,20));
  assert.equal(h.group.classList.contains('is-rail-pressed'),false);
- assert.ok(h.group.classList.contains('is-rail-releasing'),'taps without swiping must bounce');
+ assert.equal(h.group.classList.contains('is-rail-releasing'),false,'tap must not start a rail spring');
  assert.equal(h.stats().clicks,0);
  assert.match(css,/transform-origin:center center/);
- assert.match(css,/@keyframes pocketRailRelease/);
+ assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.liquid-selector:is\(\.is-rail-releasing,\.is-rail-settling\)/);
 });
 test('horizontal rail edge light and glow clamp at either side then clear',()=>{
  const h=harness('schedule');
@@ -189,8 +189,8 @@ test('horizontal rail grows both the whole segment and its selected glass on fir
  assert.match(css,/\.liquid-selector\.is-rail-pressed\s*> \.liquid-choice-highlight\{scale:1\.09;\}/);
  h.selectors.liquidPointerFinish(down);
  assert.equal(h.group.buttons[0].classList.contains('is-pressed'),false);
- assert.equal(h.group.classList.contains('is-rail-releasing'),true);
- assert.match(css,/@keyframes pocketRailLensReturn/);
+ assert.equal(h.group.classList.contains('is-rail-releasing'),false);
+ assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.liquid-selector:is\(\.is-rail-releasing,\.is-rail-settling\)/);
 });
 test('horizontal rail press cancels label enlargement once drag begins',()=>{
  const h=harness('grade');

@@ -10,6 +10,9 @@ const observer=fs.readFileSync(path.join(__dirname,'..','glass-effects.js'),'utf
 
 function boot(opts={}){
  const queue=[],attrs={};
+ const storage=new Map();
+ if(opts.savedMode!==undefined)storage.set('gzucm-pocket-web:prefs',JSON.stringify({glassMode:opts.savedMode}));
+ if(opts.corruptPrefs)storage.set('gzucm-pocket-web:prefs','{');
  let canvasCount=0;
  const fakeGL={
   createShader(){return {};},
@@ -30,6 +33,10 @@ function boot(opts={}){
   isConnected:true
  });
  const window={
+  localStorage:{
+   getItem:key=>storage.has(key)?storage.get(key):null,
+   setItem:(key,value)=>storage.set(key,String(value))
+  },
   SVGElement:opts.svg===false?undefined:function SVGElement(){},
   CSS:{supports:()=>opts.backdrop!==false},
   matchMedia:query=>({
@@ -71,6 +78,52 @@ function boot(opts={}){
  function refresh(){window.GZUCM_GLASS_OPTICS.refresh();flush();return window.GZUCM_GLASS_OPTICS.status();}
  return {refresh,attrs,window,target};
 }
+
+test('remembered standard mode uses CSS + SVG without WebGL at startup',()=>{
+ const h=boot({savedMode:'standard',target:true});
+ const state=h.refresh();
+ assert.equal(state.mode,'svg');
+ assert.equal(state.requested,'standard');
+ assert.equal(h.attrs['data-glass-preference'],'standard');
+ assert.ok(h.target.children.some(x=>x.tag==='svg'));
+});
+
+test('remembered smooth mode keeps frosted CSS without SVG or GPU surfaces',()=>{
+ const h=boot({savedMode:'smooth',target:true});
+ const state=h.refresh();
+ assert.equal(state.mode,'frosted');
+ assert.equal(state.requested,'smooth');
+ assert.equal(state.surfaces,0);
+ assert.equal(h.attrs['data-glass-preference'],'smooth');
+});
+
+test('changing choices applies immediately and invalid choices are rejected',()=>{
+ const h=boot();
+ assert.equal(h.refresh().mode,'webgl');
+ assert.equal(h.window.GZUCM_GLASS_OPTICS.setMode('standard'),true);
+ assert.equal(h.refresh().mode,'svg');
+ assert.equal(h.window.GZUCM_GLASS_OPTICS.setMode('smooth'),true);
+ assert.equal(h.refresh().mode,'frosted');
+ assert.equal(h.window.GZUCM_GLASS_OPTICS.setMode('not-a-choice'),false);
+ assert.equal(h.refresh().requested,'smooth');
+ assert.equal(h.window.GZUCM_GLASS_OPTICS.setMode('enhanced'),true);
+ assert.equal(h.refresh().mode,'webgl');
+});
+
+test('startup preferences survive reloads and corrupted preferences use safe defaults',()=>{
+ const saved=boot({savedMode:'smooth'});
+ assert.equal(saved.refresh().mode,'frosted');
+ const reopened=boot({savedMode:'smooth'});
+ assert.equal(reopened.refresh().mode,'frosted');
+ const bad=boot({corruptPrefs:true});
+ assert.equal(bad.refresh().requested,'enhanced');
+});
+
+test('user-selected enhanced or standard still degrades to available capabilities',()=>{
+ assert.equal(boot({savedMode:'enhanced',webgl:false}).refresh().mode,'svg');
+ assert.equal(boot({savedMode:'standard',svg:false}).refresh().mode,'frosted');
+ assert.equal(boot({savedMode:'enhanced',reduceTransparency:true}).refresh().mode,'frosted');
+});
 
 test('auto selects WebGL + SVG + CSS when all capability probes pass',()=>{
  const h=boot();

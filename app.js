@@ -1368,6 +1368,48 @@ function bottomSwipeClickCapture(event){
  event.preventDefault();
  event.stopImmediatePropagation();
 }
+/* Unified full-surface tactile feedback for non-popup interactive elements.
+ * Scale the actual hit surface (or a standalone card) without changing layout.
+ * Pointer tracking yields immediately to page scrolling and liquid scrub gestures.
+ * Dialogs and floating popovers retain their existing zoom/return animations. */
+let wholeSurfacePress=null;
+const wholeSurfaceTimers=new WeakMap();
+const WHOLE_SURFACE_TARGET='button,a[href],[role="button"],[role="switch"],[role="tab"],[data-action],[data-view],[data-day],[data-credit],[data-grade-tab],[data-course],[data-date]';
+const WHOLE_SURFACE_POPUP='#modal-root,#popover-root,.modal-backdrop,.modal-card,.safari-floating-menu,.toast-root';
+function wholeSurfacePressDown(event){
+ if(event.isPrimary===false||event.button>0||wholeSurfacePress)return;
+ const target=event.target;
+ if(!target?.closest||target.closest(WHOLE_SURFACE_POPUP))return;
+ let surface=target.closest(WHOLE_SURFACE_TARGET);
+ if(!surface)surface=target.closest('.card');
+ if(!surface||!surface.closest?.('#app')||surface.closest(WHOLE_SURFACE_POPUP))return;
+ if(surface.closest('.bottom-nav'))return; // Dock scales on its own rail.
+ if(surface.matches?.(':disabled,[aria-disabled="true"],input,textarea,select'))return;
+ if(surface.closest('input,textarea,select,[contenteditable="true"]'))return;
+ const timer=wholeSurfaceTimers.get(surface);
+ if(timer)clearTimeout(timer);
+ surface.classList?.remove?.('pocket-full-release');
+ surface.classList?.add?.('pocket-full-press');
+ if(surface.matches?.('.card'))surface.classList?.add?.('pocket-full-card');
+ wholeSurfacePress={surface,pointerId:event.pointerId,x:event.clientX,y:event.clientY};
+}
+function wholeSurfacePressEnd(event){
+ const p=wholeSurfacePress;
+ if(!p||p.pointerId!==event.pointerId)return;
+ wholeSurfacePress=null;
+ p.surface.classList?.remove?.('pocket-full-press');
+ p.surface.classList?.add?.('pocket-full-release');
+ const handle=setTimeout(()=>{
+  p.surface.classList?.remove?.('pocket-full-release','pocket-full-card');
+  wholeSurfaceTimers.delete(p.surface);
+ },340);
+ wholeSurfaceTimers.set(p.surface,handle);
+}
+function wholeSurfacePressMove(event){
+ const p=wholeSurfacePress;
+ if(!p||p.pointerId!==event.pointerId)return;
+ if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)wholeSurfacePressEnd(event);
+}
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay'){window.GZUCM_HAPTICS?.pulse('close');closeModal();}return;}if(target.matches('a'))event.preventDefault();
  if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
  if(target.dataset.view){if(target.closest('.bottom-nav')){dockRemountPulse=target.dataset.view!==state.view;armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
@@ -1458,6 +1500,11 @@ document.addEventListener('pointermove',liquidPointerMove,{passive:false});
 document.addEventListener('pointerup',event=>liquidPointerFinish(event),{passive:false});
 document.addEventListener('pointercancel',event=>liquidPointerFinish(event,true),{passive:false});
 document.addEventListener('click',guardLiquidSelectorClick,true);
+document.addEventListener('pointerdown',wholeSurfacePressDown,{passive:true});
+document.addEventListener('pointermove',wholeSurfacePressMove,{passive:true});
+document.addEventListener('pointerup',wholeSurfacePressEnd,{passive:true});
+document.addEventListener('pointercancel',wholeSurfacePressEnd,{passive:true});
+window.addEventListener('blur',()=>{if(wholeSurfacePress)wholeSurfacePressEnd({pointerId:wholeSurfacePress.pointerId});});
 document.addEventListener('pointerdown',bottomSwipeDown,{passive:true});
 document.addEventListener('pointermove',bottomSwipeMove,{passive:false});
 document.addEventListener('pointerup',event=>bottomSwipeFinish(event),{passive:false});

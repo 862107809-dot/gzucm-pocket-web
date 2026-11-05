@@ -153,6 +153,41 @@ test('popovers and weekday choice tiles never use the horizontal rail animation'
  assert.equal(days.group.classList.contains('is-horizontal-rail'),false);
  assert.match(css,/\.day-strip > \.liquid-choice-highlight\{display:none!important/);
 });
+test('horizontal rail grows both the whole segment and its selected glass on first touch',()=>{
+ const h=harness('grade');
+ const down=h.event(0,40,20);
+ h.selectors.liquidPointerDown(down);
+ assert.equal(h.group.classList.contains('is-rail-pressed'),true);
+ assert.equal(h.group.buttons[0].classList.contains('is-pressed'),true);
+ assert.match(css,/\.liquid-selector\.is-rail-pressed\s*> \.liquid-choice-highlight\{scale:1\.09;\}/);
+ h.selectors.liquidPointerFinish(down);
+ assert.equal(h.group.buttons[0].classList.contains('is-pressed'),false);
+ assert.equal(h.group.classList.contains('is-rail-releasing'),true);
+ assert.match(css,/@keyframes pocketRailLensReturn/);
+});
+test('horizontal rail press cancels label enlargement once drag begins',()=>{
+ const h=harness('grade');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ assert.equal(h.group.buttons[0].classList.contains('is-pressed'),true);
+ h.selectors.liquidPointerMove(h.event(0,220,22));
+ assert.equal(h.group.buttons[0].classList.contains('is-pressed'),false);
+ assert.equal(h.group.classList.contains('is-rail-dragging'),true);
+ h.selectors.liquidPointerFinish(h.event(0,220,22));
+});
+test('horizontal rail snapshots preserve unscaled lens geometry while expanded',()=>{
+ const h=harness('grade');
+ const group=h.group;
+ group.offsetWidth=300;
+ group.getBoundingClientRect=()=>({left:-6,top:-2,width:312,height:187.2});
+ group.glass.getBoundingClientRect=()=>({left:98,top:5,width:108,height:52});
+ group.glass.style={width:'100px',height:'50px',transform:'translate3d(100px,0px,0)'};
+ const m=h.selectors.snapshotLiquidSelectors({querySelectorAll:()=>[group]});
+ const snapshot=m.get('grade-type');
+ assert.equal(snapshot.x,100);
+ assert.equal(snapshot.y,0);
+ assert.equal(snapshot.width,100);
+ assert.equal(snapshot.height,50);
+});
 test('weekly weekday choices are ordinary tap-only controls: no sliding lens or drag-to-select',()=>{
  const h=harness('days');
  assert.equal(h.group.glass,null,'weekday strip must not gain a travelling glass lens');

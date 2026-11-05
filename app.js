@@ -10,7 +10,7 @@ const saved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(
 const state = {
   data: window.GZUCM_DEMO,
   view:'today', week:1, weekday:1, scheduleMode:'week',monthCursor:'',monthSelected:'',monthLoading:false,monthLoadError:0,monthSerial:0,loadedWeeks:new Set(),gradeTab:'course',gradeSearch:'',creditMode:'total',
-  connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',powerLastSync:0,powerLastAttempt:0,powerHistoryStatus:'',powerError:'',powerSnapshots:[],powerLastStored:'',
+  connected:false,ecardReady:false,loading:false,poll:null,authMode:'password',casAvailable:false,casVerified:false,ssoPopup:null,powerStatus:'idle',powerLastSync:0,powerLastAttempt:0,powerHistoryStatus:'',powerError:'',powerSnapshots:[],powerLastStored:'',powerBridgeStatus:'unknown',powerBridgeVersion:0,powerBridgeChecked:0,powerBridgeUpdatedAt:'',powerBridgeError:'',
   prefs:{theme:'system',start:'today',wallpaper:'',wallOpacity:.3,language:'zh',soundEffects:true,hapticEffects:true,...saved(PREF,{})}
 };
 const PUBLIC=window.GZUCM_PUBLIC===true;
@@ -26,7 +26,7 @@ const lastPowerCache=saved(LIVE_POWER_DB,null);
 state.powerSnapshots=window.GZUCM_POWER_SNAPSHOTS?.compact(lastPowerCache?.snapshots||[])||[];
 const lastVerified=window.GZUCM_POWER_SNAPSHOTS?.cachedPower(lastPowerCache?.power);
 const existingPower=state.data.power;
-const isFictitiousPower=state.data.demo&&!['manual','ecard-live','ecard-page','ecard-cache','imported'].includes(existingPower?.source);
+const isFictitiousPower=state.data.demo&&!['manual','ecard-live','ecard-page','ecard-cache','ios-native','imported'].includes(existingPower?.source);
 const existingAge=Date.parse(existingPower?.updatedAt||'');
 if(lastVerified&&(isFictitiousPower||!existingPower||
  Date.parse(lastVerified.updatedAt)>(Number.isFinite(existingAge)?existingAge:0))){
@@ -488,7 +488,7 @@ function nextCourse(){const now=today(), candidates=(state.data.sessions||[]).ma
 function powerInfo(){
  const raw=state.data.power;
  // A demonstration balance must never silently become a live reading after login.
- const data=state.data.demo||['ecard-live','ecard-page','ecard-cache','manual','imported'].includes(raw?.source)?raw:null;
+ const data=state.data.demo||['ecard-live','ecard-page','ecard-cache','ios-native','manual','imported'].includes(raw?.source)?raw:null;
  const now=today();
  const insight=window.GZUCM_POWER_INSIGHTS?.calculate(data,state.data.powerDaily||[],{now,todayIso:iso(now)});
  return {data,...insight,avg:insight?.average7??0,remaining:insight?.remainingDays??null};
@@ -499,8 +499,8 @@ function todayPage(){
  const intro=days.length?`今天有 ${days.length} 节课程，接下来的每一步都有方向。`:'今天没有排课，给自己留一点自由时间。';
  return `${heading('YOUR DAY, BEAUTIFULLY ORGANIZED','每一天，都值得好好安排。',`星期${'日一二三四五六'[now.getDay()]} · ${E(term().name)} · 第 ${weekNow()} 周`)}
  <section class="hero-card"><div class="hero-decoration" aria-hidden="true">${state.prefs.language==='en'?'G':'学'}</div><div class="hero-kicker">TODAY AT A GLANCE · ${fmt(now,{month:'2-digit',day:'2-digit'})}</div><div class="hero-title">${soon?`下一站，${E(next.name)}`:'今天，继续向前。'}</div><p class="hero-desc">${soon?`${E(fmt(next._start,{weekday:'long',hour:'2-digit',minute:'2-digit'}))} · ${E(next.room||'地点待定')}。${E(next.content||intro)}`:intro}</p><div class="hero-bottom"><button class="hero-button" data-view="schedule">查看完整课表 ${I('arrow')}</button><span class="hero-line">第 ${weekNow()} / ${term().totalWeeks} 教学周</span></div></section>
- ${sectionTitle('校园一览')}<div class="metrics-mobile three-col">${metric('今日课程',`${days.length} <small style="font-size:13px">节</small>`,'让每节课都有迹可循','book')}${metric('本周课程',`${weekly.length} <small style="font-size:13px">节</small>`,'按周课程安排','calendar')}${metric('宿舍剩余',power.data?`${(+power.data.balance).toFixed(1)} <small style="font-size:13px">度</small>`:'—',power.data?.source==='manual'?'手动记录':power.data?.source==='ecard-live'?'官方实时同步':power.data?.source==='ecard-page'?'官方页面读取':power.data?.source==='imported'?'导入记录':power.data?.source==='ecard-cache'?'上次读取缓存':isDemo()?'演示数据':power.data?.roomLabel||'尚未连接','zap')}</div>
- ${sectionTitle('今天的课程',`<button class="small-action" data-view="schedule">本周课表 ${I('chevronRight',13)}</button>`)}<div class="two-col"><div class="card"><div class="card-heading">${I('clock',18)} ${fmt(now,{month:'long',day:'numeric',weekday:'long'})}<span class="badge">共 ${days.length} 节</span></div><div class="agenda-list">${days.length?days.map(courseRow).join(''):empty('今天没有课程','课程安排来自当前数据集，留点时间给自己吧。')}</div></div><div class="card"><div class="card-heading">${I('chartbar',18)} 本周概览 <span class="muted tiny">第 ${weekNow()} 周</span></div>${weeklyOverview(weekly)}${power.data?`<div class="power-mini"><div><div class="tiny muted">宿舍电量${power.data?.source==='manual'?' · 手动':power.data?.source==='ecard-live'?' · 官方实时':power.data?.source==='ecard-cache'?' · 历史缓存':isDemo()?' · 演示':''}</div><strong>${(+power.data.balance).toFixed(1)} <span class="tiny">度</span></strong><p>${power.sampleDays>=3?'近 7 天已记录日均 '+power.avg.toFixed(1)+' 度':'用电记录不足，暂不预测'}</p></div><button class="icon-btn" data-view="power" aria-label="查看电费">${I('arrow')}</button></div>`:''}</div></div>
+ ${sectionTitle('校园一览')}<div class="metrics-mobile three-col">${metric('今日课程',`${days.length} <small style="font-size:13px">节</small>`,'让每节课都有迹可循','book')}${metric('本周课程',`${weekly.length} <small style="font-size:13px">节</small>`,'按周课程安排','calendar')}${metric('宿舍剩余',power.data?`${(+power.data.balance).toFixed(1)} <small style="font-size:13px">度</small>`:'—',power.data?.source==='manual'?'手动记录':power.data?.source==='ecard-live'?'官方实时同步':power.data?.source==='ecard-page'?'官方页面读取':power.data?.source==='imported'?'导入记录':power.data?.source==='ecard-cache'?'上次读取缓存':power.data?.source==='ios-native'?'iOS App 同步':isDemo()?'演示数据':power.data?.roomLabel||'尚未连接','zap')}</div>
+ ${sectionTitle('今天的课程',`<button class="small-action" data-view="schedule">本周课表 ${I('chevronRight',13)}</button>`)}<div class="two-col"><div class="card"><div class="card-heading">${I('clock',18)} ${fmt(now,{month:'long',day:'numeric',weekday:'long'})}<span class="badge">共 ${days.length} 节</span></div><div class="agenda-list">${days.length?days.map(courseRow).join(''):empty('今天没有课程','课程安排来自当前数据集，留点时间给自己吧。')}</div></div><div class="card"><div class="card-heading">${I('chartbar',18)} 本周概览 <span class="muted tiny">第 ${weekNow()} 周</span></div>${weeklyOverview(weekly)}${power.data?`<div class="power-mini"><div><div class="tiny muted">宿舍电量${power.data?.source==='manual'?' · 手动':power.data?.source==='ecard-live'?' · 官方实时':power.data?.source==='ecard-cache'?' · 历史缓存':power.data?.source==='ios-native'?' · iOS 同步':isDemo()?' · 演示':''}</div><strong>${(+power.data.balance).toFixed(1)} <span class="tiny">度</span></strong><p>${power.sampleDays>=3?'近 7 天已记录日均 '+power.avg.toFixed(1)+' 度':'用电记录不足，暂不预测'}</p></div><button class="icon-btn" data-view="power" aria-label="查看电费">${I('arrow')}</button></div>`:''}</div></div>
  ${isDemo()?`<div class="note warning mt-20"><strong>正在浏览演示模式</strong>：课表、成绩、电量及人名都是示例，不是学校真实数据。可在「设置」中导入自己的 JSON 快照或尝试连接本地只读服务。</div>`:''}`;
 }
 function weeklyOverview(items){const countMap=new Map();items.forEach(s=>countMap.set(s.name,(countMap.get(s.name)||0)+1));const entries=[...countMap].sort((a,b)=>b[1]-a[1]).slice(0,5);return entries.length?`<div class="overview-list">${entries.map(([name,n],idx)=>`<div><div class="overview-item"><span class="overview-dot" style="background:${palette[idx]}"></span><span class="overview-name">${E(name)}</span><span class="overview-count">${n} 节</span></div><div class="progress-track"><div class="progress-fill" style="width:${n/Math.max(...entries.map(x=>x[1]))*100}%;background:${palette[idx]}"></div></div></div>`).join('')}</div>`:empty('本周暂无课程','可以在设置里导入课表');}
@@ -638,7 +638,7 @@ function powerPage(){
  const p=powerInfo(),data=p.data,days=p.recent7||[];
  const live=data?.source==='ecard-live',pageBalance=data?.source==='ecard-page';
  const manual=data?.source==='manual';
- const sourceLabel=live?'官方接口实时读取':pageBalance?'官网页面读取（待核验）':manual?'手动记录':data?.source==='imported'?'导入备份（非实时）':data?.source==='ecard-cache'?'官方历史缓存（未刷新）':isDemo()?'演示示例':'尚无有效电量';
+ const sourceLabel=live?'官方接口实时读取':pageBalance?'官网页面读取（待核验）':manual?'手动记录':data?.source==='imported'?'导入备份（非实时）':data?.source==='ecard-cache'?'上次查询的本地缓存':data?.source==='ios-native'?'iOS App 已配对推送':isDemo()?'演示示例':'尚无有效电量';
  const stamp=Number.isFinite(Date.parse(data?.updatedAt||''))?
   fmt(new Date(data.updatedAt),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'暂无更新时间';
  const balance=p.balance===null?'--':p.balance.toFixed(2);

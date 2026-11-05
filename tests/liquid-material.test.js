@@ -146,7 +146,10 @@ test('confirmed choices gain a material shadow without a white glow in dark mode
  assert.match(section,/\.liquid-selector > \.liquid-choice-highlight/);
  assert.match(section,/\.safari-floating-menu \.safari-menu-glider/);
  assert.match(section,/\.bottom-liquid-indicator\.is-confirmed::after/);
- assert.match(section,/@keyframes pocketNaturalConfirmation/);
+ assert.doesNotMatch(section,/(^|[\r\n])[ \t]*(?:animation|transition)(?:-[a-z]+)?\s*:/m);
+ const motion=fs.readFileSync(path.join(root,'styles.css'),'utf8');
+ assert.match(motion,/@keyframes pocketNaturalConfirmation/);
+ assert.match(motion,/APP STORE CONFIRMATION MOTION v1/);
  assert.match(section,/\.pocket-full-release/);
  assert.match(section,/prefers-reduced-motion:reduce/);
  assert.doesNotMatch(section,/#fff|rgba\(255,255,255/,'confirmation material must not add white rims');

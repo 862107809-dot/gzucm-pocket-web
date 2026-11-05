@@ -1400,11 +1400,15 @@ function wholeSurfacePressDown(event){
  if(surface.matches?.('.card'))surface.classList?.add?.('pocket-full-card');
  wholeSurfacePress={surface,pointerId:event.pointerId,x:event.clientX,y:event.clientY};
 }
-function wholeSurfacePressEnd(event){
+function wholeSurfacePressEnd(event,cancelled=false){
  const p=wholeSurfacePress;
  if(!p||p.pointerId!==event.pointerId)return;
  wholeSurfacePress=null;
  p.surface.classList?.remove?.('pocket-full-press');
+ if(cancelled){
+  p.surface.classList?.remove?.('pocket-full-release','pocket-full-card');
+  return;
+ }
  p.surface.classList?.add?.('pocket-full-release');
  const handle=setTimeout(()=>{
   p.surface.classList?.remove?.('pocket-full-release','pocket-full-card');
@@ -1415,7 +1419,7 @@ function wholeSurfacePressEnd(event){
 function wholeSurfacePressMove(event){
  const p=wholeSurfacePress;
  if(!p||p.pointerId!==event.pointerId)return;
- if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)wholeSurfacePressEnd(event);
+ if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)wholeSurfacePressEnd(event,true);
 }
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay'){window.GZUCM_HAPTICS?.pulse('close');closeModal();}return;}if(target.matches('a'))event.preventDefault();
  if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
@@ -1510,8 +1514,8 @@ document.addEventListener('click',guardLiquidSelectorClick,true);
 document.addEventListener('pointerdown',wholeSurfacePressDown,{passive:true});
 document.addEventListener('pointermove',wholeSurfacePressMove,{passive:true});
 document.addEventListener('pointerup',wholeSurfacePressEnd,{passive:true});
-document.addEventListener('pointercancel',wholeSurfacePressEnd,{passive:true});
-window.addEventListener('blur',()=>{if(wholeSurfacePress)wholeSurfacePressEnd({pointerId:wholeSurfacePress.pointerId});});
+document.addEventListener('pointercancel',event=>wholeSurfacePressEnd(event,true),{passive:true});
+window.addEventListener('blur',()=>{if(wholeSurfacePress)wholeSurfacePressEnd({pointerId:wholeSurfacePress.pointerId},true);});
 document.addEventListener('pointerdown',bottomSwipeDown,{passive:true});
 document.addEventListener('pointermove',bottomSwipeMove,{passive:false});
 document.addEventListener('pointerup',event=>bottomSwipeFinish(event),{passive:false});

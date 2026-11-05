@@ -7,17 +7,27 @@
  * glass. True background refraction requires an authorized background texture;
  * CSS backdrop-filter provides the actual underlying scene blur instead.
  *
- * Three automatic modes: webgl -> svg -> frosted CSS, with graceful recovery.
+ * User choice: enhanced (WebGL), standard (CSS+SVG), smooth (CSS frost).
+ * The renderer still downgrades safely when a feature or GPU is unavailable.
  */
 (function(global){
  'use strict';
  const NS='http://www.w3.org/2000/svg';
+ const PREF_KEY='gzucm-pocket-web:prefs';
+ const validModes=['enhanced','standard','smooth'];
+ function readMode(){
+  try{
+   const choice=JSON.parse(global.localStorage?.getItem(PREF_KEY)||'null')?.glassMode;
+   return validModes.includes(choice)?choice:'enhanced';
+  }catch{return 'enhanced';}
+ }
  const MAX_GL=2;
  const MAX_PIXELS=360000;
  const MAX_DPR=1.5;
  const candidates='.bottom-nav,.schedule-view-switch,.segmented,.topbar,.sidebar';
  const live=new Map();
  let engine='frosted',backdrop=false,brokenGL=false,webglAvailable=null,raf=0,started=false;
+ let preference=readMode();
  let nextId=0;
 
  function media(query){
@@ -54,8 +64,9 @@
   const preferContrast=media('(prefers-contrast: more)');
   const reduceTransparency=media('(prefers-reduced-transparency: reduce)');
   backdrop=cssBackdrop();
-  if(preferContrast||reduceTransparency||!backdrop)return 'frosted';
+  if(preferContrast||reduceTransparency||!backdrop||preference==='smooth')return 'frosted';
   if(!svgSupported())return 'frosted';
+  if(preference==='standard')return 'svg';
   if(!brokenGL){
    if(webglAvailable===null)webglAvailable=webglSupported();
    if(webglAvailable)return 'webgl';
@@ -65,6 +76,7 @@
  function rootMode(){
   const root=document.documentElement;
   root?.setAttribute?.('data-glass-engine',engine);
+  root?.setAttribute?.('data-glass-preference',preference);
   root?.setAttribute?.('data-glass-backdrop',backdrop?'yes':'no');
  }
  function elt(tag){return document.createElementNS(NS,tag);}
@@ -315,12 +327,19 @@
   for(const q of ['(prefers-color-scheme: dark)','(prefers-contrast: more)',
    '(prefers-reduced-transparency: reduce)'])listenMedia(q);
   global.addEventListener?.('resize',schedule,{passive:true});
+  global.addEventListener?.('storage',event=>{
+   if(event.key===PREF_KEY){preference=readMode();schedule();}
+  });
  }
  global.GZUCM_GLASS_OPTICS={
   refresh:schedule,
-  status:()=>({mode:engine,backdrop,webgl:engine==='webgl',
+  status:()=>({mode:engine,requested:preference,backdrop,webgl:engine==='webgl',
    gpuSurfaces:Array.from(live.values()).filter(item=>!!item.gl).length,
    surfaces:live.size}),
+  setMode:choice=>{
+   if(!validModes.includes(choice))return false;
+   preference=choice;schedule();return true;
+  },
   detect:()=>({backdrop:cssBackdrop(),svg:svgSupported(),
    webgl:!brokenGL&&webglSupported()}),
   destroy:clear

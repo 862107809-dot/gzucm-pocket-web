@@ -156,6 +156,19 @@ function liquidSpringFrames(startX,startW,endX,endW,duration=540){
  }
  return frames;
 }
+// No overshoot after a horizontal drag: every frame advances monotonically
+// towards the selected tab, unlike the spring reserved for ordinary taps.
+function liquidDropFrames(startX,startW,endX,endW){
+ const frames=[],count=40,ratio=endW?startW/endW:1,delta=endX-startX;
+ for(let i=0;i<=count;i++){
+  const offset=i/count;
+  const progress=1-Math.pow(1-offset,3);
+  const x=startX+delta*progress;
+  const scale=Math.max(.85,Math.min(1.2,ratio+(1-ratio)*progress));
+  frames.push({offset,transform:'translate3d('+x.toFixed(2)+'px,0,0) scaleX('+scale.toFixed(4)+')'});
+ }
+ return frames;
+}
 function alignBottomLiquid(previousTab,previousRect){
  const nav=document.querySelector('#app .bottom-nav');
  if(nav?.classList?.contains?.('is-dock-settling')||nav?.classList?.contains?.('is-dock-dropping')){
@@ -175,6 +188,7 @@ function alignBottomLiquid(previousTab,previousRect){
  const targetX=current.offsetLeft+inset;
  const targetW=Math.max(12,current.offsetWidth-inset*2);
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
+ const fromSwipe=nav.classList?.contains?.('is-dock-dropping')===true;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
  // Only the glass lens travels; no independently outlined tab landing.
@@ -189,20 +203,24 @@ function alignBottomLiquid(previousTab,previousRect){
  if(!changed)return;
  void glass.offsetWidth; // Ensure fallback CSS starts at previous location.
  glass.classList.remove('is-instant');
- glass.classList.add('is-moving');
- glass.addEventListener('animationend',()=>glass.classList.remove('is-moving'),{once:true});
+ glass.classList.add(fromSwipe?'is-dropping':'is-moving');
+ if(!fromSwipe)glass.addEventListener('animationend',()=>glass.classList.remove('is-moving'),{once:true});
  liquidMoveFrame=requestAnimationFrame(()=>{
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
   if(typeof glass.animate==='function'){
-   const duration=650;
-   const frames=liquidSpringFrames(startX,startW,targetX,targetW,duration);
+   const duration=fromSwipe?560:650;
+   const frames=fromSwipe?
+    liquidDropFrames(startX,startW,targetX,targetW):
+    liquidSpringFrames(startX,startW,targetX,targetW,duration);
    glass.classList.add('is-instant');
    glass.style.width=targetW+'px';
    glass.style.transform='translate3d('+targetX+'px,0,0)';
    try{
     // Physically nonlinear sample positions. WAAPI is only the time clock.
-    glass.animate(frames,{duration,fill:'none'}).finished.catch(()=>{});
+    glass.animate(frames,{duration,fill:'none'}).finished.then(()=>{
+     glass.classList.remove('is-dropping');
+    },()=>{glass.classList.remove('is-dropping');});
     return;
    }catch{glass.classList.remove('is-instant');}
   }

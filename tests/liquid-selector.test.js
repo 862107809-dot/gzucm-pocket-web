@@ -312,16 +312,17 @@ test('iOS Settings switch stretches instantly, tracks finger drag and settles wi
  assert.equal(attrs.get('aria-checked'),'false');
  assert.equal(stored,2);
  assert.equal(rendered,0);
- // A simple press releases its stretched thumb without committing:
- // the real click handler, including keyboard activation, toggles the value.
+ // A simple tap now commits on pointerup, avoiding a shrink-and-rewind
+ // before click. The subsequent click must be suppressed by capture logic.
  f.liquidSwitchDown(ev(10,20));
  assert.ok(classList.contains('is-pressed'));
  f.liquidSwitchFinish(ev(10,20));
- assert.equal(stored,2);
+ assert.equal(stored,3);
  assert.equal(classList.contains('is-pressed'),false);
- f.commitLiquidSwitch(button,true);
  assert.equal(state.prefs.soundEffects,true);
  assert.equal(attrs.get('aria-checked'),'true');
+ f.commitLiquidSwitch(button,true); // repeated same value is idempotent
+ assert.equal(stored,3);
  assert.equal(rendered,0);
  f.liquidSwitchDown(ev(10,20));
  f.liquidSwitchMove(ev(13,95));

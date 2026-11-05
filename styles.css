@@ -1006,10 +1006,10 @@
  * rather than fading at the screen center. Menu choices can be scrubbed. */
 .safari-floating-menu{
  transform-origin:var(--popover-origin-x,50%) var(--popover-origin-y,0%);
- animation:glassPopoverBloom .49s cubic-bezier(.20,.90,.30,1) both;
+ animation:glassPopoverBloom .34s cubic-bezier(.22,.85,.32,1) both;
 }
 .safari-floating-menu.is-closing{
- animation:glassPopoverReturn .44s cubic-bezier(.40,0,.75,.50) both!important;
+ animation:glassPopoverReturn .27s cubic-bezier(.32,0,.72,.48) both!important;
  pointer-events:none;
 }
 .safari-floating-menu.can-scrub{touch-action:none;}
@@ -1047,13 +1047,13 @@
  color:var(--accent);
 }
 @keyframes glassPopoverBloom{
- from{opacity:.10;transform:scale(.16);filter:blur(2px);}
+ from{opacity:.08;transform:scale(.30);filter:blur(1px);}
  60%{opacity:1;filter:blur(0);}
  to{opacity:1;transform:scale(1);filter:none;}
 }
 @keyframes glassPopoverReturn{
  from{opacity:1;transform:scale(1);}
- to{opacity:0;transform:scale(.16);filter:blur(2px);}
+ to{opacity:0;transform:scale(.30);filter:blur(1px);}
 }
 
 /* All modal sheets grow out of the pressed control and shrink back toward it.

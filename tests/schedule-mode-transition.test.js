@@ -10,8 +10,9 @@ const end=app.indexOf('function navItem(',start);
 assert.ok(start>=0&&end>start,'fast schedule DOM-only transition helper exists');
 const body=app.slice(start,end);
 
-function harness(mode='month',hasHost=true){
+function harness(mode='month',hasHost=true,width=0,animate=false,reduced=false){
  const calls=[];
+ const animations=[];
  const buttons=['week','month'].map(which=>{
   const classes=new Set(which==='week'?['active']:[]);
   return {
@@ -43,6 +44,17 @@ function harness(mode='month',hasHost=true){
  };
  // page.querySelector cannot use lexical this when called without an owner.
  page.querySelector=()=>page.updates?newSelector:oldSelector;
+ if(animate){
+  page.isConnected=true;
+  page.getBoundingClientRect=()=>({width});
+  page.animate=(frames,options)=>{
+   let resolve;
+   const finished=new Promise(res=>{resolve=res;});
+   const animation={frames,options,finished,resolve,cancel(){this.cancelled=true;}};
+   animations.push(animation);
+   return animation;
+  };
+ }
  const state={view:'schedule',scheduleMode:mode,prefs:{language:'zh'}};
  const doc={startViewTransition:()=>{throw Error('native snapshots must never run');}};
  const f=new Function('$','state','schedulePage','render','enhanceLiquidSelectors','window',
@@ -51,12 +63,12 @@ function harness(mode='month',hasHost=true){
   ()=>hasHost?page:null,state,()=>'<section class="new-calendar">calendar</section>',
   ()=>calls.push(['full-render']),
   node=>calls.push(['enhance',node]),
-  {GZUCM_I18N:{apply:(node,language)=>calls.push(['translate',node,language])}},
+  {matchMedia:()=>({matches:reduced}),GZUCM_I18N:{apply:(node,language)=>calls.push(['translate',node,language])}},
   (node,rect)=>{calls.push(['glass',rect]);},
   node=>{calls.push(['confirm',node]);},
   callback=>{callback();return 1}
  );
- return {f,calls,page,lens,buttons,reused:()=>reused,state,doc};
+ return {f,calls,page,lens,buttons,reused:()=>reused,state,doc,animations};
 }
 
 test('week/month switch updates only timetable and does not snapshot browser View Transitions',()=>{
@@ -94,6 +106,87 @@ test('a missing timetable host still safely falls back to normal rendering',()=>
  const h=harness('week',false);
  h.f.transitionScheduleMode(()=>h.calls.push(['sync']));
  assert.deepEqual(h.calls.map(x=>x[0]),['full-render','sync']);
+});
+
+
+test('desktop Mac and wide iPad use a short shrink-then-expand visual handoff',async()=>{
+ const h=harness('month',true,1180,true);
+ h.f.transitionScheduleMode(()=>h.calls.push(['sync']));
+ assert.equal(h.page.updates,0,'old page stays visible while it shrinks');
+ assert.equal(h.animations.length,1);
+ assert.equal(h.animations[0].frames[1].transform,'scale(0.987)');
+ assert.equal(h.animations[0].options.duration,80);
+ assert.equal(h.animations[0].frames[1].opacity,.12);
+ h.animations[0].resolve();
+ await Promise.resolve();
+ assert.equal(h.page.updates,1);
+ assert.equal(h.reused(),true);
+ assert.equal(h.animations.length,2);
+ assert.equal(h.animations[1].frames[0].transform,'scale(0.987)');
+ assert.equal(h.animations[1].frames[1].transform,'scale(1)');
+ assert.equal(h.animations[1].options.duration,165);
+ assert.equal(h.calls.some(x=>x[0]==='full-render'),false);
+ h.animations[1].resolve();
+ await Promise.resolve();
+ assert.equal(h.animations[1].cancelled,true);
+ assert.equal(h.calls.some(x=>x[0]==='sync'),true);
+});
+
+test('tablet and phone get responsive zoom amplitudes without overshooting 100%',()=>{
+ for(const [width,expected,duration] of [[780,'scale(0.98)',180],[390,'scale(0.973)',195]]){
+  const h=harness('month',true,width,true);
+  h.f.transitionScheduleMode();
+  assert.equal(h.animations[0].frames[1].transform,expected);
+  h.animations[0].resolve();
+  await Promise.resolve();
+  assert.equal(h.animations[1].frames[0].transform,expected);
+  assert.equal(h.animations[1].options.duration,duration);
+  assert.equal(h.animations[1].frames[1].transform,'scale(1)');
+  assert.match(h.animations[1].options.easing,/cubic-bezier/);
+  h.animations[1].resolve();
+  await Promise.resolve();
+ }
+ const responsive=css.slice(css.indexOf('/* CROSS-DEVICE SCHEDULE MORPH v2'));
+ assert.match(responsive,/@media\(min-width:601px\) and \(max-width:900px\)/);
+ assert.match(responsive,/@media\(min-width:901px\)/);
+ assert.match(responsive,/@keyframes scheduleSoftArrival/);
+ assert.match(responsive,/prefers-reduced-motion:reduce/);
+});
+
+test('rapid consecutive selections cancel obsolete animations without stale DOM swaps',async()=>{
+ const h=harness('month',true,1080,true);
+ h.f.transitionScheduleMode(()=>h.calls.push(['first-sync']));
+ h.state.scheduleMode='week';
+ h.f.transitionScheduleMode(()=>h.calls.push(['second-sync']));
+ assert.equal(h.animations[0].cancelled,true);
+ h.animations[0].resolve();
+ await Promise.resolve();
+ assert.equal(h.page.updates,0);
+ h.animations[1].resolve();
+ await Promise.resolve();
+ assert.equal(h.page.updates,1);
+ assert.ok(h.buttons[0].classList.contains('active'));
+ assert.equal(h.calls.some(x=>x[0]==='first-sync'),false);
+ assert.equal(h.calls.some(x=>x[0]==='second-sync'),true);
+ h.animations[2].resolve();
+ await Promise.resolve();
+});
+
+test('reduce-motion setting skips both shrink and expansion on every device',()=>{
+ const h=harness('month',true,1280,true,true);
+ h.f.transitionScheduleMode();
+ assert.equal(h.animations.length,0);
+ assert.equal(h.page.updates,1);
+ assert.equal(h.calls.some(x=>x[0]==='full-render'),false);
+});
+
+test('older iPad browsers use a CSS zoom-in fallback instead of direct content jump',()=>{
+ const h=harness('month',true,820);
+ h.f.transitionScheduleMode();
+ assert.equal(h.page.updates,1);
+ assert.match(app,/schedule-soft-arrival/);
+ assert.match(css,/\.page\.page-schedule\.schedule-soft-arrival/);
+ assert.match(css,/scheduleSoftArrival \.18s/);
 });
 
 test('timetable optimization leaves all three glass options, weeks and month grid intact',()=>{

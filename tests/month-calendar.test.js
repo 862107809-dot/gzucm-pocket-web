@@ -22,7 +22,7 @@ function environment(){
  ];
  const semester={name:'2026-2027',firstMondayIso:'2026-09-07',totalWeeks:20};
  const state={week:9,weekday:0,monthCursor:'2026-11-01',monthSelected:'2026-11-04',
-  monthLoading:false,prefs:{language:'zh'},scheduleMode:'month',data:{semester,sessions}};
+  monthLoading:false,prefs:{language:'zh',scheduleLayout:'original'},scheduleMode:'month',data:{semester,sessions}};
  const term=()=>semester;
  const currentSessions=(w,day)=>sessions.filter(s=>s.week===w&&(day===null||s.weekday===day));
  const courseDate=s=>iso(addDays(dt(semester.firstMondayIso),(s.week-1)*7+s.weekday-1));

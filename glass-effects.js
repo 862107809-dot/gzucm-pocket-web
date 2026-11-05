@@ -67,14 +67,24 @@
   raf=requestAnimationFrame(()=>{raf=0;refresh();});
  }
 
- // Specular highlight stays on the outer CSS layer, no per-frame SVG redraw.
+ // The optional light follows at most one native animation frame. Never
+ // synchronously read the scaled Dock rect on each raw pointer event.
+ let lightFrame=0,pendingLight=null;
  function light(event){
   const target=event.target?.closest?.('.topbar,.bottom-nav,.language-switch,.theme-trigger');
-  if(!target)return;
-  const r=target.getBoundingClientRect();
-  if(!r.width||!r.height)return;
-  target.style.setProperty('--glass-x',Math.round((event.clientX-r.x)/r.width*100)+'%');
-  target.style.setProperty('--glass-y',Math.round((event.clientY-r.y)/r.height*100)+'%');
+  if(!target||target.classList?.contains?.('is-dock-dragging')||
+     document.documentElement.dataset.motionRate==='economy')return;
+  pendingLight={target,x:event.clientX,y:event.clientY};
+  if(lightFrame||typeof global.requestAnimationFrame!=='function')return;
+  lightFrame=global.requestAnimationFrame(()=>{
+   lightFrame=0;
+   const p=pendingLight;
+   if(!p?.target?.isConnected)return;
+   const r=p.target.getBoundingClientRect();
+   if(!r.width||!r.height)return;
+   p.target.style.setProperty('--glass-x',Math.round((p.x-r.x)/r.width*100)+'%');
+   p.target.style.setProperty('--glass-y',Math.round((p.y-r.y)/r.height*100)+'%');
+  });
  }
 
  function setup(){

@@ -14,8 +14,8 @@ test('optical material sheet is layered after app layout styles and cached for P
  const base=html.indexOf('/styles.css?v=');
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
- assert.ok(cache.includes('/liquid-material.css?v=20261105-glass-material2'));
- assert.ok(cache.includes('gzucm-pocket-web-v45-20261105-glass-material2'));
+ assert.ok(cache.includes('/liquid-material.css?v=20261105-dark-switch3'));
+ assert.ok(cache.includes('gzucm-pocket-web-v46-20261105-dark-switch3'));
  assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-material2'));
  assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-material2'));
 });
@@ -92,6 +92,33 @@ test('enhanced and standard mode transmit background without heavy lower shadows
  assert.match(section,/lg-optic-canvas\{opacity:\.58;\}/);
  assert.match(section,/data-theme="dark"\]\[data-glass-engine="svg"\]/);
  assert.match(section,/:root:not\(\[data-theme="light"\]\)\[data-glass-engine="svg"\]/);
+});
+
+test('dark appearance never leaves pale search boxes or bright glass overlays',()=>{
+ const dark=material.slice(material.indexOf('/* DARK NO-WHITEWASH + MINT SWITCH v3'));
+ assert.ok(dark.length>4000);
+ assert.match(app,/dataset\.activeTheme=dark\?'dark':'light'/);
+ assert.match(dark,/:root\[data-active-theme="dark"\] :is\(\.search-input,\.text-input,select/);
+ assert.match(dark,/--night-control:rgba\(39,72,53,\.75\)/);
+ assert.match(dark,/:root\[data-active-theme="dark"\] :is\(input,textarea\)::placeholder/);
+ assert.match(dark,/:root\[data-active-theme="dark"\] :is\(\.toast,\.toast-root \.toast/);
+ assert.match(dark,/:root\[data-active-theme="dark"\] :is\(\.lg-optic-svg,\.lg-optic-canvas\)\{opacity:\.16;\}/);
+ assert.match(dark,/data-glass-engine="webgl"/);
+ assert.match(dark,/data-glass-engine="frosted"/);
+ assert.match(dark,/prefers-reduced-transparency:reduce/);
+});
+test('switch palette matches mint track with white thumb in both appearance modes',()=>{
+ const part=material.slice(material.indexOf('/* DARK NO-WHITEWASH + MINT SWITCH v3'));
+ const base=fs.readFileSync(path.join(root,'styles.css'),'utf8');
+ assert.match(part,/--switch-track-on:rgba\(179,222,191,\.96\)/);
+ assert.match(part,/--switch-track-on:rgba\(151,211,169,\.90\)/);
+ assert.match(part,/\.switch\[role="switch"\]\.on,/);
+ assert.match(part,/\.switch\[role="switch"\]::after\{[^}]*linear-gradient\(145deg,#fff/s);
+ assert.match(base,/@keyframes pocketSwitchThumbBounce/);
+ assert.match(base,/\.switch\[role="switch"\]\.is-settling::after/);
+ assert.match(base,/@media\(prefers-reduced-motion:reduce\)\{\s*\.switch\[role="switch"\]\.is-settling::after/s);
+ assert.match(app,/const on=p\.dragging\?p\.position>=7:!p\.startOn;/);
+ assert.match(app,/button\.classList\?\.add\?\.\('is-settling'\)/);
 });
 
 test('visual design change does not rewrite timing or gesture handling',()=>{

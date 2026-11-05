@@ -52,8 +52,8 @@ function harness(){
  const win={matchMedia:()=>({matches:false}),scrollTo:()=>{}};
  const output=new Function('state','window','document','requestAnimationFrame',
    'cancelAnimationFrame','closeModal','render','loadMonth','loadSundayWeek','armLiquidSound','playLiquidTick',
-   'let liquidGestureSnap=false;\n'+app.slice(start,end)+
-   'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule};')(
+   'let liquidGestureSnap=false;let dockRemountPulse=false;let dockRemountDrop=false;\n'+app.slice(start,end)+
+   'return {bottomSwipeDown,bottomSwipeMove,bottomSwipeFinish,bottomSwipeClickCapture,navigateBottomModule,getDockFlags:()=>({pulse:dockRemountPulse,drop:dockRemountDrop})};')(
     state,win,document,cb=>{raf++;frame=cb;return raf;},()=>{frame=null},
     ()=>{closed++},()=>{renders++;transformOnRender=glass.style.transform;},()=>{scheduleLoads++},()=>{scheduleLoads++},
     ()=>{armed++},()=>{tones++}
@@ -99,6 +99,33 @@ test('tap without dragging delegates to existing click handler and instantly reb
  assert.equal(h.counts().renders,0);
  assert.ok(h.navClasses.has('is-dock-releasing'),'tap must spring back even without horizontal movement');
  assert.match(css,/@keyframes pocketDockRelease/);
+});
+test('a Dock swipe lowers smoothly while a tap still springs',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(85,20));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(46,20));
+ assert.equal(h.navClasses.has('is-dock-dropping'),true);
+ assert.equal(h.navClasses.has('is-dock-releasing'),false);
+ assert.equal(h.classes.has('is-edge-rebound'),false);
+ assert.match(css,/@keyframes pocketDockDrop\{\s*0%\{scale:1\.042;\}\s*100%\{scale:1;\}/);
+ assert.match(css,/@keyframes pocketDockLensDrop\{\s*0%\{scale:1\.105;\}\s*100%\{scale:1;\}/);
+});
+test('swiping to another Dock module requests drop landing instead of spring',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeMove(h.event(265,20));
+ h.frame();
+ h.output.bottomSwipeFinish(h.event(265,20));
+ assert.equal(h.state.view,'grades');
+ assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:true});
+ assert.match(app,/drop\?' is-dock-dropping'/);
+});
+test('dragged Dock buttons never render their own borders or outlines',()=>{
+ assert.match(css,/\.bottom-nav\.is-dock-dragging \.bottom-item::before/);
+ assert.match(css,/content:none!important/);
+ assert.match(css,/\.bottom-nav\.is-dock-dragging \.bottom-item\.is-scrubbed/);
 });
 test('swiping to an edge clamps glass and allows last tab selection',()=>{
  const h=harness();

@@ -1721,6 +1721,16 @@
   box-shadow:none!important;
  }
 }
+/* Segmented horizontal rails use the same gesture distinction:
+ * a tap has a glass spring; a scrub ends with a smooth put-down. */
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dropping{
+ animation:pocketRailDrop .53s cubic-bezier(.22,1,.36,1) both;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dropping > .liquid-choice-highlight{
+ animation:pocketRailLensDrop .53s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes pocketRailDrop{from{scale:1.046;}to{scale:1;}}
+@keyframes pocketRailLensDrop{from{scale:1.105;}to{scale:1;}}
 @keyframes pocketDockDrop{
  0%{scale:1.042;}
  100%{scale:1;}
@@ -1785,6 +1795,8 @@
  to{opacity:1;transform:translateY(0) scale(1);}
 }
 @media(prefers-reduced-motion:reduce){
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dropping,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dropping > .liquid-choice-highlight,
  .bottom-nav.is-dock-dropping,
  .bottom-nav.is-dock-dropping .bottom-liquid-indicator,
  .schedule-mode-enter .schedule-transition-content,

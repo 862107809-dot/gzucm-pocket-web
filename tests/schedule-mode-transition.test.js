@@ -210,15 +210,57 @@ test('fixed header uses one shared layout in week/month and keeps the switch sta
  assert.match(responsive,/@media\(max-width:600px\)/);
 });
 
-test('both timetable layout variants can be compared in Settings and remembered at restart',()=>{
+test('three timetable layout variants can be compared in Settings and remembered at restart',()=>{
  assert.match(app,/scheduleLayout:'fixed',\.\.\.saved\(PREF,\{\}\)/);
  assert.match(app,/data-choice="scheduleLayout"/);
  assert.match(app,/if\(kind==='scheduleLayout'\)return \[/);
  assert.match(app,/value:'original',label:en\?'Original layout':'原版布局'/);
  assert.match(app,/value:'fixed',label:en\?'Fixed switch':'固定按钮版'/);
+ assert.match(app,/value:'wide',label:en\?'Wide centered switch':'横向居中版'/);
+ assert.match(app,/\['original','fixed','wide'\]\.includes\(value\)/);
+ assert.match(app,/state\.prefs\.scheduleLayout==='wide'\?'横向居中版'/);
  assert.match(app,/function selectScheduleLayout\(value\)\{/);
  assert.match(app,/state\.prefs\.scheduleLayout=value;\s*storePrefs\(\)/);
  assert.match(app,/case'selectScheduleLayout':selectScheduleLayout\(target\.dataset\.value\)/);
+});
+
+test('third mode renders identical centered wide header in both week and month',()=>{
+ const from=app.indexOf('function wideScheduleHeader(){');
+ const to=app.indexOf('function scheduleViewSwitch(){',from);
+ assert.ok(from>=0&&to>from,'third wide header helper exists');
+ const helper=app.slice(from,to);
+ const wide=new Function('heading','E','term','scheduleViewSwitch',
+  helper+'return wideScheduleHeader();')(
+  (eyebrow,title,description)=>'<header>'+eyebrow+':'+title+':'+description+'</header>',
+  s=>s,()=>({name:'2026–2027 第一学期'}),
+  ()=>'<div class="schedule-view-switch"><button>周视图</button><button>月视图</button></div>'
+ );
+ assert.match(wide,/YOUR TIMETABLE/);
+ assert.match(wide,/把每一周，过得从容有序。/);
+ assert.match(wide,/<div class="schedule-wide-header"><div class="schedule-view-switch">/);
+ assert.equal((wide.match(/schedule-view-switch/g)||[]).length,1);
+ // Both calendar modes get exactly the same wide header, outside their
+ // independently replaced schedule content.
+ assert.match(app,/state\.prefs\.scheduleLayout==='wide'\?wideScheduleHeader\(\):fixedScheduleHeader\(\)/);
+ assert.match(app,/return \x60\$\{state\.prefs\.scheduleLayout==='wide'\?wideScheduleHeader\(\):''\}<section class="compact-month-view"/);
+ assert.match(app,/state\.prefs\.scheduleLayout==='wide'\?'':fixedScheduleHeader\(\)/);
+ assert.match(app,/const fixedLayout=state\.prefs\.scheduleLayout!=='original'/);
+ assert.match(app,/replacement\.replaceWith\(selector\)/);
+});
+
+test('wide centered selector has equal full-width buttons across responsive breakpoints',()=>{
+ const wide=css.slice(css.indexOf('/* THIRD TIMETABLE LAYOUT — WIDE CENTERED RAIL v1'));
+ assert.ok(wide.length>900,'third layout CSS must exist');
+ assert.match(wide,/\.page-schedule \.schedule-wide-header\{/);
+ assert.match(wide,/max-width:900px/);
+ assert.match(wide,/margin:0 auto 18px/);
+ assert.match(wide,/\.page-schedule \.schedule-wide-header \.schedule-view-switch\{/);
+ assert.match(wide,/width:100%/);
+ assert.match(wide,/\.schedule-view-switch > button\{\s*flex:1 1 0;\s*width:50%/);
+ assert.match(wide,/@media\(max-width:660px\)/);
+ assert.match(wide,/@media\(min-width:661px\) and \(max-width:900px\)/);
+ assert.match(app,/scheduleLayout:'fixed',\.\.\.saved\(PREF,\{\}\)/,
+  'existing users keep their saved layout, new users keep the current default');
 });
 
 test('the original variant retains the previous shorter timing and page-level animation',()=>{

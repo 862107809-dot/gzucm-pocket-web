@@ -140,6 +140,34 @@ test('narrow Dock keeps centered safe margins while the active lens slightly cro
  assert.match(app,/sw\.glass\.style\.transform='translate3d\('/);
 });
 
+test('fast pointer-up without an intermediate move still classifies an intentional swipe',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeFinish(h.event(265,20));
+ assert.equal(h.state.view,'grades','release position must decide the intended tab');
+ assert.equal(h.counts().renders,1);
+ assert.equal(h.navClasses.has('is-dock-releasing'),false);
+ assert.equal(h.navClasses.has('is-dock-dropping'),false);
+ assert.match(app,/before deciding tap versus horizontal scrub/);
+});
+
+test('fast vertical pointer-up without a move never changes Dock tab',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(46,20));
+ h.output.bottomSwipeFinish(h.event(52,110));
+ assert.equal(h.state.view,'today');
+ assert.equal(h.counts().renders,0);
+ assert.equal(h.navClasses.has('is-dock-releasing'),false);
+});
+
+test('native compositor interpolates Dock glide across high-refresh screens without 40-step sampling',()=>{
+ const code=app.slice(app.indexOf('function liquidDropFrames('),app.indexOf('function alignBottomLiquid('));
+ assert.match(code,/easing:'cubic-bezier\(\.20,\.82,\.30,1\)'/);
+ assert.match(code,/offset:0/);
+ assert.match(code,/offset:1/);
+ assert.doesNotMatch(code,/count=40|for\(let i=0/);
+});
+
 test('small finger wobble stays a tap while clear horizontal movement becomes drag',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));

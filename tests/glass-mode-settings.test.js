@@ -32,9 +32,10 @@ function settingsStatus(value){
  return {label:label.textContent,detail:detail.textContent,refreshed};
 }
 
-test('Settings exposes a visible actual runtime engine without manual selection',()=>{
+test('Settings exposes a visible actual runtime engine with manual selection',()=>{
  assert.match(app,/id="glass-renderer-mode"[^>]*role="status"/);
  assert.match(app,/id="glass-renderer-detail"/);
+ assert.match(app,/data-choice="glass"/);
  assert.match(app,/if\(state\.view==='settings'\)updateGlassModeIndicator\(\)/);
  assert.match(app,/浏览器的实际渲染能力/);
  assert.doesNotMatch(helper,/navigator\.userAgent/,'do not guess render mode from browser name');
@@ -42,21 +43,21 @@ test('Settings exposes a visible actual runtime engine without manual selection'
 
 test('WebGL mode displays active GPU surface count and live backdrop support',()=>{
  const r=settingsStatus({mode:'webgl',backdrop:true,gpuSurfaces:2});
- assert.equal(r.label,'WebGL 增强');
+ assert.equal(r.label,'增强液态');
  assert.match(r.detail,/原生背景模糊/);
- assert.match(r.detail,/当前 GPU 层 2 个/);
+ assert.match(r.detail,/GPU 层 2 个/);
  assert.equal(r.refreshed,1);
 });
 
 test('SVG mode shows capability downgrade, not a misleading WebGL label',()=>{
- const r=settingsStatus({mode:'svg',backdrop:true,gpuSurfaces:0});
- assert.equal(r.label,'CSS + SVG');
- assert.match(r.detail,/WebGL 当前不可用/);
+ const r=settingsStatus({mode:'svg',requested:'enhanced',backdrop:true,gpuSurfaces:0});
+ assert.equal(r.label,'液态玻璃');
+ assert.match(r.detail,/兼容性降级/);
 });
 
 test('CSS frosted status reports simulated background when native backdrop unsupported',()=>{
  const r=settingsStatus({mode:'frosted',backdrop:false,gpuSurfaces:0});
- assert.equal(r.label,'CSS 毛玻璃');
+ assert.equal(r.label,'毛玻璃');
  assert.match(r.detail,/模拟毛玻璃纹理/);
 });
 

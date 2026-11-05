@@ -20,6 +20,16 @@ test('optical material sheet is layered after app layout styles and cached for P
  assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-status3'));
 });
 
+test('HTTP static whitelist serves both automatic glass resources',()=>{
+ const server=fs.readFileSync(path.join(root,'server','server.js'),'utf8');
+ assert.match(server,/['"]\/glass-renderer\\.js['"]\s*:\s*['"]glass-renderer\\.js['"]/);
+ assert.match(server,/['"]\/liquid-material\\.css['"]\s*:\s*['"]liquid-material\\.css['"]/);
+ for(const asset of ['/glass-renderer.js','/liquid-material.css']){
+  assert.ok(html.includes(asset),'HTML must load '+asset);
+  assert.ok(cache.includes(asset),'PWA precache must include '+asset);
+ }
+});
+
 test('UI/UX Pro Max Liquid Glass uses theme tokens and separate optical chrome',()=>{
  for(const token of ['--lg-chrome','--lg-sheet','--lg-content','--lg-control',
     '--lg-optic','--lg-rim','--lg-rim-low','--lg-specular','--lg-shadow']){

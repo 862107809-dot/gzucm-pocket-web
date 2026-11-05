@@ -230,11 +230,13 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  p.glass.style?.setProperty?.('--rail-edge-shift','0px');
  p.glass.style?.setProperty?.('--rail-edge-scale','1');
  if(cancelled)return;
- group.classList.remove('is-rail-releasing');
+ const className=p.dragging?'is-rail-dropping':'is-rail-releasing';
+ group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
- group.classList.add('is-rail-releasing');
+ group.classList.add(className);
  group.addEventListener?.('animationend',event=>{
   if(event.animationName==='pocketRailRelease')group.classList.remove('is-rail-releasing');
+  if(event.animationName==='pocketRailDrop')group.classList.remove('is-rail-dropping');
  },{once:true});
 }
 function liquidSelectorId(group){
@@ -318,9 +320,11 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   }
   if(rail&&pendingHorizontalRailLanding?.id===id&&
      Date.now()-pendingHorizontalRailLanding.at<700){
-   group.classList.add('is-rail-settling');
+   const landing=pendingHorizontalRailLanding.dragged?'is-rail-dropping':'is-rail-settling';
+   group.classList.add(landing);
    group.addEventListener?.('animationend',event=>{
     if(event.animationName==='pocketRailSettle')group.classList.remove('is-rail-settling');
+    if(event.animationName==='pocketRailDrop')group.classList.remove('is-rail-dropping');
    },{once:true});
   }
  }
@@ -401,7 +405,7 @@ function liquidPointerDown(event){
   firstTop:buttons[0].offsetTop,lastTop:buttons[buttons.length-1].offsetTop,
   index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu,rail,pressed};
  if(rail){
-  group.classList?.remove?.('is-rail-releasing','is-rail-settling');
+  group.classList?.remove?.('is-rail-releasing','is-rail-settling','is-rail-dropping');
   group.classList?.add?.('is-rail-pressed');
   pressed?.classList?.add?.('is-pressed');
  }
@@ -452,7 +456,7 @@ function liquidPointerFinish(event,cancelled=false){
  p.pressed?.classList?.remove?.('is-pressed');
  releaseHorizontalLiquidRail(p,cancelled||p.scroll);
  if(p.rail&&!cancelled&&!p.scroll){
-  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now()};
+  pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:p.dragging};
  }
  if(!p.dragging)return;
  if(event.cancelable)event.preventDefault();

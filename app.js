@@ -647,8 +647,9 @@ function powerPage(){
   ('预计约在 '+p.predictedDate+' 耗尽 · '+(p.quality==='better'?'记录较完整':'样本有限')+'，仅供参考'):
   (p.reason||'需要有效的余额及最近用电记录');
  const avg=p.sampleDays?(p.average7??0).toFixed(2):'—';
- const statusText=state.ecardReady?'已检测到一卡通服务端会话，可尝试实时同步':
-  '尚无一卡通独立授权：本站 Cookie 和教务扫码均不能代替一卡通会话';
+ const statusText=state.ecardReady?'服务端一卡通授权可用':
+  state.powerBridgeStatus==='paired'?'已配对 iOS App，正在接收设备同步的余额':
+  '网页版没有学校一卡通授权；可配对 iOS App 获取自动同步记录';
  const snapshots=(state.powerSnapshots||[]).filter(row=>row.roomLabel===data?.roomLabel).slice(-7).reverse();
  const warnings=state.powerHistoryStatus==='partial'?'部分用电明细获取失败，预测以已成功读取的记录为准。':
   state.powerHistoryStatus==='unavailable'?'未能同步用电明细，可能暂时无法估算可用天数。':'';
@@ -676,6 +677,18 @@ function powerPage(){
  </div>
  ${state.powerError?'<div class="note warning mt-20">'+E(state.powerError)+'</div>':''}
  ${warnings?'<div class="note warning mt-20">'+E(warnings)+'</div>':''}
+ <div class="card mt-20">
+  <div class="card-heading">${I('link',18)} 绑定 iOS App · 自动同步电量</div>
+  <p class="muted tiny">在学校官方网页中通过原生 App 完成一次一卡通登录后，App 可在前台复用授权并向此网站推送只读电量记录。配对仅授权上传余额和用电明细，不上传一卡通 Cookie、密码、验证码或学校登录 Token。</p>
+  <div class="note mt-12">当前配对：${E(({paired:'已连接 iOS App',pending:'等待在 App 中输入配对码',expired:'配对服务已重启或授权过期',unknown:'检查中', 'not-paired':'尚未配对'})[state.powerBridgeStatus]||'尚未配对')}${state.powerBridgeUpdatedAt?' · 上次同步 '+E(fmt(new Date(state.powerBridgeUpdatedAt),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})):''}</div>
+  ${state.powerBridgeError?'<div class="note warning mt-12">'+E(state.powerBridgeError)+'</div>':''}
+  <div class="inline mt-12" style="gap:10px;flex-wrap:wrap">
+   <button type="button" class="btn primary" data-action="pairPower">${I('link',15)} 生成设备配对码</button>
+   <button type="button" class="btn" data-action="refreshBridge">${I('refresh',15)} 获取设备同步结果</button>
+   ${state.powerBridgeStatus==='paired'?'<button type="button" class="btn danger" data-action="disconnectBridge">解除配对</button>':''}
+  </div>
+  <p class="tiny muted mt-12">仅在 App 实际打开并成功读取学校电量后自动推送。当前服务采用内存配对：若云服务重启或授权到期，需重新配对；关闭 App 后不保证定时刷新。</p>
+ </div>
  <div class="card mt-20"><div class="card-heading">${I('shield',18)} 查询与数据来源</div>
   <p class="muted tiny">${E(statusText)}。本站 Cookie 与学校一卡通 Cookie 不同；只有后台持有经校方授权的有效一卡通会话，才能自动读取官方数据。不会在本站收集学校密码或要求粘贴原始 Cookie。</p>
   <div class="inline" style="gap:10px;flex-wrap:wrap">

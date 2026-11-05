@@ -2462,3 +2462,23 @@
   filter:none!important;
  }
 }
+
+
+/* FAST TIMETABLE SWITCH v1
+ * Month/week modes update #page-content locally; whole-panel View
+ * Transition snapshots and blur+scale crossfades trigger heavy Safari GPU
+ * re-rasterization with frosted course cards. The selected liquid control
+ * still owns its own lightweight interaction, separate from the calendar. */
+.page-schedule .schedule-view-switch,
+.page-schedule .schedule-transition-content{
+ view-transition-name:none!important;
+}
+.page-schedule.schedule-mode-enter .schedule-transition-content,
+.page-schedule.schedule-mode-enter .schedule-view-switch{
+ animation:none!important;
+ filter:none!important;
+}
+.page-schedule .month-compact .month-cell{
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}

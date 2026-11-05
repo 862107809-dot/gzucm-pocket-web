@@ -9,6 +9,18 @@
 3. 要生成公开 HTTPS 地址：按照 [`docs/DEPLOY_WINDOWS_PUBLIC.md`](docs/DEPLOY_WINDOWS_PUBLIC.md)，用 GitHub Desktop 上传到自己的仓库，再在 Render 用 `render.yaml` 部署。
 4. 不需要 Mac，不需要让 Windows 电脑保持开机。
 
+## Liquid Glass 运行时自动适配（2026-11-05）
+
+网页版的液态玻璃现采用 **CSS + SVG + JavaScript + WebGL 渐进增强**，无需手动设置。浏览器启动时检测其实际能力与系统显示偏好，并按顺序选择：
+
+- **WebGL 可用、SVG 与背景模糊可用：** 使用 CSS 背景模糊 + SVG 玻璃轮廓 + WebGL 光学高光与边缘色散（主要用于 Dock 和横向选择条）。
+- **WebGL 不可用：** 自动使用 **CSS + SVG 液态玻璃**，保留模糊背景及玻璃边缘。
+- **系统要求降低透明度／提高对比度，或背景模糊不支持：** 自动使用**毛玻璃材质**，以更厚的透光色层、柔光与细纹理保持一致的视觉风格，而不是默认切成纯白色卡片；不支持 `backdrop-filter` 时不能真正模糊背后的实时页面像素。
+
+WebGL 初始化失败或 GPU 发生异常时自动降到 SVG/CSS，不影响课程、成绩或电费数据。代码将 GPU 光学层限定为最多两个表面，避免在大量课表格子上使用 GPU 效果；不进行页面截屏或获取学生信息。动画时间和手势交互在本轮没有改变。
+
+详细规则参见 [液态玻璃自动渲染策略](docs/auto-glass-rendering.md)。真实 iPhone Safari 光学效果仍需实机核验。
+
 ## 本次增加的两项功能
 
 ### 密码暂不支持，使用微信扫码

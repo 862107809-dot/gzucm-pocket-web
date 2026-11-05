@@ -30,6 +30,13 @@ test('entire centered Dock and horizontal selectors use calm springs',()=>{
  assert.ok(animationDuration(':is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling')>=550);
  assert.match(css,/\.bottom-nav\{\s*scale:1;\s*transform-origin:center center/);
  assert.match(css,/\.liquid-selector\.is-horizontal-rail\{[^}]*transform-origin:center center/s);
+ // A centered transform-origin alone was not enough with left:50% / translateX(-50%).
+ // The fixed Dock is now centered at rest with equal auto margins, and its
+ // selected capsule scales independently from its own geometric center.
+ assert.match(css,/\.bottom-nav\{\s*left:0!important;\s*right:0!important;\s*margin-inline:auto!important;\s*transform:none!important;/);
+ assert.match(css,/\.bottom-nav\.is-dock-pressed \.bottom-liquid-indicator\{\s*scale:1\.085;/);
+ assert.match(css,/@keyframes pocketDockLensReturn/);
+ assert.match(css,/@keyframes pocketRailLensReturn/);
 });
 test('page, popover, and dialog are animated long enough to see their transitions',()=>{
  assert.ok(animationDuration('.page.page-enter')>=580);

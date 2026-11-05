@@ -1627,6 +1627,13 @@ function bottomSwipeNearest(sw,x){
  centers.forEach((center,i)=>{const n=Math.abs(x-center);if(n<best){index=i;best=n;}});
  return index;
 }
+function bottomSwipeLocalX(sw,x){
+ // The entire Dock enlarges during touch. Convert visual client coordinates
+ // back to unscaled layout space to keep the lens exactly under the finger.
+ const rect=sw.nav.getBoundingClientRect?.()||sw.layout.rect;
+ const ratio=sw.nav.offsetWidth&&rect.width?rect.width/sw.nav.offsetWidth:1;
+ return (x-rect.left)/(ratio||1);
+}
 function placeBottomSwipeGlass(sw,x){
  const l=sw.layout;
  // The lens remains clamped; overscroll compresses its inner glass and lights the rim.
@@ -1640,7 +1647,7 @@ function placeBottomSwipeGlass(sw,x){
  sw.nav.style?.setProperty?.('--edge-energy',energy.toFixed(3));
  sw.glass.style?.setProperty?.('--edge-shift',(direction*energy*8).toFixed(2)+'px');
  sw.glass.style?.setProperty?.('--edge-scale',(1-energy*.11).toFixed(3));
- const pos=Math.max(l.first,Math.min(l.last,x-l.rect.left-l.width/2));
+ const pos=Math.max(l.first,Math.min(l.last,bottomSwipeLocalX(sw,x)-l.width/2));
  sw.glass.style.width=l.width+'px';
  sw.glass.style.transform='translate3d('+pos+'px,0,0)';
 }
@@ -1769,7 +1776,7 @@ function bottomSwipeFinish(event,cancelled=false){
   return;
  }
  pendingBottomSwipeGeometry={x:Math.max(sw.layout.first,Math.min(sw.layout.last,
-  event.clientX-sw.layout.rect.left-sw.layout.width/2)),width:sw.layout.width};
+  bottomSwipeLocalX(sw,event.clientX)-sw.layout.width/2)),width:sw.layout.width};
  liquidGestureSnap=true;
  dockRemountPulse=false;
  dockRemountDrop=true;

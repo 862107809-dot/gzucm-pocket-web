@@ -718,9 +718,9 @@ body{
  --lg-frost-control:rgba(36,67,49,.79);
  --lg-frost-content:rgba(29,52,39,.87);
  --lg-frost-optic:rgba(44,84,59,.79);
- --switch-track-on:rgba(72,138,96,.83);
- --switch-track-off:rgba(38,73,53,.86);
- --switch-border-on:rgba(131,186,146,.27);
+ --switch-track-on:rgba(45,105,69,.96);
+ --switch-track-off:rgba(34,65,47,.96);
+ --switch-border-on:rgba(105,160,122,.25);
  --switch-border-off:rgba(99,148,116,.17);
  --switch-shadow:rgba(0,13,5,.23);
 }
@@ -851,8 +851,7 @@ body{
 }
 :root[data-active-theme="dark"] .switch[role="switch"].on,
 :root[data-active-theme="dark"] .switch[role="switch"].preview-on{
- background:linear-gradient(155deg,rgba(125,190,146,.055),transparent 70%),
-  var(--switch-track-on)!important;
+ background:var(--switch-track-on)!important;
  border-color:var(--switch-border-on)!important;
 }
 :root[data-active-theme="dark"] .switch[role="switch"].preview-off{
@@ -860,14 +859,14 @@ body{
  border-color:var(--switch-border-off)!important;
 }
 :root[data-active-theme="dark"] .switch[role="switch"]::before{
- background:linear-gradient(155deg,rgba(130,195,149,.065),transparent 72%)!important;
+ background:linear-gradient(155deg,rgba(110,170,128,.025),transparent 72%)!important;
  opacity:.36;
 }
 :root[data-active-theme="dark"] .switch[role="switch"]::after{
- background:linear-gradient(147deg,#c9d8ce 4%,#bacdbf 58%,#abc3b2 100%)!important;
- border-color:rgba(201,226,208,.34)!important;
- box-shadow:inset 0 1px 0 rgba(237,247,239,.21),
- 0 2px 5px rgba(0,17,8,.18)!important;
+ background:#8da794!important;
+ border-color:rgba(128,171,142,.32)!important;
+ box-shadow:inset 0 1px 0 rgba(42,95,58,.12),
+ 0 2px 4px rgba(0,17,8,.15)!important;
 }
 :root[data-active-theme="dark"] .switch[role="switch"].is-pressed{
  box-shadow:inset 0 1px 2px rgba(0,20,7,.17),
@@ -875,8 +874,8 @@ body{
  0 0 0 2px rgba(103,176,124,.07)!important;
 }
 :root[data-active-theme="dark"] .switch[role="switch"].is-pressed::after{
- box-shadow:inset 0 1px 0 rgba(239,249,241,.25),
- 0 3px 7px rgba(0,15,6,.18)!important;
+ box-shadow:inset 0 1px 0 rgba(53,112,70,.17),
+ 0 3px 6px rgba(0,15,6,.16)!important;
 }
 
 /* The existing reduced-transparency preference must remain respected. */

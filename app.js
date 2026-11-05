@@ -156,6 +156,11 @@ function liquidSpringFrames(startX,startW,endX,endW,duration=540){
 }
 function alignBottomLiquid(previousTab,previousRect){
  const nav=document.querySelector('#app .bottom-nav');
+ if(nav?.classList?.contains?.('is-dock-settling')){
+  nav.addEventListener?.('animationend',event=>{
+   if(event.animationName==='pocketDockSettle')nav.classList?.remove?.('is-dock-settling');
+  },{once:true});
+ }
  const glass=nav?.querySelector('.bottom-liquid-indicator');
  const current=nav?.querySelector('.bottom-item.active');
  if(!nav||!glass||!current)return;
@@ -1380,6 +1385,8 @@ function wholeSurfacePressDown(event){
  if(event.isPrimary===false||event.button>0||wholeSurfacePress)return;
  const target=event.target;
  if(!target?.closest||target.closest(WHOLE_SURFACE_POPUP))return;
+ // Text entry and content-editable regions must never jump under the cursor.
+ if(target.closest('input,textarea,select,[contenteditable="true"]'))return;
  let surface=target.closest(WHOLE_SURFACE_TARGET);
  if(!surface)surface=target.closest('.card');
  if(!surface||!surface.closest?.('#app')||surface.closest(WHOLE_SURFACE_POPUP))return;

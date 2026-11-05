@@ -923,3 +923,71 @@ body{
   backdrop-filter:none!important;
  }
 }
+
+
+/* NATURAL SELECTION SHADOW v1 — App Store-inspired confirmed state.
+ * A rested selection has a soft depth cue; committing an action adds one
+ * momentary shadow bloom without a white ring or changing hit geometry.
+ * This layer is deliberately independent of WebGL, SVG, and frosted modes. */
+:root{
+ --pocket-selected-shadow:
+  0 7px 17px rgba(19,59,35,.13),
+  0 2px 5px rgba(19,59,35,.06);
+ --pocket-confirm-shadow:
+  0 11px 23px rgba(24,76,44,.20),
+  0 3px 8px rgba(24,76,44,.10);
+}
+:root[data-active-theme="dark"]{
+ --pocket-selected-shadow:
+  0 7px 17px rgba(0,12,6,.25),
+  0 2px 5px rgba(0,12,6,.16);
+ --pocket-confirm-shadow:
+  0 11px 23px rgba(0,10,5,.35),
+  0 3px 8px rgba(0,10,5,.22);
+}
+:root[data-glass-engine] .bottom-nav .bottom-liquid-surface,
+:root[data-glass-engine] .liquid-selector > .liquid-choice-highlight,
+:root[data-glass-engine] .safari-floating-menu .safari-menu-glider{
+ box-shadow:inset 0 1px 0 var(--lg-specular),var(--pocket-selected-shadow)!important;
+}
+:root .liquid-selector > .liquid-choice-highlight.is-confirmed{
+ overflow:visible;
+}
+:root .bottom-nav .bottom-liquid-indicator.is-confirmed::after,
+:root .liquid-selector > .liquid-choice-highlight.is-confirmed::after,
+:root .safari-floating-menu .safari-menu-glider.is-confirmed::after{
+ content:"";
+ position:absolute;
+ inset:1px;
+ border-radius:inherit;
+ pointer-events:none;
+ background:transparent;
+ box-shadow:var(--pocket-confirm-shadow);
+ opacity:0;
+ animation:pocketNaturalConfirmation .44s ease-out both;
+}
+@keyframes pocketNaturalConfirmation{
+ 0%{opacity:0;}
+ 35%{opacity:.90;}
+ 100%{opacity:0;}
+}
+/* Ordinary one-shot button actions use the same shadow language, but no
+ * travelling selection pill. Text fields, modal and toast interaction
+ * are unchanged. */
+#app :is(.btn,.icon-btn,.language-switch,.safari-select,.hero-button,
+  .agenda-row,.month-cell,.small-action,.day-tab,.nav-item).pocket-full-release{
+ filter:drop-shadow(0 5px 10px rgba(25,80,47,.12));
+}
+:root[data-active-theme="dark"] #app :is(.btn,.icon-btn,.language-switch,
+  .safari-select,.hero-button,.agenda-row,.month-cell,.small-action,
+  .day-tab,.nav-item).pocket-full-release{
+ filter:drop-shadow(0 5px 11px rgba(0,11,5,.25));
+}
+@media(prefers-reduced-motion:reduce){
+ :root .bottom-nav .bottom-liquid-indicator.is-confirmed::after,
+ :root .liquid-selector > .liquid-choice-highlight.is-confirmed::after,
+ :root .safari-floating-menu .safari-menu-glider.is-confirmed::after{
+  animation:none!important;
+  opacity:0!important;
+ }
+}

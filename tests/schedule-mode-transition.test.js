@@ -63,7 +63,10 @@ function harness(mode='month',hasHost=true,width=0,animate=false,reduced=false){
  }
  const state={view:'schedule',scheduleMode:mode,prefs:{language:'zh'}};
  const doc={startViewTransition:()=>{throw Error('native snapshots must never run');}};
- const f=new Function(','confirmGlassSelection','requestAnimationFrame',
+ const parameters=['$','state','schedulePage','render',
+  'snapshotLiquidSelectors','enhanceLiquidSelectors','window',
+  'setSelectorGlass','confirmGlassSelection','requestAnimationFrame'];
+ const f=Function(...parameters,
   body+'return {transitionScheduleMode,renderScheduleContent};')(
   ()=>hasHost?page:null,state,()=>'<section class="new-calendar">calendar</section>',
   ()=>calls.push(['full-render']),

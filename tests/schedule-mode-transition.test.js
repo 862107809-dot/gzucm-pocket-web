@@ -129,7 +129,7 @@ test('desktop Mac and wide iPad use a short shrink-then-expand visual handoff',a
  assert.equal(h.reused(),true);
  assert.equal(h.animations.length,2);
  assert.equal(h.animations[1].frames[0].transform,'scale(0.974)');
- assert.equal(h.animations[1].frames[1].transform,'scale(1)');
+ assert.equal(h.animations[1].frames.at(-1).transform,'scale(1)');
  assert.equal(h.animations[1].options.duration,300);
  assert.equal(h.calls.some(x=>x[0]==='full-render'),false);
  h.animations[1].resolve();
@@ -147,7 +147,7 @@ test('tablet and phone get responsive zoom amplitudes without overshooting 100%'
   await Promise.resolve();
   assert.equal(h.animations[1].frames[0].transform,expected);
   assert.equal(h.animations[1].options.duration,duration);
-  assert.equal(h.animations[1].frames[1].transform,'scale(1)');
+  assert.equal(h.animations[1].frames.at(-1).transform,'scale(1)');
   assert.match(h.animations[1].options.easing,/cubic-bezier/);
   h.animations[1].resolve();
   await Promise.resolve();

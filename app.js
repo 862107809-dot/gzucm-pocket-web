@@ -168,7 +168,7 @@ function alignBottomLiquid(previousTab,previousRect){
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
- if(changed)current.classList.add('is-landing');
+ if(changed)current.classList?.add?.('is-landing');
  const oldX=previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
  const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);

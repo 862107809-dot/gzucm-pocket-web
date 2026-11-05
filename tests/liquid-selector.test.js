@@ -117,7 +117,7 @@ test('segmented mode and grade filters still support swipe and liquid glass',()=
   assert.equal(h.stats().clicks,1);
  }
 });
-test('horizontal rail acknowledges taps without an elastic release, and keeps drag affordances',()=>{
+test('horizontal rail gently settles on taps and keeps drag magnification',()=>{
  const h=harness('grade');
  assert.ok(h.group.classList.contains('is-horizontal-rail'));
  h.selectors.liquidPointerDown(h.event(0,40,20));
@@ -125,7 +125,7 @@ test('horizontal rail acknowledges taps without an elastic release, and keeps dr
  assert.equal(h.group.classList.contains('is-rail-dragging'),false);
  h.selectors.liquidPointerFinish(h.event(0,40,20));
  assert.equal(h.group.classList.contains('is-rail-pressed'),false);
- assert.equal(h.group.classList.contains('is-rail-releasing'),false,'tap must not start a rail spring');
+ assert.equal(h.group.classList.contains('is-rail-releasing'),true,'tap must start a gentle spring on the rail');
  assert.equal(h.stats().clicks,0);
  assert.match(css,/transform-origin:center center/);
  assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.liquid-selector:is\(\.is-rail-releasing,\.is-rail-settling\)/);
@@ -189,8 +189,12 @@ test('horizontal rail grows both the whole segment and its selected glass on fir
  assert.match(css,/\.liquid-selector\.is-rail-pressed\s*> \.liquid-choice-highlight\{scale:1\.09;\}/);
  h.selectors.liquidPointerFinish(down);
  assert.equal(h.group.buttons[0].classList.contains('is-pressed'),false);
- assert.equal(h.group.classList.contains('is-rail-releasing'),false);
- assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.liquid-selector:is\(\.is-rail-releasing,\.is-rail-settling\)/);
+ assert.equal(h.group.classList.contains('is-rail-releasing'),true);
+ const gentle=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(gentle,/\.liquid-selector\.is-rail-pressed\{/);
+ assert.match(gentle,/\.liquid-selector\.is-rail-dragging\{/);
+ assert.match(gentle,/\.liquid-selector\.is-rail-pressed > button\.is-pressed\{/);
+ assert.match(gentle,/@keyframes pocketRailSoftSpring/);
 });
 test('horizontal rail press cancels label enlargement once drag begins',()=>{
  const h=harness('grade');
@@ -201,6 +205,22 @@ test('horizontal rail press cancels label enlargement once drag begins',()=>{
  assert.equal(h.group.classList.contains('is-rail-dragging'),true);
  h.selectors.liquidPointerFinish(h.event(0,220,22));
 });
+test('horizontal drag magnifies outer rail and the scrubbed button but not the containing card',()=>{
+ const section=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(section,/#app :is\(\.segmented,\.schedule-view-switch,\.day-strip\)\.liquid-selector\.is-rail-dragging\{\s*scale:1\.026!important;/);
+ assert.match(section,/\.liquid-selector\.is-rail-dragging > button\.is-scrubbed\{\s*scale:1\.065!important;/);
+ assert.match(section,/\.liquid-selector\.is-rail-pressed > \.liquid-choice-highlight\{\s*scale:1\.045!important;/);
+ assert.match(section,/\.liquid-selector\.is-rail-dragging > \.liquid-choice-highlight\{\s*scale:1\.08!important;/);
+ const h=harness('days');
+ h.selectors.liquidPointerDown(h.event(0,40,20));
+ assert.ok(h.group.classList.contains('is-rail-pressed'));
+ h.selectors.liquidPointerMove(h.event(0,220,20));
+ assert.ok(h.group.classList.contains('is-rail-dragging'));
+ assert.ok(h.group.buttons[2].classList.contains('is-scrubbed'));
+ h.selectors.liquidPointerFinish(h.event(0,220,20));
+ assert.ok(h.group.classList.contains('is-rail-dropping'));
+});
+
 test('horizontal rail snapshots preserve unscaled lens geometry while expanded',()=>{
  const h=harness('grade');
  const group=h.group;

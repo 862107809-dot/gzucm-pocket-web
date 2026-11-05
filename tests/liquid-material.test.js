@@ -14,10 +14,10 @@ test('optical material sheet is layered after app layout styles and cached for P
  const base=html.indexOf('/styles.css?v=');
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
- assert.ok(cache.includes('/liquid-material.css?v=20261105-glass-choices1'));
- assert.ok(cache.includes('gzucm-pocket-web-v44-20261105-glass-choices1'));
- assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-choices1'));
- assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-choices1'));
+ assert.ok(cache.includes('/liquid-material.css?v=20261105-glass-material2'));
+ assert.ok(cache.includes('gzucm-pocket-web-v45-20261105-glass-material2'));
+ assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-material2'));
+ assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-material2'));
 });
 
 test('HTTP static whitelist serves both automatic glass resources',()=>{
@@ -63,6 +63,35 @@ test('glass selector uses the requested names, saved prefs, and real runtime sta
  for(const label of ['增强液态','液态玻璃','毛玻璃'])assert.ok(app.includes(label),label);
  for(const token of ["glassMode:'enhanced'","data-choice=\"glass\"","case'selectGlass':selectGlass","storePrefs();","setMode?.(value)"])assert.ok(app.includes(token),token);
  assert.ok(material.includes('data-glass-preference="smooth"'));
+});
+
+test('frosted mode reaches shell, reading cards, menus, controls and selected lenses',()=>{
+ const section=material.slice(material.indexOf('/* MODE MATERIAL TUNING v2'));
+ assert.ok(section.length>9000,'mode material rules should be present');
+ for(const surface of [
+  '.glass','.topbar','.bottom-nav','.sidebar','.toast',
+  '.modal-card','.safari-floating-menu','.card','.page-schedule .card',
+  '.calendar-visual','.power-mini','.month-calendar','.agenda-row',
+  '.page-schedule .agenda-row','.month-compact .month-cell','.safari-select',
+  '.language-switch','.status-pill','.day-strip .day-tab',
+  '.liquid-selector > .liquid-choice-highlight','.bottom-nav .bottom-liquid-surface'
+ ]){
+  assert.ok(section.includes(surface),'frosted material needs '+surface);
+ }
+ assert.match(section,/data-glass-engine="frosted"\] :is\(\.modal-card,\.safari-floating-menu,\.card/);
+ assert.match(section,/data-glass-engine="frosted"\] :is\(\.bottom-nav \.bottom-liquid-surface/);
+ assert.match(section,/\.bottom-liquid-surface::before,[\s\S]*?display:none!important/);
+ assert.match(section,/@media\(prefers-reduced-transparency:reduce\),\(prefers-contrast:more\)/);
+});
+
+test('enhanced and standard mode transmit background without heavy lower shadows',()=>{
+ const section=material.slice(material.indexOf('/* MODE MATERIAL TUNING v2'));
+ assert.match(section,/data-glass-engine="webgl"\]\{[\s\S]*?--lg-chrome:rgba\(244,253,247,\.34\)/);
+ assert.match(section,/data-glass-engine="svg"\]\{[\s\S]*?--lg-chrome:rgba\(244,254,248,\.23\)/);
+ assert.match(section,/linear-gradient\(163deg,var\(--lg-specular\) -85%,transparent 38%\)/);
+ assert.match(section,/lg-optic-canvas\{opacity:\.58;\}/);
+ assert.match(section,/data-theme="dark"\]\[data-glass-engine="svg"\]/);
+ assert.match(section,/:root:not\(\[data-theme="light"\]\)\[data-glass-engine="svg"\]/);
 });
 
 test('visual design change does not rewrite timing or gesture handling',()=>{

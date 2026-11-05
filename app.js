@@ -972,7 +972,7 @@ async function importData(file){if(!file)return;if(file.size>8*1024*1024){toast(
 async function importWallpaper(file){if(!file)return;if(file.size>10*1024*1024){toast('图片请小于 10MB');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('请选择 JPG、PNG 或 WebP');return;}
  try{const url=URL.createObjectURL(file),img=new Image();img.src=url;await img.decode();const scale=Math.min(1,1200/img.width,900/img.height),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);state.prefs.wallpaper=canvas.toDataURL('image/jpeg',.72);URL.revokeObjectURL(url);storePrefs();render();toast('背景已经更新');}catch{toast('图片读取失败');}}
 async function api(path,options={}){const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),20000);try{const res=await fetch('/api/'+path,{...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})},credentials:'same-origin',signal:ac.signal,cache:'no-store'});let obj;try{obj=await res.json();}catch{throw Error('服务暂时不可用，请刷新页面或稍后重试');}if(!res.ok)throw Object.assign(Error(obj.error||'请求失败'),{status:res.status,code:obj.code,officialUrl:obj.officialUrl});return obj;}finally{clearTimeout(timeout);}}
-async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;state.ecardReady=!!info.ecardReady;state.casAvailable=!!info.casAvailable;state.casVerified=!!info.casVerified;if(PUBLIC){if(state.connected){await syncAcademic();}else if(state.ecardReady||state.view==='power'){render();if(state.view==='power'&&state.ecardReady)syncPower(true);}else{connectModal('qr');}}else{render();if(state.view==='power'&&state.ecardReady)syncPower(true);}}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
+async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;state.ecardReady=!!info.ecardReady;state.casAvailable=!!info.casAvailable;state.casVerified=!!info.casVerified;if(PUBLIC){if(state.connected){await syncAcademic();}else if(state.ecardReady||state.view==='power'){render();if(state.view==='power'){if(state.ecardReady)syncPower(true);refreshPowerBridge(true);}}else{connectModal('qr');}}else{render();if(state.view==='power'){if(state.ecardReady)syncPower(true);refreshPowerBridge(true);}}}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
 function openOfficialLogin(){
  // Open from a genuine click so browsers do not block the popup.
  // CAS registration is optional and disabled by default.
@@ -997,9 +997,88 @@ async function checkOfficialAuth(){
 }
 async function startQr(){state.authMode='qr';const panel=$('#qr-panel');if(!panel)return;if(PUBLIC){state.data=window.GZUCM_DEMO;state.week=weekNow();}panel.innerHTML='<div class="tiny muted">正在请求学校的二维码接口…</div>';try{const qr=await api('qr/start',{method:'POST',body:'{}'});const safe=E(qr.confirmUrl||'');panel.innerHTML=`<div class="qr-frame">${qr.svg?`<img alt="教务系统登录二维码" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}">`:I('link',54)}</div><div class="tiny muted" style="text-align:center">用学校支持的方式扫码后确认</div><div class="mono-link">学校扫码确认链接已生成 · 为保护登录安全，已隐藏完整链接</div><div class="inline" style="justify-content:center;flex-wrap:wrap"><a class="btn small primary" target="_blank" rel="noopener noreferrer" href="${safe}">${I('link',14)} 打开学校确认页</a><button class="btn small" data-action="copyQr">${I('file',14)} 复制确认链接</button></div><div class="tiny muted" style="text-align:center">仅在学校官方域名输入密码。打开的页面必须完成学校的二维码确认，才能让本站获得同步所需的会话。</div><div class="tiny muted" id="qr-status" role="status">等待扫码…</div>`;state.qrLink=qr.confirmUrl;state.poll=setInterval(pollQr,3500);}catch(e){panel.innerHTML=`<div class="note warning">${E(e.message||'二维码申请失败')}${e.code?'<div class="tiny muted mt-12">诊断代码：'+E(e.code)+'</div>':''}</div><button class="btn primary mt-12" data-action="startQr">重试</button>`;}}
 async function pollQr(){if(!$('#qr-panel')){clearInterval(state.poll);state.poll=null;return;}try{const r=await api('qr/status');const el=$('#qr-status');if(el)el.textContent=({pending:'等待扫码…',scanned:'已扫码，请在学校页面确认',confirmed:'认证已确认，正在验证会话…',connected:'已连接学校教务'}[r.status]||r.message||'等待学校响应…');if(r.connected){state.connected=true;closeModal();toast('教务已连接，正在读取课表');await syncAcademic();}}catch(e){const el=$('#qr-status');if(el)el.textContent='查询状态：'+e.message;clearInterval(state.poll);state.poll=null;}}
+async function refreshPowerBridge(silent=false){
+ if(state.powerBridgeStatus==='checking')return;
+ state.powerBridgeChecked=Date.now();
+ try{
+  const result=await api('power/bridge/read');
+  state.powerBridgeStatus=result.status||'not-paired';
+  state.powerBridgeError='';
+  if(result.updatedAt)state.powerBridgeUpdatedAt=result.updatedAt;
+  if(result.status==='paired'&&result.power&&result.version!==state.powerBridgeVersion){
+   if(result.source!=='ios-native'||!Number.isFinite(Number(result.power.balance))||
+      Number(result.power.balance)<0||Number(result.power.balance)>1000000||
+      !['度','kWh','千瓦时','度电'].includes(result.power.unit)||
+      !Number.isFinite(Date.parse(result.power.updatedAt||'')))throw Error('设备返回的电量格式无法验证');
+   const newPower={...result.power,source:'ios-native'};
+   const current=state.data.power;
+   const newer=!current||state.data.demo||!Number.isFinite(Date.parse(current.updatedAt||''))||
+     Date.parse(newPower.updatedAt)>=Date.parse(current.updatedAt);
+   if(newer){
+    const sameRoom=current?.roomLabel===newPower.roomLabel&&
+      ['ios-native','ios-native-cache'].includes(current?.source);
+    let records=Array.isArray(result.powerDaily)?result.powerDaily:[];
+    if(result.historyStatus!=='complete'&&sameRoom){
+     const map=new Map();
+     for(const row of [...(state.data.powerDaily||[]),...records]){
+      if(/^20\d{2}-\d{2}-\d{2}$/.test(String(row?.date||'')))map.set(row.date,row);
+     }
+     records=[...map.values()].sort((a,b)=>a.date.localeCompare(b.date)).slice(-90);
+    }
+    const validated=window.GZUCM_POWER_INSIGHTS?.normalizeHistory(records,iso(today()))||[];
+    state.data={...state.data,power:newPower,powerDaily:validated};
+    state.powerHistoryStatus=result.historyStatus||'';
+    state.powerSnapshots=window.GZUCM_POWER_SNAPSHOTS?.append(state.powerSnapshots,newPower,new Date())||[];
+    try{
+     const power=window.GZUCM_POWER_SNAPSHOTS?.cachedPower(newPower);
+     if(power)localStorage.setItem(LIVE_POWER_DB,JSON.stringify({
+      power,powerDaily:validated,snapshots:state.powerSnapshots,recordedAt:new Date().toISOString()
+     }));
+    }catch{state.powerBridgeError='已收到 iOS 电量，但本地缓存写入失败';}
+    store();
+    if(!silent)toast('已获取配对 iOS App 的电量数据');
+   }
+   state.powerBridgeVersion=result.version;
+  }
+  if(state.view==='power'||state.view==='today')render();
+  return result;
+ }catch(error){
+  state.powerBridgeError=String(error?.message||'设备同步读取失败');
+  if(state.view==='power')render();
+  if(!silent)toast(state.powerBridgeError);
+  return null;
+ }
+}
+async function beginPowerPairing(){
+ try{
+  const result=await api('power/bridge/start',{method:'POST',body:'{}'});
+  state.powerBridgeStatus='pending';state.powerBridgeVersion=0;state.powerBridgeUpdatedAt='';
+  render();
+  const code=String(result.code||'');
+  if(!/^[A-Z0-9_-]{12}$/.test(code))throw Error('服务端未返回有效配对码');
+  openModal('配对 iOS App · 自动同步',`<p>请在原生「广中医口袋」App 中打开「设置与账户 → 一卡通同步」，填写当前网站地址及下方一次性配对码。</p>
+  <div class="card" style="text-align:center"><div class="setting-label">一次性配对码 · 五分钟内有效</div><div class="metric-value" style="font-size:clamp(23px,6vw,34px);letter-spacing:3px;overflow-wrap:anywhere">${E(code)}</div></div>
+  <div class="grid-gap mt-12"><button type="button" class="btn primary block" data-action="copyPowerPair" data-code="${E(code)}">${I('file',14)} 复制配对码</button>
+  <button type="button" class="btn block" data-action="refreshBridge">${I('refresh',14)} 检查配对及同步状态</button></div>
+  <div class="note mt-12">此配对只允许 iOS App 将已读取的余额和用电明细传到本站，不会获得学校 Cookie 或密码。配对服务重启、凭据失效时需再次配对。</div>`);
+ }catch(error){state.powerBridgeError=error.message||'生成配对码失败';render();toast(state.powerBridgeError);}
+}
+async function disconnectPowerBridge(){
+ try{await api('power/bridge/revoke',{method:'POST',body:'{}'});}catch{}
+ state.powerBridgeStatus='not-paired';state.powerBridgeVersion=0;state.powerBridgeUpdatedAt='';
+ state.powerBridgeError='';
+ render();toast('已解除网站与 iOS App 配对');
+}
 async function syncPower(automatic=false){
  if(state.powerStatus==='loading')return;
  state.powerLastAttempt=Date.now();
+ if(!state.ecardReady&&state.powerBridgeStatus==='paired'){
+  const data=await refreshPowerBridge(automatic);
+  if(data?.status==='paired'){
+   if(!automatic)toast(data.power?'已检查设备推送的电量':'设备已配对，请先在 iOS App 读取电量');
+   return;
+  }
+ }
  if(!state.ecardReady){
   // Recheck our server session. A browser's own Cookie is not an
   // authorization token for ecard.gzucm.edu.cn.
@@ -1255,7 +1334,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){const d=dt(raw);state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));state.monthLoading=false;state.monthLoadError=0;render();loadMonth();}else{document.querySelectorAll('.month-cell').forEach(cell=>{const selected=cell.dataset.date===raw;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));});openMonthDayDetail(raw);}break;}
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
- case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
+ case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'pairPower':beginPowerPairing();break;case'refreshBridge':refreshPowerBridge();break;case'disconnectBridge':disconnectPowerBridge();break;case'copyPowerPair':navigator.clipboard?.writeText(target.dataset.code||'').then(()=>toast('配对码已复制'),()=>toast('请手动选择并复制'));break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'toggleSound':state.prefs.soundEffects=state.prefs.soundEffects===false;storePrefs();if(state.prefs.soundEffects)armLiquidSound();render();break;
  case'toggleHaptics':window.GZUCM_HAPTICS?.pulse('toggle',true);state.prefs.hapticEffects=state.prefs.hapticEffects===false;storePrefs();render();break;
  case'toggleLanguage':toggleLanguage();break;
@@ -1307,7 +1386,9 @@ window.GZUCM_I18N?.observe(document.body,()=>state.prefs.language);
 // Only refresh while the site is actually in use; Safari cannot run this
 // loop once the PWA/tab is closed or the school session has expired.
 function maybeRefreshPower(){
- if(document.visibilityState!=='visible'||state.view!=='power'||!state.ecardReady)return;
+ if(document.visibilityState!=='visible'||state.view!=='power')return;
+ if(Date.now()-state.powerBridgeChecked>5*60*1000)refreshPowerBridge(true);
+ if(!state.ecardReady)return;
  if(state.powerStatus==='loading'||Date.now()-state.powerLastAttempt<2*60*60*1000)return;
  syncPower(true);
 }

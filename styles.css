@@ -2364,3 +2364,26 @@
   transition:none!important;
  }
 }
+
+
+/* APP STORE CONFIRMATION MOTION v1
+ * Animation lives with the gesture system, not the glass material:
+ * all three renderers share the same shadow confirmation timing. */
+:root .bottom-nav .bottom-liquid-indicator.is-confirmed::after,
+:root .liquid-selector > .liquid-choice-highlight.is-confirmed::after,
+:root .safari-floating-menu .safari-menu-glider.is-confirmed::after{
+ animation:pocketNaturalConfirmation .44s ease-out both;
+}
+@keyframes pocketNaturalConfirmation{
+ 0%{opacity:0;}
+ 35%{opacity:.90;}
+ 100%{opacity:0;}
+}
+@media(prefers-reduced-motion:reduce){
+ :root .bottom-nav .bottom-liquid-indicator.is-confirmed::after,
+ :root .liquid-selector > .liquid-choice-highlight.is-confirmed::after,
+ :root .safari-floating-menu .safari-menu-glider.is-confirmed::after{
+  animation:none!important;
+  opacity:0!important;
+ }
+}

@@ -78,6 +78,7 @@ test('moving finger to scroll cancels press before browser scroll begins',()=>{
  h.f.wholeSurfacePressDown(h.event(b.target));
  h.f.wholeSurfacePressMove(h.event(b.target,40,54));
  assert.equal(b.classes.has('pocket-full-press'),false);
+ assert.equal(b.classes.has('pocket-full-release'),false,'scrolling must not trigger a delayed rebound');
  h.flush();
 });
 test('press only follows the primary pointer',()=>{
@@ -97,4 +98,12 @@ test('styles animate whole-element scale, honor reduce motion, and avoid popup r
  assert.match(css,/\.bottom-nav\.is-dock-pressed\{/);
  assert.match(css,/\.bottom-nav\.is-dock-dragging\{/);
  assert.match(css,/@keyframes pocketDockSettle/);
+});
+
+test('cancelled pointer immediately resets and never animates a delayed spring',()=>{
+ const h=harness(),b=h.makeSurface();
+ h.f.wholeSurfacePressDown(h.event(b.target));
+ h.f.wholeSurfacePressEnd(h.event(b.target),true);
+ assert.equal(b.classes.has('pocket-full-press'),false);
+ assert.equal(b.classes.has('pocket-full-release'),false);
 });

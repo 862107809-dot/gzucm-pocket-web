@@ -155,7 +155,9 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
    if(!s.ecard.hasAuthenticatedSession())return reply(res,428,{error:'当前站点没有可用的一卡通授权会话，请先在学校官方电费页面查询。',code:'ECARD_LOGIN_REQUIRED',officialUrl:PORTAL});
    const month=url.searchParams.get('month');
    if(month&&!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))return reply(res,400,{error:'月份格式无效'});
-   const fresh=s.ecard.cachedResult&&s.ecard.cachedMonth===(month||new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit'}).formatToParts(new Date()).filter(x=>x.type==='year'||x.type==='month').map(x=>x.value).join('-'))&&Date.now()-s.ecard.lastRead<45000;
+   const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+   const currentMonth=parts.find(x=>x.type==='year').value+'-'+parts.find(x=>x.type==='month').value;
+   const fresh=s.ecard.cachedResult&&s.ecard.cachedMonth===(month||currentMonth)&&Date.now()-s.ecard.lastRead<45000;
    // Return a per-user verified result from memory, never shared between students.
    if(fresh)return reply(res,200,s.ecard.cachedResult);
    if(Date.now()-s.lastPowerRequest<8000)return reply(res,429,{error:'电费查询请至少间隔 8 秒'});

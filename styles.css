@@ -1494,3 +1494,54 @@
   animation:none!important;
  }
 }
+
+/* Full-surface material press: every app-level control and standalone card,
+ * never a modal, popover, toast or its controls. Only composited individual
+ * scale is animated; the layout box and existing transforms remain untouched.
+ */
+#app .pocket-full-press{
+ transform-origin:center center;
+ animation:pocketFullSurfacePress .20s cubic-bezier(.18,.75,.22,1.18) both!important;
+ filter:brightness(1.055) drop-shadow(0 5px 12px rgba(37,116,72,.16));
+}
+#app .pocket-full-release{
+ transform-origin:center center;
+ animation:pocketFullSurfaceRelease .34s cubic-bezier(.22,.78,.24,1) both!important;
+}
+#app .pocket-full-card.pocket-full-press{
+ animation:pocketCardSurfacePress .20s cubic-bezier(.18,.75,.22,1.18) both!important;
+ filter:brightness(1.03) drop-shadow(0 8px 16px rgba(37,116,72,.11));
+}
+#app .pocket-full-card.pocket-full-release{
+ animation:pocketCardSurfaceRelease .34s cubic-bezier(.22,.78,.24,1) both!important;
+}
+@keyframes pocketFullSurfacePress{
+ 0%{scale:1;}
+ 58%{scale:1.055;}
+ 100%{scale:1.044;}
+}
+@keyframes pocketFullSurfaceRelease{
+ 0%{scale:1.044;}
+ 42%{scale:.991;}
+ 72%{scale:1.008;}
+ 100%{scale:1;}
+}
+@keyframes pocketCardSurfacePress{
+ 0%{scale:1;}
+ 58%{scale:1.021;}
+ 100%{scale:1.015;}
+}
+@keyframes pocketCardSurfaceRelease{
+ 0%{scale:1.015;}
+ 44%{scale:.995;}
+ 73%{scale:1.003;}
+ 100%{scale:1;}
+}
+@media(prefers-reduced-motion:reduce){
+ #app .pocket-full-press,#app .pocket-full-release,
+ #app .pocket-full-card.pocket-full-press,
+ #app .pocket-full-card.pocket-full-release{
+  animation:none!important;
+  filter:none!important;
+ }
+}

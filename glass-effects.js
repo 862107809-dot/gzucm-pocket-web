@@ -21,7 +21,8 @@
    const coarse=matchMedia('(pointer: coarse)').matches;
    const lessTransparency=matchMedia('(prefers-reduced-transparency: reduce)').matches;
    const moreContrast=matchMedia('(prefers-contrast: more)').matches;
-   return !lessTransparency&&!moreContrast&&!coarse;
+   const mode=global.GZUCM_GLASS_OPTICS?.status?.()?.mode;
+   return !lessTransparency&&!moreContrast&&!coarse&&mode!=='frosted';
  }
 
  function refresh(){
@@ -32,7 +33,15 @@
   for(const [el,instance] of active){
    if(!el.isConnected){try{instance.destroy();}catch{}active.delete(el);}
   }
-  if(!allowed()||typeof global.liquidGlass!=='function')return;
+  if(!allowed()||typeof global.liquidGlass!=='function'){
+   // An accessibility or capability downgrade must remove old refraction
+   // instances instead of leaving their stale SVG filters over frosted CSS.
+   for(const [el,instance] of active){
+    try{instance.destroy();}catch{}
+    active.delete(el);
+   }
+   return;
+  }
   let count=active.size;
   for(const el of document.querySelectorAll(limited)){
    if(count>=maxCount)break;

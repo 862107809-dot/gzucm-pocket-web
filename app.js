@@ -168,6 +168,7 @@ function alignBottomLiquid(previousTab,previousRect){
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
+ if(changed)current.classList.add('is-landing');
  const oldX=previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
  const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
@@ -1209,6 +1210,16 @@ async function loadMonth(){
 async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.connected=false;state.ecardReady=false;state.powerLastSync=0;state.powerLastAttempt=0;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
 function navigateBottomModule(view){
  if(!['today','schedule','grades','power','settings'].includes(view))return;
+ if(state.view===view){
+  // A repeated tap animates the whole selected tab without rebuilding the page.
+  const active=document.querySelector?.('.bottom-nav .bottom-item.active');
+  if(active&&!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
+   active.classList?.remove?.('is-landing');
+   void active.offsetWidth;
+   active.classList?.add?.('is-landing');
+  }
+  return;
+ }
  state.view=view;
  closeModal();
  render();
@@ -1240,9 +1251,30 @@ function bottomSwipeNearest(sw,x){
 }
 function placeBottomSwipeGlass(sw,x){
  const l=sw.layout;
+ // The lens remains clamped; overscroll compresses its inner glass and lights the rim.
+ const first=l.centers[0],last=l.centers[l.centers.length-1];
+ const beyondLeft=Math.max(0,first-12-x),beyondRight=Math.max(0,x-last-12);
+ const direction=beyondLeft>0?-1:beyondRight>0?1:0;
+ const energy=Math.min(1,Math.max(beyondLeft,beyondRight)/85);
+ sw.edge=direction;
+ sw.nav.classList?.toggle?.('edge-left',direction<0);
+ sw.nav.classList?.toggle?.('edge-right',direction>0);
+ sw.nav.style?.setProperty?.('--edge-energy',energy.toFixed(3));
+ sw.glass.style?.setProperty?.('--edge-shift',(direction*energy*8).toFixed(2)+'px');
+ sw.glass.style?.setProperty?.('--edge-scale',(1-energy*.11).toFixed(3));
  const pos=Math.max(l.first,Math.min(l.last,x-l.rect.left-l.width/2));
  sw.glass.style.width=l.width+'px';
  sw.glass.style.transform='translate3d('+pos+'px,0,0)';
+}
+function releaseBottomEdge(sw){
+ sw.nav.classList?.remove?.('edge-left','edge-right');
+ sw.nav.style?.setProperty?.('--edge-energy','0');
+ sw.glass.style?.setProperty?.('--edge-shift','0px');
+ sw.glass.style?.setProperty?.('--edge-scale','1');
+ if(sw.edge){
+  sw.glass.classList?.add?.('is-edge-rebound');
+  setTimeout(()=>sw.glass.classList?.remove?.('is-edge-rebound'),360);
+ }
 }
 function bottomSwipeDown(event){
  const nav=event.target.closest?.('.bottom-nav');
@@ -1251,12 +1283,14 @@ function bottomSwipeDown(event){
  const glass=nav.querySelector('.bottom-liquid-indicator');
  const active=nav.querySelector('.bottom-item.active');
  if(!glass||!active)return;
+ const pressed=event.target.closest?.('.bottom-item');
+ pressed?.classList?.add?.('is-pressed');
  const layout=bottomSwipeLayout(nav);
  if(!layout)return;
  armLiquidSound();
- bottomSwipe={pointerId:event.pointerId,nav,glass,layout,
+ bottomSwipe={pointerId:event.pointerId,nav,glass,layout,pressed,
   startX:event.clientX,startY:event.clientY,
-  dragging:false,vertical:false,frame:0,lastX:event.clientX,lastTab:-1};
+  dragging:false,vertical:false,frame:0,lastX:event.clientX,lastTab:-1,edge:0};
 }
 function bottomSwipeMove(event){
  const sw=bottomSwipe;
@@ -1266,6 +1300,7 @@ function bottomSwipeMove(event){
   if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.12){sw.vertical=true;return;}
   if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
   sw.dragging=true;
+  sw.pressed?.classList?.remove?.('is-pressed');
   sw.glass.classList.add('is-instant','is-dragging');
   sw.glass.classList.remove('is-moving');
   try{sw.nav.setPointerCapture(event.pointerId);}catch{}
@@ -1289,14 +1324,16 @@ function bottomSwipeFinish(event,cancelled=false){
  const sw=bottomSwipe;
  if(!sw||sw.pointerId!==event.pointerId)return;
  bottomSwipe=null;
+ sw.pressed?.classList?.remove?.('is-pressed');
  if(sw.frame)cancelAnimationFrame(sw.frame);
  sw.layout.tabs.forEach(tab=>tab.classList.remove('is-scrubbed'));
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
- if(!sw.dragging)return;
+ if(!sw.dragging){releaseBottomEdge(sw);return;}
  if(event.cancelable)event.preventDefault();
  ignoreBottomClickUntil=Date.now()+420;
  // Commit the final finger position before the navigation re-renders.
  placeBottomSwipeGlass(sw,event.clientX);
+ releaseBottomEdge(sw);
  const index=bottomSwipeNearest(sw,event.clientX);
  const next=sw.layout.tabs[index]?.dataset.view;
  if(cancelled||!next||next===state.view){

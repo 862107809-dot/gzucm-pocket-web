@@ -125,7 +125,7 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
  try{
   const p=url.pathname;
   if(p==='/api/health'&&req.method==='GET')return reply(res,200,{ok:true,app:'广中医口袋 Web',version:'1.3.0',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
-  if(p==='/api/session'&&req.method==='GET')return reply(res,200,{connected:s.client.connected,casAvailable:CAS_CONFIG.enabled,casVerified:!!s.casVerified,campus:'undergrad',qrPending:!!s.client.qr,ecardReady:s.ecard.hasAuthenticatedSession(),powerBackend:'authenticated-session-required',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
+  if(p==='/api/session'&&req.method==='GET')return reply(res,200,{connected:s.client.connected,casAvailable:CAS_CONFIG.enabled,casVerified:!!s.casVerified,campus:'undergrad',qrPending:!!s.client.qr,ecardReady:s.ecard.hasAuthenticatedSession(),lastPowerRead:s.ecard.lastRead?new Date(s.ecard.lastRead).toISOString():null,powerBackend:'ecard-session-readonly',mode:PUBLIC?'public':LAN?'paired-https':'localhost'});
   if(p==='/api/qr/start'&&req.method==='POST'){
    if(Date.now()-s.lastRequest<4000)return reply(res,429,{error:'请勿频繁申请学校二维码'});
    if(PUBLIC&&!qrAllowed())return reply(res,429,{error:'公开站点扫码请求较多，请稍后重试'});
@@ -152,10 +152,16 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
   if(p==='/api/academic/grades'&&req.method==='GET')return reply(res,200,await s.client.getGrades());
   if(p==='/api/academic/exams'&&req.method==='GET')return reply(res,200,{exams:await s.client.getExams()});
   if(p==='/api/power'&&req.method==='GET'){
+   if(!s.ecard.hasAuthenticatedSession())return reply(res,428,{error:'当前站点没有可用的一卡通授权会话，请先在学校官方电费页面查询。',code:'ECARD_LOGIN_REQUIRED',officialUrl:PORTAL});
+   const month=url.searchParams.get('month');
+   if(month&&!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))return reply(res,400,{error:'月份格式无效'});
+   const fresh=s.ecard.cachedResult&&s.ecard.cachedMonth===(month||new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit'}).formatToParts(new Date()).filter(x=>x.type==='year'||x.type==='month').map(x=>x.value).join('-'))&&Date.now()-s.ecard.lastRead<45000;
+   // Return a per-user verified result from memory, never shared between students.
+   if(fresh)return reply(res,200,s.ecard.cachedResult);
    if(Date.now()-s.lastPowerRequest<8000)return reply(res,429,{error:'电费查询请至少间隔 8 秒'});
    if(PUBLIC&&!powerAllowed())return reply(res,429,{error:'官方电费查询请求过多，请稍后重试'});
    s.lastPowerRequest=Date.now();
-   const result=await s.ecard.live(url.searchParams.get('month'));
+   const result=await s.ecard.live(month);
    return reply(res,200,result);
   }
   if(p==='/api/logout'&&req.method==='POST'){s.client.clear();s.ecard.clear();if(s.casPending)CAS_PENDING.delete(s.casPending);s.casPending=null;s.casVerified=false;s.casVerifiedAt=0;sessions.delete(s.id);res.setHeader('Set-Cookie',`${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0${(PUBLIC||LAN)?'; Secure':''}`);return reply(res,200,{ok:true});}

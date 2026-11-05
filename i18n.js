@@ -306,6 +306,18 @@ pairs.push(...[
  ['天有效记录的日均用电量计算，未考虑未来天气、空调使用变化及充电充值等因素。','recorded days of average usage, excluding future weather, AC use, or charging.'],
  ['本站 Cookie 与学校一卡通 Cookie 不同；只有后台持有经校方授权的有效一卡通会话，才能自动读取官方数据。不会在本站收集学校密码或要求粘贴原始 Cookie。','This sites cookies cannot replace school e-card cookies. Automatic reads require an authenticated e-card server session. School passwords and raw cookies are never requested here.']
 ]);
+pairs.push(...[
+ ['官方历史缓存（未刷新）','Previous official reading (cached, not live)'],
+ ['上次读取缓存','Last reading (cached)'],
+ ['自动保存的电量快照','Automatically saved balances'],
+ ['每次成功从官方页面或接口取得电量，自动保存当天最新的一笔余额到当前浏览器。余额变化不等于实际耗电量，因为可能发生充值。','After every successful official reading, the latest daily balance is saved on this device. Balance changes do not necessarily represent usage because top-ups can occur.'],
+ ['尚无自动记录','No automatic records yet'],
+ ['当前未完成一卡通独立授权。只有成功查询到真实电量后才会保存，不会把演示数据当作自动记录。','E-card authorization has not been established. Only verified readings are saved; demo data is not recorded.'],
+ ['尚无一卡通独立授权：本站 Cookie 和教务扫码均不能代替一卡通会话','No dedicated E-card authorization. Site cookies and academic QR sign-in do not authorize E-card data.'],
+ ['官方接口','Official API'],
+ ['官网页面','Official page'],
+ ['最近 7 天','Last 7 days']
+]);
 const dictionary=[...pairs].sort((a,b)=>b[0].length-a[0].length);
 const originalNodes=new WeakMap();
 const originalAttrs=new WeakMap();

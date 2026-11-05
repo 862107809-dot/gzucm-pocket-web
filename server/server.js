@@ -136,6 +136,7 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
   reply(res,403,{error:'非法跨站请求'});return;
  }
  const bridgeID=readCookies(req)[BRIDGE_COOKIE]||'';
+ try {
  if(url.pathname==='/api/power/bridge/start'&&req.method==='POST'){
   if(bridgeID)PowerBridge.revoke(bridgeID);
   const pairing=PowerBridge.create();
@@ -161,6 +162,10 @@ async function handler(req,res){secureHeaders(res);const url=new URL(req.url,'ht
   if(bridgeID)PowerBridge.revoke(bridgeID);
   appendCookie(res,bridgeCookie('',0));
   return reply(res,200,{ok:true});
+ }
+ }catch(error){
+  const status=Number.isInteger(error?.status)?error.status:400;
+  return reply(res,status,{error:String(error?.message||'设备配对请求失败').slice(0,160)});
  }
  const s=getSession(req,res);
  try{

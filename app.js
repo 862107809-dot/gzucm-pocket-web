@@ -267,12 +267,17 @@ function snapshotLiquidSelectors(root){
    const lens=group.querySelector('.liquid-choice-highlight');
    const lensRect=lens?.getBoundingClientRect?.();
    const groupRect=lensRect&&group.getBoundingClientRect();
+   // Always snapshot unscaled CSS coordinates. The rail and lens both grow
+   // from their centres during touch; their screen rects are magnified.
+   const translate=lens?.style?.transform?.match?.(/translate3d\((-?[0-9.]+)px, *(-?[0-9.]+)px,/);
+   const railScale=groupRect?.width&&group.offsetWidth?
+    groupRect.width/group.offsetWidth:1;
    values.set(id,{value:liquidSelectorValue(active),
     dragging:!!lens?.classList.contains('is-dragging'),
-    x:lensRect?lensRect.left-groupRect.left:active.offsetLeft,
-    y:lensRect?lensRect.top-groupRect.top:active.offsetTop,
-    width:lensRect?.width||active.offsetWidth,
-    height:lensRect?.height||active.offsetHeight});
+    x:translate?Number(translate[1]):lensRect?(lensRect.left-groupRect.left)/railScale:active.offsetLeft,
+    y:translate?Number(translate[2]):lensRect?(lensRect.top-groupRect.top)/railScale:active.offsetTop,
+    width:parseFloat(lens?.style?.width)||((lensRect?.width||0)/railScale)||active.offsetWidth,
+    height:parseFloat(lens?.style?.height)||((lensRect?.height||0)/railScale)||active.offsetHeight});
   }
  }
  return values;
@@ -346,7 +351,13 @@ function placeLiquidPointerGlass(pointer,x,y){
  const base=pointer.vertical?pointer.firstTop:pointer.firstLeft;
  const limit=pointer.vertical?pointer.lastTop:pointer.lastLeft;
  const size=pointer.vertical?target.offsetHeight:target.offsetWidth;
- const raw=(pointer.vertical?y-pointer.groupRect.top:x-pointer.groupRect.left)-size/2+
+ // Visual rail scale is accounted for only while finger-following.
+ // This avoids a side-anchored feeling as the whole bar grows symmetrically.
+ const current=pointer.rail?pointer.group.getBoundingClientRect?.():null;
+ const scale=pointer.rail&&current?.width&&pointer.group.offsetWidth?
+  current.width/pointer.group.offsetWidth:1;
+ const rect=current||pointer.groupRect;
+ const raw=(pointer.vertical?(y-rect.top)/scale:(x-rect.left)/scale)-size/2+
   (pointer.vertical?pointer.group.scrollTop:0);
  const pos=Math.max(base,Math.min(limit,raw));
  setSelectorGlass(pointer.glass,{x:pointer.vertical?target.offsetLeft:pos,
@@ -381,16 +392,18 @@ function liquidPointerDown(event){
  // Cache hit rectangles before changing the whole bar's visual size.
  const bounds=buttons.map(button=>button.getBoundingClientRect());
  const rail=isHorizontalLiquidRail(group,!!menu);
+ const pressed=rail?buttons.find(button=>button.contains(event.target)):null;
  liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
   x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
   vertical,dragging:false,scroll:false,groupRect:group.getBoundingClientRect(),
   centers:bounds.map(r=>vertical?r.top+r.height/2:r.left+r.width/2),
   firstLeft:buttons[0].offsetLeft,lastLeft:buttons[buttons.length-1].offsetLeft,
   firstTop:buttons[0].offsetTop,lastTop:buttons[buttons.length-1].offsetTop,
-  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu,rail};
+  index:-1,raf:0,source:liquidSelectorActive(group),menu:!!menu,rail,pressed};
  if(rail){
   group.classList?.remove?.('is-rail-releasing','is-rail-settling');
   group.classList?.add?.('is-rail-pressed');
+  pressed?.classList?.add?.('is-pressed');
  }
 }
 function liquidPointerMove(event){
@@ -400,6 +413,7 @@ function liquidPointerMove(event){
  if(!p.dragging){
   if(!p.vertical&&Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)*1.15){
    p.scroll=true;
+   p.pressed?.classList?.remove?.('is-pressed');
    releaseHorizontalLiquidRail(p,true);
    return;
   }
@@ -407,6 +421,7 @@ function liquidPointerMove(event){
   const travelled=p.vertical?Math.abs(dy):Math.abs(dx);
   if(travelled<8)return;
   p.dragging=true;
+  p.pressed?.classList?.remove?.('is-pressed');
   if(p.rail)p.group.classList.add('is-rail-dragging');
   p.glass.classList.add('is-instant','is-dragging');
   p.glass.classList.remove('is-moving');
@@ -434,6 +449,7 @@ function liquidPointerFinish(event,cancelled=false){
  if(p.raf)cancelAnimationFrame(p.raf);
  try{if(p.group.hasPointerCapture?.(event.pointerId))p.group.releasePointerCapture(event.pointerId);}catch{}
  p.buttons.forEach(button=>button.classList.remove('is-scrubbed'));
+ p.pressed?.classList?.remove?.('is-pressed');
  releaseHorizontalLiquidRail(p,cancelled||p.scroll);
  if(p.rail&&!cancelled&&!p.scroll){
   pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now()};

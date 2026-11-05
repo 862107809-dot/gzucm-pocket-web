@@ -925,7 +925,7 @@ async function importData(file){if(!file)return;if(file.size>8*1024*1024){toast(
 async function importWallpaper(file){if(!file)return;if(file.size>10*1024*1024){toast('图片请小于 10MB');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('请选择 JPG、PNG 或 WebP');return;}
  try{const url=URL.createObjectURL(file),img=new Image();img.src=url;await img.decode();const scale=Math.min(1,1200/img.width,900/img.height),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);state.prefs.wallpaper=canvas.toDataURL('image/jpeg',.72);URL.revokeObjectURL(url);storePrefs();render();toast('背景已经更新');}catch{toast('图片读取失败');}}
 async function api(path,options={}){const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),20000);try{const res=await fetch('/api/'+path,{...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})},credentials:'same-origin',signal:ac.signal,cache:'no-store'});let obj;try{obj=await res.json();}catch{throw Error('服务暂时不可用，请刷新页面或稍后重试');}if(!res.ok)throw Object.assign(Error(obj.error||'请求失败'),{status:res.status,code:obj.code,officialUrl:obj.officialUrl});return obj;}finally{clearTimeout(timeout);}}
-async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;state.ecardReady=!!info.ecardReady;state.casAvailable=!!info.casAvailable;state.casVerified=!!info.casVerified;if(PUBLIC){if(state.connected){await syncAcademic();}else if(state.ecardReady||state.view==='power'){render();if(state.view==='power'&&state.ecardReady)syncPower();}else{connectModal('qr');}}else{render();if(state.view==='power'&&state.ecardReady)syncPower();}}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
+async function checkServer(){try{const info=await api('session');state.connected=!!info.connected;state.ecardReady=!!info.ecardReady;state.casAvailable=!!info.casAvailable;state.casVerified=!!info.casVerified;if(PUBLIC){if(state.connected){await syncAcademic();}else if(state.ecardReady||state.view==='power'){render();if(state.view==='power'&&state.ecardReady)syncPower(true);}else{connectModal('qr');}}else{render();if(state.view==='power'&&state.ecardReady)syncPower(true);}}catch{state.connected=false;if(PUBLIC)toast('无法连接登录服务，请稍后刷新页面');}}
 function openOfficialLogin(){
  // Open from a genuine click so browsers do not block the popup.
  // CAS registration is optional and disabled by default.
@@ -950,19 +950,55 @@ async function checkOfficialAuth(){
 }
 async function startQr(){state.authMode='qr';const panel=$('#qr-panel');if(!panel)return;if(PUBLIC){state.data=window.GZUCM_DEMO;state.week=weekNow();}panel.innerHTML='<div class="tiny muted">正在请求学校的二维码接口…</div>';try{const qr=await api('qr/start',{method:'POST',body:'{}'});const safe=E(qr.confirmUrl||'');panel.innerHTML=`<div class="qr-frame">${qr.svg?`<img alt="教务系统登录二维码" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}">`:I('link',54)}</div><div class="tiny muted" style="text-align:center">用学校支持的方式扫码后确认</div><div class="mono-link">学校扫码确认链接已生成 · 为保护登录安全，已隐藏完整链接</div><div class="inline" style="justify-content:center;flex-wrap:wrap"><a class="btn small primary" target="_blank" rel="noopener noreferrer" href="${safe}">${I('link',14)} 打开学校确认页</a><button class="btn small" data-action="copyQr">${I('file',14)} 复制确认链接</button></div><div class="tiny muted" style="text-align:center">仅在学校官方域名输入密码。打开的页面必须完成学校的二维码确认，才能让本站获得同步所需的会话。</div><div class="tiny muted" id="qr-status" role="status">等待扫码…</div>`;state.qrLink=qr.confirmUrl;state.poll=setInterval(pollQr,3500);}catch(e){panel.innerHTML=`<div class="note warning">${E(e.message||'二维码申请失败')}${e.code?'<div class="tiny muted mt-12">诊断代码：'+E(e.code)+'</div>':''}</div><button class="btn primary mt-12" data-action="startQr">重试</button>`;}}
 async function pollQr(){if(!$('#qr-panel')){clearInterval(state.poll);state.poll=null;return;}try{const r=await api('qr/status');const el=$('#qr-status');if(el)el.textContent=({pending:'等待扫码…',scanned:'已扫码，请在学校页面确认',confirmed:'认证已确认，正在验证会话…',connected:'已连接学校教务'}[r.status]||r.message||'等待学校响应…');if(r.connected){state.connected=true;closeModal();toast('教务已连接，正在读取课表');await syncAcademic();}}catch(e){const el=$('#qr-status');if(el)el.textContent='查询状态：'+e.message;clearInterval(state.poll);state.poll=null;}}
-async function syncPower(){
- if(!state.ecardReady){powerHelp('当前网站尚未获得一卡通独立会话。请使用学校官方电费页查看实时余额，或手动记录查询结果。');return;}
+async function syncPower(automatic=false){
  if(state.powerStatus==='loading')return;
- state.powerStatus='loading';toast('正在尝试查询一卡通官方实时余额…');
+ state.powerLastAttempt=Date.now();
+ if(!state.ecardReady){
+  // Recheck our server session. A browser's own Cookie is not an
+  // authorization token for ecard.gzucm.edu.cn.
+  try{const session=await api('session');state.ecardReady=!!session.ecardReady;}catch{}
+  if(!state.ecardReady){
+   state.powerError='当前网站没有可用的一卡通授权会话；请在学校官网查看实时电量，或记录自己的查询结果。';
+   if(state.view==='power')render();
+   if(!automatic)powerHelp(state.powerError);
+   return;
+  }
+ }
+ state.powerStatus='loading';state.powerError='';
+ if(state.view==='power')render();
  try{
   const result=await api('power');
-  if(!result?.power||result.source!=='ecard-live')throw Error('学校返回的余额没有有效的实时数据来源');
-  state.data={...state.data,demo:false,power:result.power,powerDaily:result.powerDaily||[]};store();render();toast('已读取官方实时电量'+(result.warnings?.length?'；部分明细未获取':''));
+  if(!result?.power||!['ecard-live','ecard-page'].includes(result.source)||
+   !Number.isFinite(Number(result.power.balance))||Number(result.power.balance)<0||Number(result.power.balance)>1000000){
+   throw Error('学校返回的余额缺少有效且可验证的数据来源');
+  }
+  const previousPower=state.data.power;
+  let history=Array.isArray(result.powerDaily)?result.powerDaily:[];
+  const sameOfficialRoom=previousPower?.roomLabel===result.power.roomLabel&&
+   ['ecard-live','ecard-page'].includes(previousPower?.source);
+  if(result.historyStatus!=='complete'&&sameOfficialRoom){
+   const records=new Map();
+   for(const row of [...(state.data.powerDaily||[]),...history]){
+    if(/^20\d{2}-\d{2}-\d{2}$/.test(String(row?.date||'')))records.set(row.date,row);
+   }
+   history=[...records.values()].sort((a,b)=>a.date.localeCompare(b.date)).slice(-90);
+  }
+  state.data={...state.data,power:result.power,powerDaily:history};
+  state.powerLastSync=Date.now();
+  state.powerHistoryStatus=result.historyStatus||'';
+  state.powerError=Array.isArray(result.warnings)?result.warnings.join(' '):'';
+  store();render();
+  toast(result.source==='ecard-live'?'已同步官方实时电量':'已读取学校页面电量，请以官网核对为准');
  }catch(e){
-  if(e.status===428){powerHelp('当前云端会话尚未通过一卡通的独立认证，无法自动提取余额。');}
-  else if(e.status===429)toast(e.message);
-  else powerHelp(e.message);
- }finally{state.powerStatus='idle';}
+  state.powerError=e.message||'电费查询失败';
+  if(e.status===428||e.status===401)state.ecardReady=false;
+  if(state.view==='power')render();
+  if(!automatic&&e.status!==429)powerHelp(state.powerError);
+  else if(!automatic)toast(state.powerError);
+ }finally{
+  state.powerStatus='idle';
+  if(state.view==='power')render();
+ }
 }
 async function syncAcademic(){if(state.loading)return;if(state.data.campus==='graduate'){toast('研究生系统尚不支持此扫码同步，请使用 JSON 导入');return;}state.loading=true;toast('正在读取本科教务数据…');try{
  const semester=await api('academic/semester');const sem=semester.semester;const current=clamp(Math.floor((today()-dt(sem.firstMondayIso))/86400000/7)+1,1,sem.totalWeeks);
@@ -1036,7 +1072,7 @@ function navigateBottomModule(view){
  state.view=view;
  closeModal();
  render();
- if(view==='power'&&state.ecardReady&&Date.now()-state.powerLastAttempt>120000)syncPower();
+ if(view==='power'&&state.ecardReady&&Date.now()-state.powerLastAttempt>120000)syncPower(true);
  if(view==='schedule')state.scheduleMode==='month'?loadMonth():loadSundayWeek();
  window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }

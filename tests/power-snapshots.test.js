@@ -18,6 +18,15 @@ test('stores one trusted balance per room and calendar day without saving creden
  assert.equal(JSON.stringify(rows).includes('cookie'),false);
 });
 
+test('school electricity history follows Asia/Shanghai day at UTC rollover',()=>{
+ const rows=snapshot.append([],{
+  balance:13.2,roomLabel:'宿舍',source:'ios-native',
+  updatedAt:'2026-11-04T18:30:00Z'
+ },new Date('2026-11-04T19:00:00Z'));
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].date,'2026-11-05');
+});
+
 test('manual balances and fake data cannot be written to official history',()=>{
  const rows=snapshot.append([],{balance:10,roomLabel:'A',source:'manual'},now);
  assert.deepEqual(rows,[]);

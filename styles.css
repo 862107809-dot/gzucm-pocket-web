@@ -1372,6 +1372,7 @@
  }
  /* The whole hit surface—including the caption—lifts, rather than text alone. */
  .bottom-nav .bottom-item:active,
+ .bottom-nav .bottom-item:not(.active):active,
  .bottom-nav .bottom-item.is-pressed,
  .bottom-nav .bottom-item.is-scrubbed{
   transform:scale(1.075);

@@ -17,17 +17,32 @@ function durationFor(selector,property){
 function animationDuration(selector){
  return durationFor(selector,'animation');
 }
-test('ordinary button and card taps use only shadow/brightness with no rebound',()=>{
- const final=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
- assert.ok(final.length>1000);
- assert.match(final,/#app \.pocket-full-press,[\s\S]*?animation:none!important;\s*scale:1!important;\s*transform:none!important;/);
- assert.match(final,/#app \.pocket-full-release,[\s\S]*?animation:none!important;/);
- assert.match(final,/#app \.pocket-full-card\.pocket-full-release/);
- assert.match(final,/transition:filter \.16s ease-out,box-shadow \.18s ease-out/);
- assert.match(final,/\.bottom-item:not\(\.is-scrubbed\):is\(:active,\.is-pressed\)/);
- assert.match(final,/\.bottom-item\.is-landing\{/);
- assert.match(final,/animation:none!important;/);
+test('buttons have a gentle nonlinear spring while outer cards remain entirely still',()=>{
+ const spring=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.ok(spring.length>4000);
+ assert.match(spring,/@keyframes pocketButtonSoftSpring\{/);
+ assert.match(spring,/#app \.pocket-full-press:not\(\.pocket-full-card\)\{\s*scale:\.968!important;/);
+ assert.match(spring,/#app \.pocket-full-release:not\(\.pocket-full-card\)\{\s*animation:pocketButtonSoftSpring \.45s/);
+ assert.match(spring,/#app :is\(\.card,\.agenda-row,\.hero-card,\.calendar-visual,\.month-calendar/);
+ assert.match(app,/if\(surface\.matches\?\.\('\.card,\.agenda-row,\.hero-card,\.calendar-visual,\.month-calendar'\)\)return;/);
+ assert.match(spring,/prefers-reduced-motion:reduce/);
+ assert.match(spring,/#popover-root \.safari-floating-menu \.safari-menu-option/);
+ assert.match(spring,/#modal-root :is\(button,\.btn,\.icon-btn,\[role="button"\]\)/);
 });
+test('Dock and horizontal choice bases visibly enlarge together with the active button',()=>{
+ const spring=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(spring,/\.bottom-nav\.is-dock-pressed\{scale:1\.018!important;/);
+ assert.match(spring,/\.bottom-nav\.is-dock-dragging\{scale:1\.027!important;/);
+ assert.match(spring,/\.bottom-nav \.bottom-item\.is-scrubbed\{\s*scale:1\.065!important;/);
+ assert.match(spring,/\.liquid-selector\.is-rail-pressed\{\s*scale:1\.016!important;/);
+ assert.match(spring,/\.liquid-selector\.is-rail-dragging\{\s*scale:1\.026!important;/);
+ assert.match(spring,/\.liquid-selector\.is-rail-dragging > button\.is-scrubbed\{\s*scale:1\.065!important;/);
+ assert.match(spring,/@keyframes pocketDockSoftSpring/);
+ assert.match(spring,/@keyframes pocketRailSoftSpring/);
+ assert.match(spring,/@keyframes pocketDockSoftDrop/);
+ assert.match(spring,/@keyframes pocketRailSoftDrop/);
+});
+
 test('Dock and segmented click travel is monotone, while swipe and switch retain motion',()=>{
  const final=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
  assert.match(final,/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface\{\s*animation:none!important;/);

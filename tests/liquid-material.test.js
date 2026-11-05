@@ -14,8 +14,8 @@ test('optical material sheet is layered after app layout styles and cached for P
  const base=html.indexOf('/styles.css?v=');
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
- assert.ok(cache.includes('/liquid-material.css?v=20261105-dark-switch5'));
- assert.ok(cache.includes('gzucm-pocket-web-v48-20261105-dark-switch5'));
+ assert.ok(cache.includes('/liquid-material.css?v=20261105-horizontal-video1'));
+ assert.ok(cache.includes('gzucm-pocket-web-v49-20261105-horizontal-video1'));
  assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-material2'));
  assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-material2'));
 });
@@ -123,6 +123,17 @@ test('switch uses mint track in light mode and muted sage thumb in dark mode',()
  assert.match(base,/@media\(prefers-reduced-motion:reduce\)\{\s*\.switch\[role="switch"\]\.is-settling::after/s);
  assert.match(app,/const on=p\.dragging\?p\.position>=7:!p\.startOn;/);
  assert.match(app,/button\.classList\?\.add\?\.\('is-settling'\)/);
+});
+
+test('video style dark/light weekday lens and PWA gesture assets are consistent',()=>{
+ assert.ok(html.includes('/styles.css?v=20261105-horizontal-video1'));
+ assert.ok(html.includes('/app.js?v=20261105-horizontal-video1'));
+ assert.ok(cache.includes('/styles.css?v=20261105-horizontal-video1'));
+ assert.ok(cache.includes('/app.js?v=20261105-horizontal-video1'));
+ assert.match(material,/VIDEO-MATCHED WEEKDAY LENS/);
+ assert.match(material,/:root \.day-strip\.liquid-selector > \.day-tab\.active/);
+ assert.match(material,/:root\[data-active-theme="dark"\] \.day-strip\.liquid-selector > \.liquid-choice-highlight/);
+ assert.match(material,/prefers-reduced-transparency:reduce/);
 });
 
 test('visual design change does not rewrite timing or gesture handling',()=>{

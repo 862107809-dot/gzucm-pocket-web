@@ -70,7 +70,7 @@ function harness(mode='month',hasHost=true,width=0,animate=false,reduced=false){
   body+'return {transitionScheduleMode,renderScheduleContent};')(
   ()=>hasHost?page:null,state,()=>'<section class="new-calendar">calendar</section>',
   ()=>calls.push(['full-render']),
-  ()=>{calls.push(['snapshot']);return new Map([['weekday-choice',{value:'1',x:0}]])},
+  ()=>{calls.push(['snapshot']);return new Map([['weekday-choice',{value:'1',x:0}]]);},
   (node,previous)=>{assert.equal(previous.has('weekday-choice'),true);calls.push(['enhance',node]);},
   {matchMedia:()=>({matches:reduced}),GZUCM_I18N:{apply:(node,language)=>calls.push(['translate',node,language])}},
   (node,rect)=>{calls.push(['glass',rect]);},

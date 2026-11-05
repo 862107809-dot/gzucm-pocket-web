@@ -407,12 +407,45 @@ function liquidPointerFinish(event,cancelled=false){
 }
 /* Binary sound and haptic switches also support dragging their thumbs;
  * tapping remains a native button action, and vertical page scroll is free. */
+/* iOS Settings-style switch: the track and thumb stretch immediately on
+ * pointerdown; horizontal dragging moves the thumb continuously; release
+ * settles to the chosen state in-place without destroying the DOM mid-spring.
+ * Vertical scroll is never captured. */
 let liquidSwitchPointer=null;
 let ignoreLiquidSwitchClickUntil=0;
+function switchPreferenceKey(button){
+ return button?.dataset?.action==='toggleHaptics'?'hapticEffects':'soundEffects';
+}
+function commitLiquidSwitch(button,on){
+ if(!button)return false;
+ const key=switchPreferenceKey(button);
+ const previous=state.prefs[key]!==false;
+ button.classList?.toggle?.('on',on);
+ button.classList?.remove?.('preview-on','preview-off');
+ button.setAttribute?.('aria-checked',String(on));
+ if(previous===on)return false;
+ state.prefs[key]=on;
+ storePrefs();
+ if(typeof window!=='undefined')window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
+ if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}
+ // Do not render(): rebuilding the switch during its spring caused a snap.
+ return true;
+}
+function clearLiquidSwitchGesture(button){
+ button?.classList?.remove?.('is-pressed','is-dragging','preview-on','preview-off');
+ button?.style?.removeProperty?.('--switch-thumb-x');
+}
 function liquidSwitchDown(event){
  const button=event.target.closest?.('.switch[role="switch"]');
- if(!button||event.isPrimary===false||event.button>0)return;
+ if(!button||event.isPrimary===false||event.button>0||liquidSwitchPointer)return;
+ // A separate, real pointerdown must not inherit the previous drag's
+ // ghost-click suppression. A click synthesized by the old drag has no down.
+ ignoreLiquidSwitchClickUntil=0;
+ const key=switchPreferenceKey(button);
+ const initialOn=state.prefs[key]!==false;
+ button.classList.add('is-pressed');
  liquidSwitchPointer={button,id:event.pointerId,x:event.clientX,y:event.clientY,
+  startOn:initialOn,previewOn:initialOn,position:initialOn?14:0,
   dragging:false,scroll:false};
 }
 function liquidSwitchMove(event){
@@ -420,37 +453,42 @@ function liquidSwitchMove(event){
  if(!p||p.id!==event.pointerId||p.scroll)return;
  const dx=event.clientX-p.x,dy=event.clientY-p.y;
  if(!p.dragging){
-  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.1){p.scroll=true;return;}
-  if(Math.abs(dx)<7)return;
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.1){
+   p.scroll=true;
+   clearLiquidSwitchGesture(p.button);
+   return;
+  }
+  if(Math.abs(dx)<6||Math.abs(dx)<Math.abs(dy)*1.18)return;
   p.dragging=true;
+  p.button.classList.add('is-dragging');
   try{p.button.setPointerCapture(event.pointerId);}catch{}
  }
  if(event.cancelable)event.preventDefault();
- const r=p.button.getBoundingClientRect();
- const on=event.clientX>=r.left+r.width/2;
+ // Keep the stretch-thumb inside its physical track, following the actual
+ // finger delta without the initial jump from tapping an arbitrary track spot.
+ const x=Math.max(0,Math.min(14,(p.startOn?14:0)+dx));
+ const on=x>=7;
+ p.position=x;
+ p.button.style?.setProperty?.('--switch-thumb-x',x.toFixed(2)+'px');
  p.button.classList.toggle('preview-on',on);
  p.button.classList.toggle('preview-off',!on);
+ if(on!==p.previewOn){
+  p.previewOn=on;
+  if(typeof window!=='undefined')window.GZUCM_HAPTICS?.pulse('selection');
+ }
 }
 function liquidSwitchFinish(event,cancelled=false){
  const p=liquidSwitchPointer;
  if(!p||p.id!==event.pointerId)return;
  liquidSwitchPointer=null;
  try{if(p.button.hasPointerCapture?.(event.pointerId))p.button.releasePointerCapture(event.pointerId);}catch{}
- if(!p.dragging)return;
+ clearLiquidSwitchGesture(p.button);
+ if(p.scroll||cancelled)return;
+ if(!p.dragging)return; // Native click / keyboard path handles simple taps.
  if(event.cancelable)event.preventDefault();
- ignoreLiquidSwitchClickUntil=Date.now()+400;
- p.button.classList.remove('preview-on','preview-off');
- if(cancelled)return;
- const r=p.button.getBoundingClientRect();
- const on=event.clientX>=r.left+r.width/2;
- const key=p.button.dataset?.action==='toggleHaptics'?'hapticEffects':'soundEffects';
- if(on!==(state.prefs[key]!==false)){
-  if(typeof window!=='undefined')window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
-  state.prefs[key]=on;
-  storePrefs();
-  if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}
-  render();
- }
+ ignoreLiquidSwitchClickUntil=Date.now()+350;
+ const on=p.position>=7;
+ commitLiquidSwitch(p.button,on);
 }
 function guardLiquidSwitchClick(event){
  if(!event.isTrusted||Date.now()>ignoreLiquidSwitchClickUntil)return;
@@ -1432,6 +1470,9 @@ function wholeSurfacePressDown(event){
  if(!target?.closest||target.closest(WHOLE_SURFACE_POPUP))return;
  // Text entry and content-editable regions must never jump under the cursor.
  if(target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ // Switches have their own iOS-style stretching thumb; do not apply the
+ // generic whole-button animation on top of the dedicated switch physics.
+ if(target.closest('.switch[role="switch"]'))return;
  let surface=target.closest(WHOLE_SURFACE_TARGET);
  if(!surface)surface=target.closest('.card');
  if(!surface||!surface.closest?.('#app')||surface.closest(WHOLE_SURFACE_POPUP))return;
@@ -1485,8 +1526,8 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'pairPower':beginPowerPairing();break;case'refreshBridge':refreshPowerBridge();break;case'disconnectBridge':disconnectPowerBridge();break;case'copyPowerPair':navigator.clipboard?.writeText(target.dataset.code||'').then(()=>toast('配对码已复制'),()=>toast('请手动选择并复制'));break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
- case'toggleSound':state.prefs.soundEffects=state.prefs.soundEffects===false;storePrefs();if(state.prefs.soundEffects)armLiquidSound();render();break;
- case'toggleHaptics':window.GZUCM_HAPTICS?.pulse('toggle',true);state.prefs.hapticEffects=state.prefs.hapticEffects===false;storePrefs();render();break;
+ case'toggleSound':commitLiquidSwitch(target,state.prefs.soundEffects===false);break;
+ case'toggleHaptics':commitLiquidSwitch(target,state.prefs.hapticEffects===false);break;
  case'toggleLanguage':toggleLanguage();break;
   case'refresh':if(state.connected)syncAcademic();else{connectModal();toast('需要先连接学校教务');}break;
  case'logout':logout();break;case'import':$('#import-file').click();break;case'export':exportData();break;

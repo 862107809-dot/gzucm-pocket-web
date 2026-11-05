@@ -25,7 +25,7 @@
   const roomLabel=String(entry.roomLabel||'').trim().slice(0,64);
   const source=String(entry.source||'');
   if(!Number.isFinite(at.getTime())||!Number.isFinite(balance)||balance<0||balance>1e6||
-   !roomLabel||!['ecard-live','ecard-page'].includes(source))return null;
+   !roomLabel||!['ecard-live','ecard-page','ios-native'].includes(source))return null;
   return {at:at.toISOString(),date:dayOf(at),balance,roomLabel,source};
  }
  function compact(rows, now=new Date()){
@@ -43,7 +43,7 @@
   return [...byDay.values()].sort((a,b)=>a.at.localeCompare(b.at)).slice(-90);
  }
  function append(rows,power,now=new Date()) {
-  if(!power||!['ecard-live','ecard-page'].includes(power.source))return compact(rows,now);
+  if(!power||!['ecard-live','ecard-page','ios-native'].includes(power.source))return compact(rows,now);
   const timestamp=new Date(power.updatedAt||now);
   const value=normalize({at:timestamp,balance:power.balance,roomLabel:power.roomLabel,source:power.source});
   if(!value)return compact(rows,now);
@@ -51,7 +51,7 @@
   return compact([...sameRoom,value],now);
  }
  function cachedPower(power){
-  if(!power||!['ecard-live','ecard-page','ecard-cache'].includes(power.source))return null;
+  if(!power||!['ecard-live','ecard-page','ios-native','ecard-cache'].includes(power.source))return null;
   const balance=Number(power.balance),updatedAt=power.updatedAt,roomLabel=String(power.roomLabel||'').slice(0,64);
   if(!Number.isFinite(balance)||balance<0||balance>1e6||!Number.isFinite(Date.parse(updatedAt))||!roomLabel)return null;
   return {balance,unit:'度',roomLabel,updatedAt,source:'ecard-cache'};

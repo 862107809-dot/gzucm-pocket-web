@@ -26,6 +26,9 @@
 
  function refresh(){
   if(typeof document==='undefined')return;
+  // Keep capability-selected SVG/WebGL/Frosted optics synchronized after
+  // SPA rerenders. The optical renderer never handles page interactions.
+  global.GZUCM_GLASS_OPTICS?.refresh?.();
   for(const [el,instance] of active){
    if(!el.isConnected){try{instance.destroy();}catch{}active.delete(el);}
   }

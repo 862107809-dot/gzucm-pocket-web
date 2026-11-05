@@ -41,10 +41,11 @@ test('Dock and segmented click travel is monotone, while swipe and switch retain
  assert.match(css,/@keyframes pocketSwitchThumbBounce/);
 });
 
-test('page, popover, and dialog are animated long enough to see their transitions',()=>{
+test('anchored popovers move briskly while page and dialog keep their existing pacing',()=>{
  assert.ok(animationDuration('.page.page-enter')>=580);
- assert.ok(animationDuration('.safari-floating-menu')>=450);
- assert.ok(animationDuration('.safari-floating-menu.is-closing')>=400);
+ assert.match(css,/animation:glassPopoverBloom \.34s cubic-bezier\(\.22,\.85,\.32,1\) both;/);
+ assert.match(css,/animation:glassPopoverReturn \.27s cubic-bezier\(\.32,0,\.72,\.48\) both!important;/);
+ assert.match(app,/setTimeout\(finish,305\)/);
  assert.ok(animationDuration('.modal-card.liquid-dialog-opening')>=550);
  assert.ok(animationDuration('.modal-card.liquid-dialog-closing')>=450);
  assert.match(app,/liquidDialogFrames\(rect,origin,false,580\)/);

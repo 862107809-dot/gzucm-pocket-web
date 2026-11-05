@@ -22,8 +22,8 @@ test('optical material sheet is layered after app layout styles and cached for P
 
 test('HTTP static whitelist serves both automatic glass resources',()=>{
  const server=fs.readFileSync(path.join(root,'server','server.js'),'utf8');
- assert.match(server,/['"]\/glass-renderer\\.js['"]\s*:\s*['"]glass-renderer\\.js['"]/);
- assert.match(server,/['"]\/liquid-material\\.css['"]\s*:\s*['"]liquid-material\\.css['"]/);
+ assert.ok(server.includes("'/glass-renderer.js':'glass-renderer.js'"));
+ assert.ok(server.includes("'/liquid-material.css':'liquid-material.css'"));
  for(const asset of ['/glass-renderer.js','/liquid-material.css']){
   assert.ok(html.includes(asset),'HTML must load '+asset);
   assert.ok(cache.includes(asset),'PWA precache must include '+asset);

@@ -1527,7 +1527,7 @@
 @media(max-width:900px){
  .bottom-nav{
   scale:1;
-  transform-origin:center bottom;
+  transform-origin:center center;
   transition:
    scale .095s cubic-bezier(.16,.68,.22,1.16),
    border-color .24s ease,
@@ -1649,4 +1649,100 @@
 .day-strip > .liquid-choice-highlight{display:none!important;}
 @media(prefers-reduced-motion:reduce){
  .day-strip .day-tab{transition:none!important;}
+}
+
+/* Dock-matched horizontal selector rails.
+ * The WHOLE frosted bar expands from its geometric centre on pointerdown.
+ * The liquid lens follows the finger while the rail never reflows its hit area.
+ * Weekday tiles, vertical navigation and popups remain separate interactions. */
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail{
+ --rail-edge-energy:0;
+ position:relative;
+ scale:1;
+ transform-origin:center center;
+ transition:scale .095s cubic-bezier(.16,.68,.22,1.16),
+            box-shadow .20s ease,border-color .20s ease;
+ overflow:visible;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-pressed{
+ scale:1.036;
+ border-color:rgba(255,255,255,.86);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.42),
+            0 10px 27px rgba(28,84,50,.17),
+            0 0 0 1px rgba(165,233,190,.26);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dragging{
+ scale:1.046;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.48),
+            0 14px 32px rgba(28,84,50,.21),
+            0 0 0 1px rgba(165,233,190,.35);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-releasing{
+ animation:pocketRailRelease .33s cubic-bezier(.22,.78,.24,1) both;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling{
+ animation:pocketRailSettle .39s cubic-bezier(.22,.80,.25,1) both;
+}
+@keyframes pocketRailRelease{
+ 0%{scale:1.036;}
+ 40%{scale:.991;}
+ 72%{scale:1.006;}
+ 100%{scale:1;}
+}
+@keyframes pocketRailSettle{
+ 0%{scale:1.046;}
+ 40%{scale:.991;}
+ 73%{scale:1.007;}
+ 100%{scale:1;}
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::before,
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::after{
+ content:"";
+ position:absolute;
+ top:8px;
+ bottom:8px;
+ width:20px;
+ border-radius:18px;
+ pointer-events:none;
+ opacity:0;
+ z-index:2;
+ transition:opacity .13s ease;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::before{
+ left:-4px;
+ background:radial-gradient(ellipse at left center,rgba(108,210,148,.40),
+                            rgba(255,255,255,.28) 40%,transparent 86%);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::after{
+ right:-4px;
+ background:radial-gradient(ellipse at right center,rgba(108,210,148,.40),
+                            rgba(255,255,255,.28) 40%,transparent 86%);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-edge-left::before,
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-edge-right::after{
+ opacity:var(--rail-edge-energy,0);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight.is-dragging::before{
+ transform:translateX(var(--rail-edge-shift,0px)) scaleX(var(--rail-edge-scale,1));
+ transform-origin:center;
+ transition:transform .10s ease-out;
+}
+@media(prefers-reduced-motion:reduce){
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail{
+  scale:1!important;
+  transition:none!important;
+ }
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-pressed,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dragging,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-releasing{
+  scale:1!important;
+  animation:none!important;
+  transition:none!important;
+ }
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::before,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::after{
+  transition:none!important;
+ }
 }

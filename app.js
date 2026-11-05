@@ -194,6 +194,7 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const swipeAnchor=fromSwipe?pendingBottomSwipeGeometry:null;
  pendingBottomSwipeGeometry=null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
+ const shouldConfirm=!!(previousTab&&previousTab!==state.view)||fromSwipe;
  liquidGestureSnap=false;
  // Only the glass lens travels; no independently outlined tab landing.
  const oldX=swipeAnchor?swipeAnchor.x:previousGeometry?.x!==undefined?previousGeometry.x:
@@ -203,6 +204,7 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const startX=Number.isFinite(oldX)?oldX:targetX;
  const startW=Number.isFinite(oldW)?oldW:targetW;
  glass.classList.add('is-instant');
+ if(shouldConfirm)confirmGlassSelection(glass);
  glass.style.width=(changed?startW:targetW)+'px';
  glass.style.transform='translate3d('+(changed?startX:targetX)+'px,0,0)';
  if(!changed)return;
@@ -242,6 +244,15 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
 let liquidSelectorPointer=null;
 let ignoreLiquidSelectorClickUntil=0;
 let pendingHorizontalRailLanding=null;
+/* Confirmation is a soft shadow pulse, independent of movement. It also
+ * works with keyboard activation and when a selected tab is tapped again. */
+function confirmGlassSelection(glass){
+ if(!glass?.classList)return;
+ glass.classList.remove('is-confirmed');
+ void glass.offsetWidth; // replay when the same item is chosen twice
+ glass.classList.add('is-confirmed');
+ setTimeout(()=>glass.classList?.remove?.('is-confirmed'),440);
+}
 function isHorizontalLiquidRail(group,menu){
  return !menu&&!group.matches?.('.sidebar nav');
 }
@@ -332,6 +343,7 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   const changed=!!(old&&(old.value!==liquidSelectorValue(active)||old.dragging)&&
    !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   setSelectorGlass(glass,changed?old:target);
+  if(changed||old?.value!==liquidSelectorValue(active))confirmGlassSelection(glass);
   if(changed){
    // Force the starting transform to be committed before the destination;
    // otherwise Safari coalesces the two styles and the lens flashes back.
@@ -501,6 +513,7 @@ function liquidPointerFinish(event,cancelled=false){
  if(nearest?.isConnected)nearest.click();
  if(p.glass.isConnected&&!p.group.classList.contains('is-closing')){
   p.glass.classList.remove('is-instant','is-dragging');
+  if(!cancelled)confirmGlassSelection(p.glass);
   const selected=liquidSelectorActive(p.group);
   if(selected)setSelectorGlass(p.glass,{x:selected.offsetLeft,y:selected.offsetTop,
    width:selected.offsetWidth,height:selected.offsetHeight});
@@ -1604,6 +1617,7 @@ function bottomSwipeFinish(event,cancelled=false){
    sw.glass.style.width=Math.max(12,active.offsetWidth-6)+'px';
    sw.glass.style.transform='translate3d('+(active.offsetLeft+3)+'px,0,0)';
   }
+  if(!cancelled)confirmGlassSelection(sw.glass);
   animateDockDrop(sw.nav);
   return;
  }
@@ -1696,8 +1710,16 @@ function wholeSurfacePressMove(event){
  if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)wholeSurfacePressEnd(event,true);
 }
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay'){window.GZUCM_HAPTICS?.pulse('close');closeModal();}return;}if(target.matches('a'))event.preventDefault();
- if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
- if(target.dataset.view){if(target.closest('.bottom-nav')){dockRemountPulse=target.dataset.view!==state.view;armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
+ if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){
+  armLiquidSound();playLiquidTick();
+  const group=target.closest('.liquid-selector');
+  if(group&&target.classList.contains('active'))confirmGlassSelection(group.querySelector('.liquid-choice-highlight'));
+ }
+ if(target.dataset.view){if(target.closest('.bottom-nav')){
+  dockRemountPulse=target.dataset.view!==state.view;
+  if(target.dataset.view===state.view)confirmGlassSelection(target.closest('.bottom-nav')?.querySelector('.bottom-liquid-indicator'));
+  armLiquidSound();playLiquidTick();
+ }navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}

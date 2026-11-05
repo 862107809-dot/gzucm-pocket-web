@@ -1221,9 +1221,35 @@ function toggleLanguage(){
 }
 function handleChange(event){const t=event.target;if(t.id==='theme-select'){state.prefs.theme=t.value;storePrefs();applyTheme();render();}if(t.id==='start-select'){state.prefs.start=t.value;storePrefs();toast('默认启动页已更新');}if(t.id==='campus-select'){state.data={...state.data,campus:t.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(t.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}if(t.id==='opacity-range'){state.prefs.wallOpacity=Number(t.value);storePrefs();toast('课表背景显示强度已更新');}}
 function handleInput(event){if(event.target.id==='grade-search'){const input=event.target;state.gradeSearch=input.value;const selection=[input.selectionStart,input.selectionEnd];render();const next=$('#grade-search');next?.focus();try{next?.setSelectionRange(...selection);}catch{}}}
-function handleSubmit(event){if(event.target.id!=='power-form')return;event.preventDefault();const form=new FormData(event.target),balance=Number(form.get('balance')),usage=form.get('usage');if(!Number.isFinite(balance)||balance<0){toast('请填写有效电量');return;}const room=String(form.get('room')||'未命名宿舍').trim().slice(0,64);state.data={...state.data,power:{balance,unit:'度',roomLabel:room,updatedAt:new Date().toISOString(),source:'manual'}};
- if(usage!==''&&Number.isFinite(+usage)&&+usage>=0){const prior=state.data.demo&&!saved(POWER_DB,null)?[]:(state.data.powerDaily||[]);const daily=prior.filter(x=>x.date!==iso(today()));daily.push({date:iso(today()),usage:+usage,remain:balance});daily.sort((a,b)=>a.date.localeCompare(b.date));state.data.powerDaily=daily.slice(-120);}
- if(PUBLIC){try{localStorage.setItem(POWER_DB,JSON.stringify({power:state.data.power,powerDaily:state.data.powerDaily||[]}));}catch{toast('无法持久保存电量记录');}}store();closeModal();render();toast('已保存到当前浏览器');}
+function handleSubmit(event){
+ if(event.target.id!=='power-form')return;
+ event.preventDefault();
+ const form=new FormData(event.target);
+ const rawBalance=String(form.get('balance')??'').trim();
+ const balance=Number(rawBalance),rawUsage=String(form.get('usage')??'').trim();
+ const date=String(form.get('date')||'');
+ const todayDay=window.GZUCM_POWER_INSIGHTS?.ordinal(iso(today()));
+ const recordDay=window.GZUCM_POWER_INSIGHTS?.ordinal(date);
+ if(!rawBalance||!Number.isFinite(balance)||balance<0||balance>1000000){toast('请填写有效的当前剩余电量');return;}
+ if(!Number.isFinite(recordDay)||recordDay>todayDay||recordDay<todayDay-90){toast('只能补录最近90天的有效日期');return;}
+ if(rawUsage&&(!Number.isFinite(Number(rawUsage))||Number(rawUsage)<0||Number(rawUsage)>1000000)){
+  toast('请填写有效的每日用电量');return;
+ }
+ const room=String(form.get('room')||'').trim().slice(0,64);
+ if(!room){toast('请填写宿舍名称');return;}
+ const previous=state.data.power;
+ const keepHistory=previous?.source==='manual'&&previous.roomLabel===room&&!state.data.demo;
+ let daily=keepHistory?(state.data.powerDaily||[]).filter(x=>x.date!==date):[];
+ if(rawUsage)daily.push({date,usage:Number(rawUsage),remain:date===iso(today())?balance:null,total:null});
+ daily.sort((a,b)=>a.date.localeCompare(b.date));
+ state.data={...state.data,power:{balance,unit:'度',roomLabel:room,updatedAt:new Date().toISOString(),source:'manual'},powerDaily:daily.slice(-90)};
+ state.powerHistoryStatus='manual';state.powerError='';
+ if(PUBLIC){
+  try{localStorage.setItem(POWER_DB,JSON.stringify({power:state.data.power,powerDaily:state.data.powerDaily}));}
+  catch{toast('无法持久保存电量记录');}
+ }
+ store();closeModal();render();toast('已保存手动电量与用电记录');
+}
 window.addEventListener('message',event=>{if(event.origin!==window.location.origin||event.source!==state.ssoPopup||event.data?.type!=='GZUCM_CAS_CALLBACK_RETURN')return;checkOfficialAuth();});
 // Follow system appearance without overriding the user's explicit choice.
 window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change',()=>{if(state.prefs.theme==='system'){applyTheme();render();}});

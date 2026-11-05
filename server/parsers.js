@@ -53,11 +53,30 @@ function parsePowerBalanceJson(raw,room){
  roomNum:room?.roomNum||respRoom,schoolAreaNo:room?.schoolAreaNo||'',buildingNo:room?.buildingNo||'',token:room?.token||''};
 }
 function parsePowerDailyJson(raw){
- let root;try{root=typeof raw==='string'?JSON.parse(raw):raw;}catch{throw Error('用电明细返回非 JSON 数据');}
+ let root;
+ try{root=typeof raw==='string'?JSON.parse(raw):raw;}catch{throw Error('用电明细返回非 JSON 数据');}
  if(root?.ret!==true && String(root?.ret)!=='true')throw Error('一卡通明细接口没有返回成功标志');
  const arr=root?.obj?.dailyDetailsInfos;
  if(!Array.isArray(arr))throw Error('一卡通明细响应缺少 dailyDetailsInfos');
- return arr.map(x=>({date:String(x.dateTime||x.accountTime||x.date||x.time||'').slice(0,10),usage:Number(x.dailyUsed||0),remain:Number(x.leftUsed||0),total:Number(x.totalUsed||0)})).filter(x=>/^20\d{2}-\d{2}-\d{2}$/.test(x.date)&&Number.isFinite(x.usage)&&Number.isFinite(x.remain));
+ const validQuantity=value=>{
+  if(value===null||value===undefined||String(value).trim()==='')return null;
+  const n=Number(value);
+  return Number.isFinite(n)&&n>=0&&n<=1000000?n:null;
+ };
+ const validDay=value=>{
+  const day=String(value??'').slice(0,10).replace(/\//g,'-');
+  if(!/^20\d{2}-\d{2}-\d{2}$/.test(day))return '';
+  const [y,m,d]=day.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?day:'';
+ };
+ return arr.map(x=>{
+  const date=validDay(x.dateTime??x.accountTime??x.date??x.time);
+  const usage=validQuantity(x.dailyUsed);
+  const remain=validQuantity(x.leftUsed);
+  const total=validQuantity(x.totalUsed);
+  return date&&usage!==null?{date,usage,remain,total}:null;
+ }).filter(Boolean);
 }
 function countedGrade(g){const c=`${g.category||''} ${g.nature||''}`;return c.includes('限选')||(!c.includes('选修')&&!c.includes('任选'));}
 module.exports={parseJSON,requireLogin,parseSemester,parseWeek,parseGrades,parseLevels,parseFitness,parseExams,parsePowerHtml,parsePowerContext,parsePowerBalanceJson,parsePowerDailyJson,weekOf,addDays,countedGrade};

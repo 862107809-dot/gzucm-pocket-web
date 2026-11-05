@@ -2181,3 +2181,62 @@
  /* Keep focus and finger interaction hitboxes inside the centered rail. */
  .bottom-nav .bottom-item{min-width:0;flex:1 1 0;}
 }
+
+
+/* CROSS-DEVICE COMPACT NAVIGATION v1
+ * Phones keep 42px total gutter; tablets get more breathable side space.
+ * The decorative face alone overhangs its tab, not the actual hit targets.
+ * On wider iPads and Macs the existing desktop sidebar keeps its layout
+ * but uses the same modest visual emphasis for its selected item. */
+@media (min-width:601px) and (max-width:900px){
+ .bottom-nav{
+  width:min(calc(100% - 64px),540px);
+  max-width:calc(100% - 64px);
+  left:0!important;
+  right:0!important;
+  margin-inline:auto!important;
+ }
+ .bottom-nav .bottom-liquid-indicator .bottom-liquid-surface{
+  inset:-10px -13px;
+ }
+}
+@media (min-width:901px){
+ .app-shell{
+  grid-template-columns:244px minmax(0,1fr);
+ }
+ .sidebar{
+  width:244px;
+ }
+ .sidebar .liquid-selector{
+  overflow:visible;
+ }
+ .sidebar .liquid-selector > .liquid-choice-highlight{
+  transform-origin:center center;
+  scale:1.04 1.05;
+  overflow:visible;
+  transition:transform .38s cubic-bezier(.20,.86,.28,1),
+    width .34s cubic-bezier(.22,1,.36,1),
+    height .34s cubic-bezier(.22,1,.36,1),
+    scale .20s ease-out;
+ }
+ .sidebar .liquid-selector > .liquid-choice-highlight.is-dragging{
+  transition:none!important;
+  scale:1.065 1.07;
+ }
+ .sidebar .liquid-selector > button.is-scrubbed,
+ .sidebar .liquid-selector > .nav-item.is-scrubbed{
+  transform:scale(1.04);
+ }
+}
+@media (min-width:901px) and (max-width:1180px){
+ .app-shell{
+  grid-template-columns:212px minmax(0,1fr);
+ }
+ .sidebar{width:212px;}
+}
+@media (prefers-reduced-motion:reduce){
+ .sidebar .liquid-selector > .liquid-choice-highlight{
+  transition:none!important;
+  scale:1.04 1.05;
+ }
+}

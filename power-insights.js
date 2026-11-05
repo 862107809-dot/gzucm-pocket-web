@@ -50,10 +50,11 @@
    Math.sqrt(recent7.reduce((acc,row)=>acc+(row.usage-average7)**2,0)/recent7.length)/average7:null;
   let reason='';
   if (balance===null) reason='暂无有效电量余额';
-  else if (recent7.length<3) reason='近7天至少需要3天有效用电记录';
-  else if (latestUsageAge>2) reason='用电记录已超过2天未更新';
   else if (ageHours===null) reason='缺少余额更新时间';
   else if (ageHours>48) reason='电量余额超过48小时未更新，请刷新后再预测';
+  else if (balance===0) reason=''; // A verified zero balance needs no usage forecast.
+  else if (recent7.length<3) reason='近7天至少需要3天有效用电记录';
+  else if (latestUsageAge>2) reason='用电记录已超过2天未更新';
   else if (average7===0) reason='最近记录的用电量均为0，暂无法估算';
   const remainingDays=reason?null:(balance===0?0:balance/average7);
   const predictedDate=remainingDays===null?null:isoOrdinal(end+Math.ceil(remainingDays));

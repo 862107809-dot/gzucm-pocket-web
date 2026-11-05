@@ -68,7 +68,7 @@ function harness(kind='schedule',vertical=false){
   'requestAnimationFrame','cancelAnimationFrame',
   app.slice(start,end)+
   'return {enhanceLiquidSelectors,liquidPointerDown,liquidPointerMove,liquidPointerFinish,'+
-  'snapshotLiquidSelectors,liquidSelectorId,guardLiquidSelectorClick};')(
+  'snapshotLiquidSelectors,liquidSelectorId,guardLiquidSelectorClick,confirmGlassSelection};')(
    doc,window,()=>armed++,()=>sounds++,cb=>{frame=cb;return 1},()=>{frame=null});
  if(!menu)selectors.enhanceLiquidSelectors({querySelectorAll:()=>[group]});
  const event=(i,x,y)=>({
@@ -78,6 +78,29 @@ function harness(kind='schedule',vertical=false){
  return {group,selectors,event,runFrame:()=>{const cb=frame;frame=null;cb?.();},
   stats:()=>({sounds,armed,clicks})};
 }
+test('all segmented, weekday, sidebar and popover glass choices use drag-only enlargement and confirmation shadow',()=>{
+ const tail=css.slice(css.indexOf('/* CONFIRM-ONLY DOCK OVERHANG v2'));
+ for(const kind of ['.segmented','.schedule-view-switch','.day-strip']){
+  assert.ok(tail.includes(kind),'drag-only animation covers '+kind);
+ }
+ assert.match(tail,/\.liquid-selector\.is-rail-pressed > \.liquid-choice-highlight\{\s*scale:1!important;/);
+ assert.match(tail,/\.liquid-selector\.is-rail-dragging > \.liquid-choice-highlight\{\s*scale:1\.085!important;/);
+ assert.match(tail,/\.sidebar \.liquid-selector > \.liquid-choice-highlight\{\s*scale:1!important;/);
+ assert.match(tail,/\.sidebar \.liquid-selector > \.liquid-choice-highlight\.is-dragging\{\s*scale:1\.065 1\.07!important;/);
+ assert.match(tail,/\.safari-floating-menu \.safari-menu-glider\.is-dragging\{\s*scale:1\.06;/);
+ const h=harness('grade');
+ h.selectors.confirmGlassSelection(h.group.glass);
+ assert.ok(h.group.glass.classList.contains('is-confirmed'));
+ const e=h.event(0,40,20);
+ h.selectors.liquidPointerDown(e);
+ assert.ok(h.group.classList.contains('is-rail-pressed'));
+ h.selectors.liquidPointerMove(h.event(0,245,20));
+ h.runFrame();
+ assert.ok(h.group.classList.contains('is-rail-dragging'));
+ h.selectors.liquidPointerFinish(h.event(0,245,20));
+ assert.equal(h.group.clicked,2);
+ assert.ok(h.group.glass.classList.contains('is-confirmed'));
+});
 test('segmented mode and grade filters still support swipe and liquid glass',()=>{
  for(const kind of ['schedule','grade']){
   const h=harness(kind);

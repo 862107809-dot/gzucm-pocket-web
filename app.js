@@ -521,6 +521,14 @@ function commitLiquidSwitch(button,on){
  if(previous===on)return false;
  state.prefs[key]=on;
  storePrefs();
+ // Animate the thumb's settling independently from its horizontal travel;
+ // no rerender means dragging/tapping never causes a visual rewind.
+ if(!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
+  button.classList?.remove?.('is-settling');
+  void button.offsetWidth; // restart the tiny one-shot spring on rapid toggles
+  button.classList?.add?.('is-settling');
+  setTimeout(()=>button.classList?.remove?.('is-settling'),490);
+ }
  if(typeof window!=='undefined')window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
  if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}
  // Do not render(): rebuilding the switch during its spring caused a snap.

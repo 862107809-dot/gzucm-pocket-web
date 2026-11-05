@@ -1313,3 +1313,121 @@
   filter:none!important;
  }
 }
+
+/* App Store-inspired physical controls (not just text/icon magnification).
+ * This is a WebKit CSS interpretation, not Apple's private native material. */
+:where(.btn,.hero-button,.icon-btn,.small-action,.language-switch,.safari-select,
+       .agenda-row,.month-cell,.safari-menu-option,.day-tab,.segmented button,
+       .liquid-selector > button,.nav-item){
+ transform-origin:center center;
+ -webkit-tap-highlight-color:transparent;
+ transition:transform .25s cubic-bezier(.22,.78,.22,1.36),
+            box-shadow .24s ease,filter .24s ease,background-color .24s ease;
+}
+:where(.btn,.hero-button,.icon-btn,.small-action,.language-switch,.safari-select,
+       .agenda-row,.month-cell,.safari-menu-option,.day-tab,.segmented button,
+       .liquid-selector > button,.nav-item):not(:disabled):active{
+ transform:scale(.958);
+ filter:brightness(1.055);
+}
+:where(.btn,.hero-button,.icon-btn,.small-action,.language-switch,.safari-select,
+       .agenda-row,.month-cell,.safari-menu-option,.day-tab,.segmented button,
+       .liquid-selector > button,.nav-item):focus-visible{
+ outline:2px solid var(--accent);
+ outline-offset:3px;
+}
+@media(max-width:900px){
+ .bottom-nav{
+  --edge-energy:0;
+ }
+ .bottom-nav::before,.bottom-nav::after{
+  content:"";
+  position:absolute;
+  top:10px;
+  width:26px;
+  height:calc(100% - 20px);
+  pointer-events:none;
+  z-index:2;
+  border-radius:20px;
+  opacity:0;
+  transition:opacity .16s ease;
+ }
+ .bottom-nav::before{
+  left:-3px;
+  background:radial-gradient(ellipse at left center,rgba(116,204,151,.40),rgba(255,255,255,.25) 35%,transparent 76%);
+  box-shadow:inset 2px 0 2px rgba(206,255,221,.45);
+ }
+ .bottom-nav::after{
+  right:-3px;
+  background:radial-gradient(ellipse at right center,rgba(116,204,151,.40),rgba(255,255,255,.25) 35%,transparent 76%);
+  box-shadow:inset -2px 0 2px rgba(206,255,221,.45);
+ }
+ .bottom-nav.edge-left::before,.bottom-nav.edge-right::after{
+  opacity:var(--edge-energy,.85);
+ }
+ .bottom-nav .bottom-item{
+  transform-origin:center center;
+  transition:transform .23s cubic-bezier(.18,.75,.25,1.32),
+             color .24s ease,filter .25s ease!important;
+ }
+ /* The whole hit surface—including the caption—lifts, rather than text alone. */
+ .bottom-nav .bottom-item:active,
+ .bottom-nav .bottom-item.is-pressed,
+ .bottom-nav .bottom-item.is-scrubbed{
+  transform:scale(1.075);
+  filter:brightness(1.09);
+ }
+ .bottom-nav .bottom-item:active::before,
+ .bottom-nav .bottom-item.is-pressed::before,
+ .bottom-nav .bottom-item.is-scrubbed::before{
+  content:"";
+  position:absolute;
+  inset:3px 4px;
+  border-radius:17px;
+  background:radial-gradient(ellipse at 50% 6%,rgba(255,255,255,.43),rgba(130,210,164,.14) 75%,transparent);
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 3px 12px rgba(40,114,75,.14);
+  z-index:-1;
+  pointer-events:none;
+ }
+ .bottom-nav .bottom-item.is-landing{
+  animation:pocketTabLanding .36s cubic-bezier(.22,.78,.2,1) both;
+ }
+ .bottom-nav .bottom-item.is-scrubbed span{
+  color:var(--accent);
+ }
+ .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  transform:translateX(var(--edge-shift,0px)) scaleX(var(--edge-scale,1)) scale(1.055);
+  transition:transform .12s ease-out,filter .20s ease,box-shadow .20s ease;
+ }
+ .bottom-liquid-indicator.is-edge-rebound .bottom-liquid-surface{
+  animation:pocketEdgeReturn .34s cubic-bezier(.2,.78,.23,1) both;
+ }
+}
+@keyframes pocketTabLanding{
+  0%{transform:scale(.985);filter:brightness(1.04);}
+  38%{transform:scale(1.082);filter:brightness(1.12);}
+  70%{transform:scale(.993);filter:brightness(1.03);}
+  100%{transform:scale(1);filter:none;}
+}
+@keyframes pocketEdgeReturn{
+  0%{transform:scaleX(.90) scaleY(1.055);filter:brightness(1.16);}
+  48%{transform:scaleX(1.035) scaleY(.987);filter:brightness(1.06);}
+  100%{transform:scale(1);filter:none;}
+}
+@media(prefers-reduced-motion:reduce){
+ :where(.btn,.hero-button,.icon-btn,.small-action,.language-switch,.safari-select,
+        .agenda-row,.month-cell,.safari-menu-option,.day-tab,.segmented button,
+        .liquid-selector > button,.nav-item):active,
+ .bottom-nav .bottom-item:active,
+ .bottom-nav .bottom-item.is-pressed,
+ .bottom-nav .bottom-item.is-scrubbed{transform:none!important;}
+ .bottom-nav .bottom-item.is-landing,
+ .bottom-liquid-indicator.is-edge-rebound .bottom-liquid-surface{
+  animation:none!important;
+ }
+ .bottom-liquid-indicator.is-dragging .bottom-liquid-surface{
+  transform:none!important;
+ }
+ .bottom-nav::before,.bottom-nav::after{transition:none!important;}
+}

@@ -19,8 +19,10 @@ function inputValue(html,name){for(const m of String(html).matchAll(/<input\b[^>
 function parsePowerHtml(html){
  const tips=[...String(html).matchAll(/<(?:div|span|p|label|strong)[^>]*\bid=["']powerTips["'][^>]*>([^<]*)/gi)];
  const tip=tips.map(m=>m[1]?.trim()).find(Boolean)||'';
- const num=tip.match(/(?:剩余(?:电量|电费)?\s*[：:]?\s*)?([0-9]+(?:\.[0-9]+)?)/);
- if(!num)return null;
+ // Do not mistake a time, date, status code or unrelated text for a balance.
+ const num=tip.match(/(?:剩余(?:电量|电费)?|电量余额|余额)\s*[：:]?\s*([0-9]+(?:\.[0-9]+)?)/)||
+  tip.match(/^\s*([0-9]+(?:\.[0-9]+)?)\s*(?:度|kWh)\s*$/i);
+ if(!num||!Number.isFinite(Number(num[1]))||Number(num[1])>1000000)return null;
  const token=String(html).match(/\b(?:var|let|const)\s+token\s*=\s*["']([^"']+)["']/i)?.[1]||'';
  const roomNum=inputValue(html,'roomNum'),schoolAreaNo=inputValue(html,'schoolAreaNo'),buildingNo=inputValue(html,'buildingNo');
  const roomLabel=inputValue(html,'roomChooseText')||inputValue(html,'roomChoose')||roomNum||'宿舍';

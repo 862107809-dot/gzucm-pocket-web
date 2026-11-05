@@ -1,0 +1,298 @@
+/*
+ * GZUCM Pocket — Optical Liquid Glass Material
+ *
+ * Design evidence:
+ * UI/UX Pro Max (luffy666code/ui-ux-pro-max-skill), style #14 Liquid Glass
+ * with style #3 Glassmorphism, accessibility/contrast and platform rules.
+ *
+ * Material, not motion. No animation/transition declarations here.
+ * Navigation and controls receive optical glass; data-heavy content retains
+ * calmer, more opaque surfaces to protect course, grade and power readability.
+ * Existing geometry, hit targets and gesture logic remain unchanged.
+ */
+:root{
+  --lg-chrome:rgba(244,253,247,.67);
+  --lg-sheet:rgba(249,253,249,.87);
+  --lg-content:rgba(252,254,251,.88);
+  --lg-control:rgba(250,255,251,.63);
+  --lg-optic:rgba(222,249,231,.52);
+  --lg-tint:rgba(136,206,159,.16);
+  --lg-rim:rgba(255,255,255,.84);
+  --lg-rim-low:rgba(67,121,89,.21);
+  --lg-specular:rgba(255,255,255,.71);
+  --lg-sheen:rgba(240,255,244,.50);
+  --lg-ambient:rgba(183,240,203,.36);
+  --lg-shadow:rgba(21,65,43,.14);
+  --lg-dark-shade:rgba(30,68,49,.12);
+}
+:root[data-theme="dark"]{
+  --lg-chrome:rgba(27,49,39,.69);
+  --lg-sheet:rgba(24,44,35,.90);
+  --lg-content:rgba(29,49,39,.90);
+  --lg-control:rgba(43,74,56,.72);
+  --lg-optic:rgba(80,139,99,.43);
+  --lg-tint:rgba(101,179,126,.13);
+  --lg-rim:rgba(212,255,227,.32);
+  --lg-rim-low:rgba(0,18,11,.34);
+  --lg-specular:rgba(240,255,245,.33);
+  --lg-sheen:rgba(169,224,189,.17);
+  --lg-ambient:rgba(79,164,109,.20);
+  --lg-shadow:rgba(0,10,5,.40);
+  --lg-dark-shade:rgba(0,0,0,.19);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --lg-chrome:rgba(27,49,39,.69);
+    --lg-sheet:rgba(24,44,35,.90);
+    --lg-content:rgba(29,49,39,.90);
+    --lg-control:rgba(43,74,56,.72);
+    --lg-optic:rgba(80,139,99,.43);
+    --lg-tint:rgba(101,179,126,.13);
+    --lg-rim:rgba(212,255,227,.32);
+    --lg-rim-low:rgba(0,18,11,.34);
+    --lg-specular:rgba(240,255,245,.33);
+    --lg-sheen:rgba(169,224,189,.17);
+    --lg-ambient:rgba(79,164,109,.20);
+    --lg-shadow:rgba(0,10,5,.40);
+    --lg-dark-shade:rgba(0,0,0,.19);
+  }
+}
+
+/* Broad, stationary ambient color gives translucent glass something to
+   transmit even when there is no custom wallpaper behind the interface. */
+body{
+  background:
+    radial-gradient(ellipse 72vw 55vw at 2% 7%,rgba(169,220,184,.25),transparent 74%),
+    radial-gradient(ellipse 80vw 58vw at 97% 20%,rgba(232,220,178,.16),transparent 72%),
+    radial-gradient(ellipse 70vw 52vw at 65% 99%,rgba(139,200,190,.13),transparent 78%),
+    var(--page);
+}
+:root[data-theme="dark"] body{
+  background:
+    radial-gradient(ellipse 78vw 55vw at 0% 0%,rgba(79,143,104,.15),transparent 73%),
+    radial-gradient(ellipse 90vw 67vw at 100% 25%,rgba(65,111,98,.12),transparent 70%),
+    var(--page);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) body{
+    background:
+      radial-gradient(ellipse 78vw 55vw at 0% 0%,rgba(79,143,104,.15),transparent 73%),
+      radial-gradient(ellipse 90vw 67vw at 100% 25%,rgba(65,111,98,.12),transparent 70%),
+      var(--page);
+  }
+}
+
+/* Three optical layers: transmitted environment, directional top highlight,
+   and darker lower rim. Unlike an opaque white overlay the background shows. */
+.topbar,.bottom-nav,.sidebar{
+  border:1px solid var(--lg-rim)!important;
+  background:
+    radial-gradient(ellipse 80% 115% at var(--glass-x,25%) var(--glass-y,0%),
+                    var(--lg-sheen),transparent 73%),
+    linear-gradient(161deg,var(--lg-specular) -52%,transparent 43%),
+    linear-gradient(0deg,var(--lg-dark-shade),transparent 26%),
+    var(--lg-chrome)!important;
+  box-shadow:
+    0 17px 45px var(--lg-shadow),
+    0 1px 2px rgba(11,55,29,.06),
+    inset 0 1px 0 var(--lg-specular),
+    inset 1px 0 0 rgba(255,255,255,.18),
+    inset -1px 0 0 var(--lg-rim-low),
+    inset 0 -1px 0 var(--lg-rim-low)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.48) contrast(1.035);
+  backdrop-filter:blur(22px) saturate(1.48) contrast(1.035);
+}
+
+/* Glass is a separate UI layer; modal text stays on a clearer tinted sheet. */
+.modal-card,.safari-floating-menu{
+  border:1px solid var(--lg-rim)!important;
+  background:
+    radial-gradient(ellipse 75% 30% at 18% -5%,var(--lg-sheen),transparent 100%),
+    linear-gradient(153deg,var(--lg-sheen),transparent 34%),
+    var(--lg-sheet)!important;
+  box-shadow:
+    0 26px 70px var(--lg-shadow),
+    inset 0 1px 0 var(--lg-specular),
+    inset 0 -1px 0 var(--lg-rim-low)!important;
+  -webkit-backdrop-filter:blur(23px) saturate(1.30);
+  backdrop-filter:blur(23px) saturate(1.30);
+}
+
+/* Reading cards have enough pigment for legibility and no per-row heavy blur.
+   Keep course tiles and full month grid strongly separated from their background. */
+.card,.page-schedule .card,.calendar-visual,.power-mini{
+  background:
+    linear-gradient(147deg,rgba(255,255,255,.13),transparent 48%),
+    var(--lg-content)!important;
+  border-color:var(--lg-rim-low)!important;
+  box-shadow:
+    0 12px 31px var(--lg-shadow),
+    inset 0 1px 0 var(--lg-specular)!important;
+}
+.card,.page-schedule .card{
+  -webkit-backdrop-filter:blur(11px) saturate(1.13);
+  backdrop-filter:blur(11px) saturate(1.13);
+}
+.agenda-row,.page-schedule .agenda-row{
+  background:
+    linear-gradient(146deg,rgba(255,255,255,.13),transparent 55%),
+    var(--lg-content)!important;
+  border-color:var(--lg-rim-low)!important;
+  box-shadow:inset 0 1px 0 var(--lg-specular),0 3px 11px rgba(30,72,48,.055)!important;
+}
+
+/* Recessed glass trough: one continuous rail and a more luminous raised lens. */
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail,
+.segmented,.schedule-view-switch{
+  background:
+    linear-gradient(175deg,var(--lg-dark-shade),transparent 43%),
+    var(--lg-control)!important;
+  border:1px solid var(--lg-rim)!important;
+  box-shadow:
+    inset 0 2px 6px var(--lg-dark-shade),
+    inset 0 1px 0 var(--lg-rim),
+    0 6px 17px var(--lg-shadow)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.42);
+  backdrop-filter:blur(16px) saturate(1.42);
+}
+.liquid-selector > .liquid-choice-highlight,
+.safari-floating-menu .safari-menu-glider{
+  background:
+    radial-gradient(ellipse 95% 54% at 24% -1%,var(--lg-specular),transparent 92%),
+    linear-gradient(153deg,var(--lg-sheen),transparent 61%),
+    var(--lg-optic)!important;
+  border:1px solid var(--lg-rim)!important;
+  box-shadow:
+    inset 0 1px 0 var(--lg-specular),
+    inset 1px 0 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 var(--lg-rim-low),
+    0 6px 18px var(--lg-shadow)!important;
+  -webkit-backdrop-filter:blur(15px) saturate(1.58);
+  backdrop-filter:blur(15px) saturate(1.58);
+}
+.liquid-selector > .liquid-choice-highlight::before{
+  background:
+    linear-gradient(137deg,var(--lg-specular),transparent 40%),
+    radial-gradient(ellipse 72% 21% at 50% -3%,var(--lg-rim),transparent 95%);
+  opacity:.65;
+}
+
+/* The native-looking bottom capsule has its own curved specular interior. */
+.bottom-nav .bottom-liquid-surface{
+  background:
+    radial-gradient(ellipse 86% 64% at 21% 0%,var(--lg-specular),transparent 94%),
+    linear-gradient(148deg,var(--lg-sheen),transparent 58%),
+    var(--lg-optic)!important;
+  border:1px solid var(--lg-rim)!important;
+  box-shadow:
+    inset 0 1px 0 var(--lg-specular),
+    inset 1px 0 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 var(--lg-rim-low),
+    0 7px 18px var(--lg-shadow)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.57);
+  backdrop-filter:blur(16px) saturate(1.57);
+}
+.bottom-nav .bottom-liquid-surface::before{
+  background:
+    linear-gradient(135deg,var(--lg-specular),transparent 45%),
+    radial-gradient(ellipse 69% 30% at 50% -2%,var(--lg-sheen),transparent 94%);
+  opacity:.66;
+}
+.bottom-nav .bottom-liquid-surface::after{
+  box-shadow:inset 0 1px 0 var(--lg-specular),inset 0 -1px 0 var(--lg-rim-low);
+}
+
+/* Small controls: frosted shells, no separate moving borders on scrubbed tabs. */
+.topbar .icon-btn,.language-switch,.theme-option,.safari-select,
+.week-pick .icon-btn,.month-pick .icon-btn{
+  background:
+    linear-gradient(148deg,var(--lg-sheen),transparent 59%),
+    var(--lg-control)!important;
+  border-color:var(--lg-rim)!important;
+  box-shadow:
+    inset 0 1px 0 var(--lg-specular),
+    inset 0 -1px 0 var(--lg-rim-low),
+    0 4px 12px var(--lg-shadow)!important;
+  -webkit-backdrop-filter:blur(11px) saturate(1.24);
+  backdrop-filter:blur(11px) saturate(1.24);
+}
+.switch[role="switch"]{
+  border-color:var(--lg-rim-low);
+  box-shadow:
+    inset 0 1px 3px var(--lg-dark-shade),
+    inset 0 1px 0 var(--lg-rim),
+    0 3px 11px var(--lg-shadow);
+}
+.switch[role="switch"]::before{
+  background:linear-gradient(143deg,var(--lg-sheen),transparent 62%);
+  opacity:.80;
+}
+
+/* Preserve the deliberate exception: weekdays are separate tap-only pills.
+   Highlight the chosen date in place, not as a sliding shared material. */
+.day-strip .day-tab{
+  background:var(--lg-control)!important;
+  border-color:var(--lg-rim-low)!important;
+  box-shadow:inset 0 1px 0 var(--lg-specular),0 3px 10px rgba(30,72,48,.045);
+}
+.day-strip .day-tab.active{
+  background:
+    linear-gradient(144deg,var(--lg-sheen),transparent 55%),
+    var(--lg-optic)!important;
+  border-color:var(--lg-rim)!important;
+  color:var(--accent)!important;
+  box-shadow:inset 0 1px 0 var(--lg-specular),0 6px 16px var(--lg-shadow);
+}
+.day-strip .day-tab.today:not(.active){
+  outline:1px solid var(--lg-rim-low);
+  outline-offset:1px;
+}
+
+/* Keep all the interaction and keyboard states accessible. */
+:is(button,a,[role="switch"],select,input):focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+.bottom-nav.is-dock-dragging .bottom-item,
+.bottom-nav.is-dock-dragging .bottom-item::before{
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Apple's Reduce Transparency/Increase Contrast means readable, opaque
+   material instead of fake translucency. No filter or translucent backgrounds. */
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  .topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu,
+  .segmented,.schedule-view-switch,.card,.page-schedule .card,.agenda-row,
+  .page-schedule .agenda-row,.calendar-visual,.power-mini,.theme-option,
+  .safari-select,.topbar .icon-btn,.language-switch,.day-strip .day-tab,
+  .liquid-selector > .liquid-choice-highlight,
+  .safari-floating-menu .safari-menu-glider,.bottom-nav .bottom-liquid-surface{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    background:var(--readable-card)!important;
+    border-color:var(--readable-border)!important;
+  }
+  .bottom-nav .bottom-liquid-surface,
+  .liquid-selector > .liquid-choice-highlight,
+  .safari-floating-menu .safari-menu-glider,
+  .day-strip .day-tab.active{
+    background:var(--readable-active)!important;
+    border-color:var(--accent)!important;
+  }
+  .bottom-liquid-surface::before,.bottom-liquid-surface::after,
+  .liquid-selector > .liquid-choice-highlight::before{
+    display:none!important;
+  }
+}
+
+/* Without native background sampling, avoid transparent-looking fake chrome. */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .topbar,.bottom-nav,.sidebar,.modal-card,.safari-floating-menu,
+  .segmented,.schedule-view-switch{
+    background:var(--readable-glass)!important;
+  }
+  .liquid-selector > .liquid-choice-highlight,.bottom-nav .bottom-liquid-surface{
+    background:var(--readable-active)!important;
+  }
+}

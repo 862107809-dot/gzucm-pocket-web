@@ -137,7 +137,7 @@ test('video style dark/light weekday lens and PWA gesture assets are consistent'
 });
 
 test('confirmed choices gain a material shadow without a white glow in dark mode',()=>{
- const section=material.slice(material.indexOf('/* NATURAL SELECTION SHADOW v1'));
+ const section=material.slice(material.indexOf('/* NATURAL SELECTION SHADOW v1'),material.indexOf('/* GREY POPOVER SELECTION v2'));
  assert.ok(section.length>1200,'confirmation shadow material must exist');
  assert.match(section,/--pocket-selected-shadow:/);
  assert.match(section,/--pocket-confirm-shadow:/);

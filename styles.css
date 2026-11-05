@@ -2833,3 +2833,60 @@
   scale:1!important;
  }
 }
+
+
+/* UNIFIED V-SYNC GESTURES v2
+ * Dock is the interaction contract: touching scales the base + selected
+ * button, dragging follows the finger at native rAF cadence; only a TAP
+ * springs. A SWIPE eases directly to scale 1, with zero overshoot.
+ * The CSS/WAAPI compositor schedules frames at the browser's own vsync;
+ * runtime data-motion-rate merely adjusts optical work to sustain that rate. */
+:root{
+ --pocket-gesture-ease:cubic-bezier(.18,.80,.28,1);
+ --pocket-gesture-release:.22s;
+}
+:root[data-motion-rate="high"]{
+ --pocket-gesture-release:.20s;
+}
+:root[data-motion-rate="economy"]{
+ --pocket-gesture-release:.18s;
+}
+#app .bottom-nav.is-dock-dropping,
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+ animation:none!important;
+ scale:1!important;
+ transition:scale var(--pocket-gesture-release) var(--pocket-gesture-ease),
+  border-color .18s ease!important;
+}
+#app .bottom-nav.is-dock-dragging,
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging{
+ will-change:scale;
+}
+#app .bottom-nav .bottom-liquid-indicator.is-dragging,
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > .liquid-choice-highlight.is-dragging{
+ will-change:transform;
+}
+#app .bottom-nav:not(.is-dock-dragging) .bottom-item.is-scrubbed,
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:not(.is-rail-dragging) > button.is-scrubbed{
+ scale:1!important;
+}
+/* Blurred backgrounds remain optically consistent, but on a struggling
+ * compositor avoid supplementary filters on actively moving lenses. */
+:root[data-motion-rate="economy"] #app .bottom-nav .bottom-liquid-indicator.is-dragging,
+:root[data-motion-rate="economy"] #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector > .liquid-choice-highlight.is-dragging{
+ filter:none!important;
+}
+:root[data-motion-rate="economy"] #app .bottom-nav.is-dock-dragging,
+:root[data-motion-rate="economy"] #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging{
+ box-shadow:0 2px 7px rgba(0,35,15,.12)!important;
+}
+/* On keyboards and accessibility settings, the same selection semantics
+ * continue without any extra movement or forced frame rate. */
+@media(prefers-reduced-motion:reduce){
+ #app .bottom-nav.is-dock-dropping,
+ #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+  animation:none!important;
+  transition:none!important;
+  scale:1!important;
+ }
+}

@@ -735,6 +735,8 @@ function transitionScheduleMode(afterRender){
  try{scheduleSwitchAnimation?.cancel?.();}catch{}
  scheduleSwitchAnimation=null;
  const pageRoot=$('#page-content');
+ const fixedLayout=state.prefs.scheduleLayout!=='original';
+ const outgoingTarget=fixedLayout?pageRoot?.querySelector?.('.schedule-transition-content'):pageRoot;
  const swap=()=>{
   if(epoch!==scheduleSwitchEpoch||pageRoot?.isConnected===false)return false;
   renderScheduleContent(true);
@@ -743,30 +745,32 @@ function transitionScheduleMode(afterRender){
  };
  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
  if(!pageRoot||state.view!=='schedule'||reduced){swap();return;}
- if(typeof pageRoot.animate!=='function'){
+ if(typeof outgoingTarget?.animate!=='function'){
   // Older embedded browsers still get an inexpensive scale-in CSS animation.
   if(swap()){
    pageRoot.classList?.remove?.('schedule-soft-arrival');
    void pageRoot.offsetWidth;
-   pageRoot.classList?.add?.('schedule-soft-arrival');
+   (fixedLayout?pageRoot.querySelector?.('.schedule-transition-content'):pageRoot)?.classList?.add?.('schedule-soft-arrival');
   }
   return;
  }
  const width=pageRoot.getBoundingClientRect?.().width||pageRoot.clientWidth||0;
- const scale=width>=900?.987:width>=600?.980:.973;
- const outDuration=width>=900?80:95;
- const inDuration=width>=900?165:width>=600?180:195;
+ const scale=width>=900?.974:width>=600?.966:.958;
+ const outDuration=width>=900?180:width>=600?190:200;
+ const inDuration=width>=900?300:width>=600?325:345;
  const contracted='scale('+scale+')';
  const incoming=[
-  {opacity:.12,transform:contracted},
+  {opacity:.18,transform:contracted},
+  {opacity:.72,transform:'scale(.994)',offset:.67},
   {opacity:1,transform:'scale(1)'}
  ];
  const enter=()=>{
   if(!swap())return;
-  if(pageRoot.isConnected===false)return;
+  const incomingTarget=fixedLayout?pageRoot.querySelector?.('.schedule-transition-content'):pageRoot;
+  if(pageRoot.isConnected===false||!incomingTarget)return;
   try{
-   const animation=pageRoot.animate(incoming,{
-    duration:inDuration,easing:'cubic-bezier(.20,.82,.30,1)',fill:'both'
+   const animation=incomingTarget.animate(incoming,{
+    duration:inDuration,easing:'cubic-bezier(.24,.68,.30,1)',fill:'both'
    });
    scheduleSwitchAnimation=animation;
    Promise.resolve(animation.finished).then(()=>{
@@ -776,14 +780,14 @@ function transitionScheduleMode(afterRender){
     }
    }).catch(()=>{});
   }catch{
-   pageRoot.classList?.add?.('schedule-soft-arrival');
+   (fixedLayout?pageRoot.querySelector?.('.schedule-transition-content'):pageRoot)?.classList?.add?.('schedule-soft-arrival');
   }
  };
  try{
-  const outgoing=pageRoot.animate([
+  const outgoing=outgoingTarget.animate([
    {opacity:1,transform:'scale(1)'},
-   {opacity:.12,transform:contracted}
-  ],{duration:outDuration,easing:'cubic-bezier(.34,0,.75,.55)',fill:'forwards'});
+   {opacity:.18,transform:contracted}
+  ],{duration:outDuration,easing:'cubic-bezier(.36,0,.65,1)',fill:'forwards'});
   scheduleSwitchAnimation=outgoing;
   Promise.resolve(outgoing.finished).then(()=>{
    if(epoch!==scheduleSwitchEpoch)return;

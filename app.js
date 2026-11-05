@@ -132,6 +132,8 @@ let liquidGestureSnap=false;
 let dockRemountPulse=false;
 let dockRemountDrop=false;
 let scheduleModeFallbackEntrance=false;
+// Preserve the finger-up position through a Dock DOM remount: rects are visually scaled.
+let pendingBottomSwipeGeometry=null;
 /* Damped harmonic spring: responsive start, smooth velocity decay and a tiny
  * natural settle. Keyframed via Web Animations (available in modern Safari).
  * CSS cubic-bezier remains a fully functional fallback. */
@@ -189,12 +191,14 @@ function alignBottomLiquid(previousTab,previousRect){
  const targetW=Math.max(12,current.offsetWidth-inset*2);
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
  const fromSwipe=nav.classList?.contains?.('is-dock-dropping')===true;
+ const swipeAnchor=fromSwipe?pendingBottomSwipeGeometry:null;
+ pendingBottomSwipeGeometry=null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
  // Only the glass lens travels; no independently outlined tab landing.
- const oldX=previousRect?.width?previousRect.left-navRect.left
+ const oldX=swipeAnchor?swipeAnchor.x:previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
- const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
+ const oldW=swipeAnchor?swipeAnchor.width:previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
  const startX=Number.isFinite(oldX)?oldX:targetX;
  const startW=Number.isFinite(oldW)?oldW:targetW;
  glass.classList.add('is-instant');
@@ -209,7 +213,7 @@ function alignBottomLiquid(previousTab,previousRect){
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
   if(typeof glass.animate==='function'){
-   const duration=fromSwipe?560:650;
+   const duration=fromSwipe?290:400;
    const frames=fromSwipe?
     liquidDropFrames(startX,startW,targetX,targetW):
     liquidSpringFrames(startX,startW,targetX,targetW,duration);
@@ -238,7 +242,7 @@ let liquidSelectorPointer=null;
 let ignoreLiquidSelectorClickUntil=0;
 let pendingHorizontalRailLanding=null;
 function isHorizontalLiquidRail(group,menu){
- return !menu&&!group.matches?.('.sidebar nav')&&!group.classList?.contains?.('day-strip');
+ return !menu&&!group.matches?.('.sidebar nav');
 }
 function releaseHorizontalLiquidRail(p,cancelled=false){
  if(!p?.rail)return;
@@ -261,6 +265,7 @@ function liquidSelectorId(group){
  if(group.classList.contains('schedule-view-switch'))return 'schedule-mode';
  if(group.querySelector('[data-grade-tab]'))return 'grade-type';
  if(group.querySelector('[data-credit]'))return 'credit-type';
+ if(group.classList.contains('day-strip'))return 'weekday-choice';
  if(group.querySelector('[data-action="authPassword"]'))return 'login-mode';
  if(group.classList.contains('sidebar-nav-main'))return 'sidebar-main';
  if(group.classList.contains('sidebar-nav-account'))return 'sidebar-account';
@@ -281,7 +286,7 @@ function liquidSelectorValue(button){
 }
 function snapshotLiquidSelectors(root){
  const values=new Map();
- for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.sidebar nav')){
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
   const active=liquidSelectorActive(group),id=liquidSelectorId(group);
   if(id&&active){
    const lens=group.querySelector('.liquid-choice-highlight');
@@ -310,7 +315,7 @@ function setSelectorGlass(glass,geometry){
 }
 function enhanceLiquidSelectors(root,previous=new Map()){
  if(!root)return;
- for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.sidebar nav')){
+ for(const group of root.querySelectorAll('.segmented,.schedule-view-switch,.day-strip,.sidebar nav')){
   const id=liquidSelectorId(group),active=liquidSelectorActive(group);
   if(!id||!active)continue;
   group.classList.add('liquid-selector');
@@ -401,7 +406,7 @@ function selectorGlassFor(group){
 }
 function liquidPointerDown(event){
  if(event.isPrimary===false||event.button>0)return;
- if(event.target.closest?.('.bottom-nav,.day-strip')||event.target.closest?.('input,textarea,select'))return;
+ if(event.target.closest?.('.bottom-nav')||event.target.closest?.('input,textarea,select'))return;
  const menu=event.target.closest?.('.safari-floating-menu');
  const group=menu||event.target.closest?.('.liquid-selector');
  if(!group)return;
@@ -441,7 +446,7 @@ function liquidPointerMove(event){
   }
   if(p.vertical&&!p.menu&&Math.abs(dx)>11&&Math.abs(dx)>Math.abs(dy)*1.15){p.scroll=true;return;}
   const travelled=p.vertical?Math.abs(dy):Math.abs(dx);
-  if(travelled<8)return;
+  if(travelled<6)return;
   p.dragging=true;
   p.pressed?.classList?.remove?.('is-pressed');
   if(p.rail)p.group.classList.add('is-rail-dragging');
@@ -1543,7 +1548,7 @@ function bottomSwipeMove(event){
    sw.pressed?.classList?.remove?.('is-pressed');
    return;
   }
-  if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
+  if(Math.abs(dx)<6||Math.abs(dx)<Math.abs(dy)*1.2)return;
   sw.dragging=true;
   sw.nav.classList?.add?.('is-dock-dragging');
   sw.pressed?.classList?.remove?.('is-pressed');
@@ -1598,6 +1603,8 @@ function bottomSwipeFinish(event,cancelled=false){
   animateDockDrop(sw.nav);
   return;
  }
+ pendingBottomSwipeGeometry={x:Math.max(sw.layout.first,Math.min(sw.layout.last,
+  event.clientX-sw.layout.rect.left-sw.layout.width/2)),width:sw.layout.width};
  liquidGestureSnap=true;
  dockRemountPulse=false;
  dockRemountDrop=true;

@@ -162,19 +162,22 @@ test('reduced-motion, readable contrast and quiet sound preference are supported
  assert.match(css,/\.bottom-item\.is-scrubbed/);
 });
 
-test('settings sound switch supports horizontal drag, normal tap and vertical scroll',()=>{
+test('iOS Settings switch stretches instantly, tracks finger drag and settles without rerender',()=>{
  const from=app.indexOf('let liquidSwitchPointer=null;');
  const to=app.indexOf('function guardLiquidSelectorClick(event){',from);
  assert.ok(from>=0&&to>from);
  let stored=0,rendered=0,armed=0,tones=0;
- const state={prefs:{soundEffects:false}};
+ const state={prefs:{soundEffects:false,hapticEffects:true}};
  const f=new Function('state','storePrefs','render','armLiquidSound','playLiquidTick',
-   app.slice(from,to)+'return {liquidSwitchDown,liquidSwitchMove,liquidSwitchFinish,guardLiquidSwitchClick};')(
-   state,()=>stored++,()=>rendered++,()=>armed++,()=>tones++);
+  app.slice(from,to)+
+  'return {liquidSwitchDown,liquidSwitchMove,liquidSwitchFinish,commitLiquidSwitch};')(
+  state,()=>stored++,()=>rendered++,()=>armed++,()=>tones++);
  const classList=names();
+ const vars=new Map(),attrs=new Map();
  const button={
-  classList, pointerId:null,
-  getBoundingClientRect:()=>({left:0,width:46}),
+  classList,dataset:{action:'toggleSound'},pointerId:null,
+  style:{setProperty:(k,v)=>vars.set(k,v),removeProperty:k=>vars.delete(k)},
+  setAttribute:(k,v)=>attrs.set(k,v),
   setPointerCapture(id){button.pointerId=id;},
   hasPointerCapture(id){return button.pointerId===id;},
   releasePointerCapture(){button.pointerId=null;}
@@ -185,29 +188,60 @@ test('settings sound switch supports horizontal drag, normal tap and vertical sc
   preventDefault(){this.prevented=true;}
  });
  f.liquidSwitchDown(ev(10,20));
+ assert.ok(classList.contains('is-pressed'),'thumb must stretch at pointerdown without moving');
+ assert.equal(stored,0,'press is preview only');
+ f.liquidSwitchMove(ev(19,20));
+ assert.ok(classList.contains('is-dragging'));
+ assert.equal(vars.get('--switch-thumb-x'),'9.00px','thumb follows live delta, not only binary snapping');
  f.liquidSwitchMove(ev(43,22));
  assert.ok(classList.contains('preview-on'));
+ assert.equal(vars.get('--switch-thumb-x'),'14.00px','stretch thumb cannot leave the track');
  f.liquidSwitchFinish(ev(43,22));
  assert.equal(state.prefs.soundEffects,true);
  assert.equal(stored,1);
- assert.equal(rendered,1);
+ assert.equal(rendered,0,'no DOM remount while the switch spring settles');
+ assert.ok(classList.contains('on'));
+ assert.equal(attrs.get('aria-checked'),'true');
+ assert.equal(vars.has('--switch-thumb-x'),false);
+ assert.equal(classList.contains('is-pressed'),false);
  assert.equal(armed,1);
  assert.equal(tones,1);
  f.liquidSwitchDown(ev(42,20));
+ assert.ok(classList.contains('is-pressed'));
  f.liquidSwitchMove(ev(3,20));
+ assert.ok(classList.contains('preview-off'));
  f.liquidSwitchFinish(ev(3,20));
  assert.equal(state.prefs.soundEffects,false);
+ assert.equal(attrs.get('aria-checked'),'false');
  assert.equal(stored,2);
- assert.equal(rendered,2);
+ assert.equal(rendered,0);
+ // A simple press releases its stretched thumb without committing:
+ // the real click handler, including keyboard activation, toggles the value.
  f.liquidSwitchDown(ev(10,20));
+ assert.ok(classList.contains('is-pressed'));
  f.liquidSwitchFinish(ev(10,20));
- assert.equal(stored,2,'simple tap stays in native click handler');
+ assert.equal(stored,2);
+ assert.equal(classList.contains('is-pressed'),false);
+ f.commitLiquidSwitch(button,true);
+ assert.equal(state.prefs.soundEffects,true);
+ assert.equal(attrs.get('aria-checked'),'true');
+ assert.equal(rendered,0);
  f.liquidSwitchDown(ev(10,20));
  f.liquidSwitchMove(ev(13,95));
+ assert.equal(classList.contains('is-pressed'),false,'vertical scroll cancels stretched thumb');
  f.liquidSwitchFinish(ev(13,95));
- assert.equal(stored,2,'vertical scroll cannot flip a switch');
+ assert.equal(stored,3,'vertical scroll cannot toggle the switch');
 });
-
+test('iOS-style switches have dedicated thumb physics and respect motion settings',()=>{
+ assert.match(css,/\.switch\[role="switch"\]\.is-pressed\{/);
+ assert.match(css,/--switch-thumb-width:30px/);
+ assert.match(css,/\.switch\[role="switch"\]\.is-dragging::after/);
+ assert.match(css,/transform:translate3d\(var\(--switch-thumb-x\),0,0\)/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(app,/if\(target\.closest\('\.switch\[role="switch"\]'\)\)return;/);
+ assert.match(app,/case'toggleSound':commitLiquidSwitch\(target/);
+ assert.match(app,/case'toggleHaptics':commitLiquidSwitch\(target/);
+});
 test('finger-up transform is committed before the click, never briefly returning to the old tab',()=>{
  const h=harness('schedule');
  h.selectors.liquidPointerDown(h.event(0,40,20));

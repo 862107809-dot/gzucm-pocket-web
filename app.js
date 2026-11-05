@@ -175,8 +175,8 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const nav=document.querySelector('#app .bottom-nav');
  if(nav?.classList?.contains?.('is-dock-settling')||nav?.classList?.contains?.('is-dock-dropping')){
   nav.addEventListener?.('animationend',event=>{
-   if(event.animationName==='pocketDockSettle')nav.classList?.remove?.('is-dock-settling');
-   if(event.animationName==='pocketDockDrop')nav.classList?.remove?.('is-dock-dropping');
+   if(['pocketDockSettle','pocketDockClickConfirm'].includes(event.animationName))nav.classList?.remove?.('is-dock-settling');
+   if(['pocketDockDrop','pocketDockDragReturn'].includes(event.animationName))nav.classList?.remove?.('is-dock-dropping');
   });
  }
  const glass=nav?.querySelector('.bottom-liquid-indicator');
@@ -269,8 +269,8 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  void group.offsetWidth;
  group.classList.add(className);
  group.addEventListener?.('animationend',event=>{
-  if(event.animationName==='pocketRailRelease')group.classList.remove('is-rail-releasing');
-  if(event.animationName==='pocketRailDrop')group.classList.remove('is-rail-dropping');
+  if(['pocketRailRelease','pocketDockClickConfirm'].includes(event.animationName))group.classList.remove('is-rail-releasing');
+  if(['pocketRailDrop','pocketDockDragReturn'].includes(event.animationName))group.classList.remove('is-rail-dropping');
  },{once:true});
 }
 function liquidSelectorId(group){
@@ -359,8 +359,8 @@ function enhanceLiquidSelectors(root,previous=new Map()){
    const landing=pendingHorizontalRailLanding.dragged?'is-rail-dropping':'is-rail-settling';
    group.classList.add(landing);
    group.addEventListener?.('animationend',event=>{
-    if(event.animationName==='pocketRailSettle')group.classList.remove('is-rail-settling');
-    if(event.animationName==='pocketRailDrop')group.classList.remove('is-rail-dropping');
+    if(['pocketRailSettle','pocketDockClickConfirm'].includes(event.animationName))group.classList.remove('is-rail-settling');
+    if(['pocketRailDrop','pocketDockDragReturn'].includes(event.animationName))group.classList.remove('is-rail-dropping');
    },{once:true});
   }
  }
@@ -1518,7 +1518,7 @@ function animateDockRelease(nav){
  void nav.offsetWidth;
  nav.classList?.add?.('is-dock-releasing');
  nav.addEventListener?.('animationend',event=>{
-  if(event.animationName==='pocketDockRelease')nav.classList?.remove?.('is-dock-releasing');
+  if(['pocketDockRelease','pocketDockClickConfirm'].includes(event.animationName))nav.classList?.remove?.('is-dock-releasing');
  },{once:true});
 }
 function animateDockDrop(nav){
@@ -1527,7 +1527,7 @@ function animateDockDrop(nav){
  void nav.offsetWidth;
  nav.classList?.add?.('is-dock-dropping');
  nav.addEventListener?.('animationend',event=>{
-  if(event.animationName==='pocketDockDrop')nav.classList?.remove?.('is-dock-dropping');
+  if(['pocketDockDrop','pocketDockDragReturn'].includes(event.animationName))nav.classList?.remove?.('is-dock-dropping');
  },{once:true});
 }
 function bottomSwipeDown(event){

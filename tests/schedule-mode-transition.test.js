@@ -195,6 +195,41 @@ test('older iPad browsers use a CSS zoom-in fallback instead of direct content j
  assert.match(css,/\.page\.page-schedule\.schedule-soft-arrival\{animation-duration:\.18s!important;\}/);
 });
 
+test('fixed header uses one shared layout in week/month and keeps the switch static',()=>{
+ assert.match(app,/function fixedScheduleHeader\(\)\{return \x60<div class="compact-month-header schedule-fixed-header"/);
+ assert.match(app,/state\.prefs\.scheduleLayout==='original'\?heading\('YOUR TIMETABLE'/);
+ assert.match(app,/state\.prefs\.scheduleLayout==='original'\?'<div class="compact-month-header"/);
+ assert.match(app,/const fixedLayout=state\.prefs\.scheduleLayout!=='original'/);
+ assert.match(app,/const outgoingTarget=fixedLayout\?pageRoot\?\.querySelector\?\.\('\.schedule-transition-content'\):pageRoot/);
+ assert.match(app,/const incomingTarget=fixedLayout\?pageRoot\.querySelector\?\.\('\.schedule-transition-content'\):pageRoot/);
+ const responsive=css.slice(css.indexOf('/* STABLE SIDE-BY-SIDE TIMETABLE COMPARISON v3'));
+ assert.match(responsive,/\.page-schedule \.schedule-fixed-header\{/);
+ assert.match(responsive,/min-height:66px/);
+ assert.match(responsive,/\.schedule-fixed-header \.schedule-view-switch\{/);
+ assert.match(responsive,/@media\(min-width:901px\)/);
+ assert.match(responsive,/@media\(max-width:600px\)/);
+});
+
+test('both timetable layout variants can be compared in Settings and remembered at restart',()=>{
+ assert.match(app,/scheduleLayout:'fixed',\.\.\.saved\(PREF,\{\}\)/);
+ assert.match(app,/data-choice="scheduleLayout"/);
+ assert.match(app,/if\(kind==='scheduleLayout'\)return \[/);
+ assert.match(app,/value:'original',label:en\?'Original layout':'原版布局'/);
+ assert.match(app,/value:'fixed',label:en\?'Fixed switch':'固定按钮版'/);
+ assert.match(app,/function selectScheduleLayout\(value\)\{/);
+ assert.match(app,/state\.prefs\.scheduleLayout=value;\s*storePrefs\(\)/);
+ assert.match(app,/case'selectScheduleLayout':selectScheduleLayout\(target\.dataset\.value\)/);
+});
+
+test('the original variant retains the previous shorter timing and page-level animation',()=>{
+ assert.match(app,/const scale=fixedLayout\?/);
+ assert.match(app,/width>=900\?\.987:width>=600\?\.980:\.973/);
+ assert.match(app,/width>=900\?80:95/);
+ assert.match(app,/width>=900\?165:width>=600\?180:195/);
+ assert.match(app,/const incoming=fixedLayout\?\[/);
+ assert.match(app,/easing:fixedLayout\?'cubic-bezier\(\.24,\.68,\.30,1\)'/);
+});
+
 test('timetable optimization leaves all three glass options, weeks and month grid intact',()=>{
  assert.match(app,/data-schedule-content="week"/);
  assert.match(app,/data-schedule-content="month"/);

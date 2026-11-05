@@ -1126,29 +1126,103 @@
 }
 
 
-/* Native-looking reversible binary switch: tap or slide the glass thumb. */
+/* iOS Settings switch: the 52×32 track does not reflow the Settings row.
+ * The 24px glossy thumb immediately stretches to 30px on pointerdown,
+ * directly follows horizontal drags and springs back to 24px on release.
+ * Rendered as a real button role=switch for keyboard and VoiceOver support. */
 .switch[role="switch"]{
+ --switch-thumb-x:0px;
+ --switch-thumb-width:24px;
+ box-sizing:border-box;
+ display:block;
+ position:relative;
+ flex:0 0 52px;
+ width:52px;height:32px;
+ padding:4px;
+ border-radius:999px;
+ border:1px solid rgba(37,87,58,.10);
+ background:var(--readable-control);
+ overflow:visible;
  cursor:pointer;
  touch-action:pan-y;
+ -webkit-user-select:none;
+ user-select:none;
  -webkit-tap-highlight-color:transparent;
- transition:background .27s var(--motion-soft),box-shadow .27s var(--motion-soft);
- box-shadow:inset 0 1px 1px rgba(15,53,31,.10),0 2px 9px var(--readable-shadow);
+ scale:1;
+ transition:
+  scale .13s cubic-bezier(.2,.86,.23,1.12),
+  background-color .19s ease,
+  border-color .2s ease,
+  box-shadow .23s ease;
+ box-shadow:inset 0 1px 2px rgba(21,61,41,.13),0 3px 10px var(--readable-shadow);
+}
+.switch[role="switch"].on{
+ --switch-thumb-x:20px;
+ background:var(--accent);
+ border-color:rgba(255,255,255,.12);
+}
+.switch[role="switch"]::before{
+ content:"";
+ position:absolute;
+ inset:1px;
+ border-radius:inherit;
+ pointer-events:none;
+ background:linear-gradient(145deg,rgba(255,255,255,.26),transparent 58%);
+ opacity:.6;
 }
 .switch[role="switch"]::after{
- transition:transform .31s var(--motion-fluid),box-shadow .27s var(--motion-soft);
- box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 6px rgba(0,0,0,.18);
+ content:"";
+ display:block;
+ position:relative;
+ left:0;top:0;
+ box-sizing:border-box;
+ width:var(--switch-thumb-width);
+ height:24px;
+ border-radius:999px;
+ background:linear-gradient(157deg,#fff 5%,#fbfdfb 65%,#eaf0eb 100%);
+ border:1px solid rgba(255,255,255,.85);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.9),
+            0 2px 6px rgba(0,0,0,.18),
+            0 1px 2px rgba(0,0,0,.09);
+ transform:translate3d(var(--switch-thumb-x),0,0);
+ transition:
+  transform .31s cubic-bezier(.22,1.2,.28,1),
+  width .20s cubic-bezier(.17,.85,.26,1.1),
+  box-shadow .20s ease;
+ will-change:transform;
 }
-.switch.preview-on{background:var(--accent)!important;}
-.switch.preview-on::after{transform:translateX(18px) scale(1.055);}
-.switch.preview-off{background:var(--readable-control)!important;}
-.switch.preview-off::after{transform:translateX(0) scale(1.055);}
+.switch[role="switch"].is-pressed{
+ --switch-thumb-width:30px;
+ scale:1.065;
+ border-color:rgba(255,255,255,.58);
+ box-shadow:inset 0 1px 2px rgba(21,61,41,.13),
+            0 7px 19px rgba(22,87,49,.20),
+            0 0 0 3px rgba(127,205,160,.10);
+}
+.switch[role="switch"].on.is-pressed{--switch-thumb-x:14px;}
+.switch[role="switch"].is-pressed::after{
+ box-shadow:inset 0 1px 0 #fff,0 3px 11px rgba(0,0,0,.22);
+}
+/* Inline --switch-thumb-x is applied only while dragging. The native-sized
+ * 14px stretched-thumb lane is never exceeded, even beyond the bar edges. */
+.switch[role="switch"].is-dragging::after{
+ transition:width .18s cubic-bezier(.17,.85,.26,1.1),box-shadow .18s ease;
+}
+.switch[role="switch"].preview-on{
+ background:var(--accent)!important;
+}
+.switch[role="switch"].preview-off{
+ background:var(--readable-control)!important;
+}
 .switch[role="switch"]:focus-visible{
- outline:2px solid var(--accent);outline-offset:3px;
+ outline:2px solid var(--accent);outline-offset:4px;
 }
 @media(prefers-reduced-motion:reduce){
  .switch[role="switch"],.switch[role="switch"]::after{
   transition:none!important;
+  animation:none!important;
  }
+ .switch[role="switch"].is-pressed{scale:1;}
 }
 
 

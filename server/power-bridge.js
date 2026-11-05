@@ -8,6 +8,7 @@
 const crypto=require('node:crypto');
 const MAX_LINKS=150,LINK_TTL=30*86400000,PENDING_TTL=5*60000;
 const links=new Map(),pending=new Map();
+const starts=[];
 const hash=value=>crypto.createHash('sha256').update(String(value)).digest('hex');
 const dayOk=value=>{
  if(!/^20\d{2}-\d{2}-\d{2}$/.test(String(value||'')))return false;
@@ -22,6 +23,9 @@ function prune(){
 function error(message,status=400){return Object.assign(Error(message),{status});}
 function create(){
  prune();
+ const now=Date.now();while(starts.length&&starts[0]<now-60000)starts.shift();
+ if(starts.length>=30)throw error('配对码生成过于频繁，请稍后再试',429);
+ starts.push(now);
  if(links.size>=MAX_LINKS)throw error('同时连接的网站较多，请稍后重试',429);
  let code;do{code=crypto.randomBytes(9).toString('base64url').toUpperCase();}while(pending.has(code));
  const id=crypto.randomBytes(24).toString('base64url');
@@ -87,7 +91,8 @@ function push(token,payload){
  const snapshot=clean(payload);
  if(entry.lastRoom!==snapshot.power.roomLabel||entry.lastUnit!==snapshot.power.unit)entry.history=[];
  entry.lastRoom=snapshot.power.roomLabel;entry.lastUnit=snapshot.power.unit;
- const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(snapshot.power.updatedAt));
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(snapshot.power.updatedAt));
+ const date=parts.find(x=>x.type==='year').value+'-'+parts.find(x=>x.type==='month').value+'-'+parts.find(x=>x.type==='day').value;
  entry.history=entry.history.filter(x=>x.date!==date);
  entry.history.push({date,balance:snapshot.power.balance,at:snapshot.power.updatedAt});
  entry.history=entry.history.sort((a,b)=>a.at.localeCompare(b.at)).slice(-90);

@@ -48,14 +48,15 @@ function harness(){
  const flush=()=>{for(const [id,fn] of [...timers]){timers.delete(id);fn();}};
  return {f,makeSurface,event,flush};
 }
-test('a tapped control receives optical feedback without resizing',()=>{
+test('a tapped button compresses gently with a nonlinear spring on release',()=>{
  const h=harness(),b=h.makeSurface();
  h.f.wholeSurfacePressDown(h.event(b.target));
  assert.equal(b.classes.has('pocket-full-press'),true);
- const effective=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
- assert.match(effective,/#app \.pocket-full-press,[\s\S]*?animation:none!important;[\s\S]*?scale:1!important;/);
+ const effective=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(effective,/#app \.pocket-full-press:not\(\.pocket-full-card\)\{\s*scale:\.968!important;/);
+ assert.match(effective,/@keyframes pocketButtonSoftSpring\{/);
 });
-test('button release shows short shadow feedback without a return spring',()=>{
+test('button release creates gentle nonlinear spring and briefly retains its class',()=>{
  const h=harness(),b=h.makeSurface();
  h.f.wholeSurfacePressDown(h.event(b.target));
  assert.equal(b.classes.has('pocket-full-press'),true);
@@ -68,11 +69,28 @@ test('button release shows short shadow feedback without a return spring',()=>{
 test('cards stay at a fixed size while tapped',()=>{
  const h=harness(),c=h.makeSurface('card');
  h.f.wholeSurfacePressDown(h.event(c.target));
- assert.equal(c.classes.has('pocket-full-card'),true);
+ assert.equal(c.classes.has('pocket-full-card'),false,'outer card must not receive press styling');
+ assert.equal(c.classes.has('pocket-full-press'),false,'outer card must not shrink');
  h.f.wholeSurfacePressEnd(h.event(c.target));
+ assert.equal(c.classes.has('pocket-full-release'),false,'outer card must not rebound');
  h.flush();
- assert.equal(c.classes.has('pocket-full-card'),false);
 });
+test('buttons inside a card still rebound, but the surrounding card itself never does',()=>{
+ const h=harness();
+ const button=h.makeSurface('button');
+ h.f.wholeSurfacePressDown(h.event(button.target));
+ assert.equal(button.classes.has('pocket-full-press'),true);
+ h.f.wholeSurfacePressEnd(h.event(button.target));
+ assert.equal(button.classes.has('pocket-full-release'),true);
+ const card=h.makeSurface('card');
+ h.f.wholeSurfacePressDown(h.event(card.target));
+ assert.equal(card.classes.has('pocket-full-press'),false);
+ assert.equal(card.classes.has('pocket-full-card'),false);
+ const effective=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(effective,/\.settings-grid,\.setting-item,\.schedule-day,\.schedule-layout,\.month-compact/);
+ h.flush();
+});
+
 test('dialogs, popovers, Dock and disabled controls are excluded',()=>{
  for(const exclude of [{popup:true},{dock:true},{disabled:true},{outside:true},{input:true}]){
   const h=harness(),b=h.makeSurface('button',exclude);
@@ -95,14 +113,15 @@ test('press only follows the primary pointer',()=>{
  h.f.wholeSurfacePressDown({...h.event(b.target),isPrimary:false});
  assert.equal(b.classes.has('pocket-full-press'),false);
 });
-test('final material overrides old scale keyframes and respects reduced motion',()=>{
+test('final material restores only button springs, while card frames and reduced-motion remain still',()=>{
  assert.match(css,/#app \.pocket-full-press\{/);
- const effective=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
- assert.match(effective,/#app \.pocket-full-press,/);
- assert.match(effective,/animation:none!important;/);
- assert.match(effective,/transform:none!important;/);
- assert.match(effective,/#app \.pocket-full-card\.pocket-full-release/);
+ const effective=css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1'));
+ assert.match(effective,/#app \.pocket-full-press:not\(\.pocket-full-card\)/);
+ assert.match(effective,/#app \.pocket-full-release:not\(\.pocket-full-card\)/);
+ assert.match(effective,/@keyframes pocketButtonSoftSpring/);
+ assert.match(css,/#app \.pocket-full-card\.pocket-full-release\{[\s\S]*?animation:none!important;/);
  assert.match(effective,/prefers-reduced-motion:reduce/);
+ assert.match(app,/if\(surface\.matches\?\.\('\.card,\.agenda-row,\.hero-card,\.calendar-visual,\.month-calendar'\)\)return;/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(app,/const WHOLE_SURFACE_POPUP=/);
  assert.match(css,/\.bottom-nav\.is-dock-pressed\{/);

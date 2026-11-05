@@ -619,10 +619,63 @@ function gradeRows(){if(state.gradeTab==='course'){
  if(state.gradeTab==='level'){const rows=state.data.levels||[];return rows.length?rows.map(g=>`<div class="grade-row"><div class="grade-left"><strong>${E(g.name)}</strong><span>${E(g.term||'')} · ${E(g.level||'')}</span><div class="course-detail-row">${(g.parts||[]).map(p=>`<span class="course-tag">${E(Array.isArray(p)?p.join(' '):p.label+' '+p.value)}</span>`).join('')}</div></div><div class="score">${E(g.total)}</div></div>`).join(''):empty('暂无考级记录','导入自己的成绩数据后即可查看');}
  const rows=state.data.fitness||[];return rows.length?rows.map(g=>`<div class="grade-row"><div class="grade-left"><strong>${E(g.term||'体测')}</strong><span>${E(g.level)}</span><div class="course-detail-row">${(g.items||[]).map(x=>`<span class="course-tag">${E(x.label)} ${E(x.value)}</span>`).join('')}</div></div><div><div class="score">${E(g.total)}</div><div class="score-sub">体测总分</div></div></div>`).join(''):empty('暂无体测记录','导入自己的体测数据后即可查看');}
 function creditBreakdown(){const grades=(state.data.grades||[]).filter(g=>g.passed);const total=grades.reduce((a,g)=>a+(+g.credit||0),0);const elective=grades.filter(g=>!countedGrade(g));const categorised=new Map();(state.creditMode==='total'?grades:elective).forEach(g=>{const c=state.creditMode==='total'?(g.category||'未分类'):(g.classify||'未分类');categorised.set(c,(categorised.get(c)||0)+(+g.credit||0));});const entries=[...categorised].sort((a,b)=>b[1]-a[1]);return `<div class="card-heading"><span>学分构成</span><span class="segmented"><button data-credit="total" class="${state.creditMode==='total'?'active':''}">总学分</button><button data-credit="elective" class="${state.creditMode==='elective'?'active':''}">公选 / 任选</button></span></div><div class="metric-value">${(state.creditMode==='total'?total:elective.reduce((a,g)=>a+(+g.credit||0),0)).toFixed(1)}<span class="tiny muted"> 学分</span></div><div class="overview-list mt-20">${entries.map(([name,credit],idx)=>`<div><div class="overview-item"><span class="overview-dot" style="background:${palette[idx%9]}"></span><span class="overview-name">${E(name)}</span><span class="overview-count">${credit.toFixed(1)}</span></div><div class="progress-track"><div class="progress-fill" style="background:${palette[idx%9]};width:${Math.min(100,credit/(state.creditMode==='elective'?Math.max(4,...entries.map(x=>x[1])):Math.max(total,1))*100)}%"></div></div></div>`).join('')||empty('暂无学分','')}</div>`;}
-function powerPage(){const p=powerInfo(), data=p.data, days=state.data.powerDaily||[];return `${heading('DORM ENERGY','点亮宿舍的每一天。','宿舍电量与用电趋势：支持尝试读取一卡通真实接口，也可以打开学校官方页面直接查询。')}
- <div class="two-col"><div class="power-hero"><div><div class="power-label">当前剩余电量 ${data?.source==='manual'?'· 手动记录':isDemo()?'· 演示示例':data?.source==='ecard-live'?'· 官方接口实时读取':'· 本地记录'}</div><div class="power-value">${data?(+data.balance).toFixed(2):'--'}<small> ${E(data?.unit||'度')}</small></div><div class="power-label">${E(data?.roomLabel||'尚未绑定宿舍')}</div></div><div class="power-foot"><span>${p.remaining===null?'暂无日均用电数据':`按近 7 天日均计算，约可使用 ${p.remaining.toFixed(1)} 天`}</span>${state.ecardReady?`<button class="hero-button" data-action="syncPower">${I('refresh',14)} 同步实时电量</button>`:`<a class="hero-button" href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">${I('link',14)} 学校官网查电费</a>`}</div></div><div class="card"><div class="card-heading">${I('chart',18)} 用电概览</div><div class="metrics-mobile two-col">${metric('近 7 天日均',p.avg?`${p.avg.toFixed(2)}°`:'—','单位：度 / 天','zap')}${metric('预计可用',p.remaining!==null?`${p.remaining.toFixed(1)} 天`:'—','仅供参考','clock')}</div><div class="note mt-20">用电预测由最近记录推算，仅供参考。只有标注“官方接口实时读取”的余额属于同步结果；演示和手动记录均不代表学校实时余额。</div></div></div>
- <div class="card mt-20"><div class="card-heading">${I('shield',18)} 官方一卡通实时查询</div><p class="muted tiny">学校一卡通有独立登录态，Safari 不允许本站读取你在学校网页上的 Cookie。当前网站尚未获得一卡通服务器端授权，请直接打开下方学校官方页面查询实时余额。本站不会把未认证的数据伪装成实时查询。</p><div class="inline" style="gap:10px;flex-wrap:wrap"><a class="btn primary" href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">${I('link',15)} 打开学校实时电费页</a><button class="btn" data-action="editPower">${I('edit',14)} 记录查询结果</button></div></div>
- ${sectionTitle('最近用电趋势',state.ecardReady?`<button class="small-action" data-action="syncPower">刷新实时数据 ${I('refresh',14)}</button>`:`<button class="small-action" data-action="editPower">记录查询结果 ${I('edit',14)}</button>`)}<div class="two-col">${card(`<div class="card-heading">近 7 天用电量 <span class="muted tiny">单位：度</span></div>${powerChart(days.slice(-7))}`,'trend-card')}${card(`<div class="card-heading">每日明细 <span class="muted tiny">最近 ${Math.min(days.length,7)} 天</span></div>${days.length?days.slice(-7).reverse().map(d=>`<div class="daily-row"><div><strong>${E(d.date)}</strong><div class="tiny muted">剩余 ${Number.isFinite(+d.remain)?(+d.remain).toFixed(2):'—'} 度</div></div><strong>-${(+d.usage||0).toFixed(2)} 度</strong></div>`).join(''):empty('暂无用电明细','可以手动添加每日记录')}`)}</div><div class="note warning mt-20"><strong>关于真实电费同步</strong>：本站已对接校方只读数据格式，但是否能在站内自动同步取决于获得一卡通专用的服务器端授权。当前尚无稳定的独立认证回调；可以直接在<a href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">校方实时电费页面</a>查看，网站内的手动记录不等于官方数据。</div>`;}
+function powerPage(){
+ const p=powerInfo(),data=p.data,days=p.recent7||[];
+ const live=data?.source==='ecard-live',pageBalance=data?.source==='ecard-page';
+ const manual=data?.source==='manual';
+ const sourceLabel=live?'官方接口实时读取':pageBalance?'官网页面读取（待核验）':manual?'手动记录':isDemo()?'演示示例':'尚无有效电量';
+ const stamp=Number.isFinite(Date.parse(data?.updatedAt||''))?
+  fmt(new Date(data.updatedAt),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'暂无更新时间';
+ const balance=p.balance===null?'--':p.balance.toFixed(2);
+ const forecast=p.available?Math.max(0,p.remainingDays).toFixed(1):'—';
+ const forecastHint=p.available?
+  ('预计约在 '+p.predictedDate+' 耗尽 · '+(p.quality==='better'?'记录较完整':'样本有限')+'，仅供参考'):
+  (p.reason||'需要有效的余额及最近用电记录');
+ const avg=p.sampleDays?(p.average7??0).toFixed(2):'—';
+ const statusText=state.ecardReady?'已检测到一卡通服务端会话，可尝试实时同步':'本站尚未取得一卡通专用授权，使用学校官网或手动记录';
+ const warnings=state.powerHistoryStatus==='partial'?'部分用电明细获取失败，预测以已成功读取的记录为准。':
+  state.powerHistoryStatus==='unavailable'?'未能同步用电明细，可能暂时无法估算可用天数。':'';
+ return `${heading('DORM ENERGY','点亮宿舍的每一天。','宿舍实时电量、用电统计与可用天数预测；仅对已确认的数据进行计算。')}
+ <div class="two-col">
+  <div class="power-hero">
+   <div><div class="power-label">当前剩余电量 · ${E(sourceLabel)}</div><div class="power-value">${balance}<small> 度</small></div>
+   <div class="power-label">${E(data?.roomLabel||'尚未绑定宿舍')}</div>
+   <div class="tiny" style="opacity:.86;margin-top:12px">上次更新：${E(stamp)}</div></div>
+   <div class="power-foot"><span>${E(statusText)}</span>
+    <button type="button" class="hero-button" data-action="syncPower">${I('refresh',14)} ${state.powerStatus==='loading'?'正在同步…':'刷新官方电量'}</button>
+   </div>
+  </div>
+  <section class="card">
+   <div class="card-heading">${I('clock',18)} 预计可用天数</div>
+   <div class="metric-value" style="font-size:clamp(32px,5vw,50px)">${forecast}<span class="tiny muted"> 天</span></div>
+   <p class="muted" style="line-height:1.75;margin-top:12px">${E(forecastHint)}</p>
+   <div class="note mt-12">按最近 7 个日历日内 ${p.sampleDays} 天有效记录的日均用电量计算，未考虑未来天气、空调使用变化及充电充值等因素。</div>
+  </section>
+ </div>
+ <div class="metrics-mobile three-col mt-20">
+  ${metric('近7天已记录日均',avg+' <small style="font-size:13px">度 / 天</small>','缺失日期不按0度计入','zap')}
+  ${metric('近7天记录用电',p.sampleDays?p.sum7.toFixed(2)+' <small style="font-size:13px">度</small>':'—',p.sampleDays+' / 7 天有记录','chartbar')}
+  ${metric('近30天记录天数',p.recent30.length+' <small style="font-size:13px">天</small>','仅统计有效的每日数据','calendar')}
+ </div>
+ ${state.powerError?'<div class="note warning mt-20">'+E(state.powerError)+'</div>':''}
+ ${warnings?'<div class="note warning mt-20">'+E(warnings)+'</div>':''}
+ <div class="card mt-20"><div class="card-heading">${I('shield',18)} 查询与数据来源</div>
+  <p class="muted tiny">${E(statusText)}。本站 Cookie 与学校一卡通 Cookie 不同；只有后台持有经校方授权的有效一卡通会话，才能自动读取官方数据。不会在本站收集学校密码或要求粘贴原始 Cookie。</p>
+  <div class="inline" style="gap:10px;flex-wrap:wrap">
+   <button class="btn primary" type="button" data-action="syncPower">${I('refresh',15)} 查询实时电量</button>
+   <button class="btn" type="button" data-action="editPower">${I('edit',14)} 记录用电</button>
+   <a class="btn" href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">${I('link',15)} 学校官方电费页</a>
+  </div>
+ </div>
+ ${sectionTitle('近7天用电趋势',`<button class="small-action" data-action="syncPower">刷新数据 ${I('refresh',14)}</button>`)}
+ <div class="two-col">
+  ${card('<div class="card-heading">每日用电折线 <span class="muted tiny">单位：度</span></div>'+powerChart(days),'trend-card')}
+  ${card('<div class="card-heading">用电明细 <span class="muted tiny">最近 '+days.length+' 天</span></div>'+
+   (days.length?days.slice().reverse().map(d=>'<div class="daily-row"><div><strong>'+E(d.date)+'</strong><div class="tiny muted">剩余 '+(d.remain===null?'未提供':d.remain.toFixed(2)+' 度')+'</div></div><strong>-'+d.usage.toFixed(2)+' 度</strong></div>').join(''):
+   empty('暂无有效用电明细','读取官方用电记录，或在“记录用电”中添加至少3天的数据')))}
+ </div>
+ <div class="note mt-20">预计可用天数是基于有效历史用电的统计推算，不是学校官方承诺；余额若超过48小时未更新，将暂停展示预测。日均值只使用有实际记录的日期，不会把缺失记录当作零用电。</div>`;
+}
 function powerChart(rows){if(!rows.length)return empty('还没有趋势记录','记录至少一天的电量即可显示趋势','chart');const vals=rows.map(x=>Math.max(0,+x.usage||0)),max=Math.max(1,...vals)*1.3;const xs=vals.map((_,i)=>40+i*360/Math.max(1,vals.length-1)),ys=vals.map(v=>170-v/max*130);const poly=xs.map((x,i)=>`${x},${ys[i]}`).join(' ');const area=`M ${xs[0]} 170 L ${xs.map((x,i)=>`${x} ${ys[i]}`).join(' L ')} L ${xs.at(-1)} 170 Z`;return `<svg class="power-linechart" viewBox="0 0 440 220" role="img" aria-label="最近用电量折线趋势图"><defs><linearGradient id="chartG" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#76ad8f" stop-opacity=".38"/><stop offset="1" stop-color="#76ad8f" stop-opacity="0"/></linearGradient></defs><path class="chart-axis" d="M40 40H410M40 105H410M40 170H410" fill="none"/><path d="${area}" fill="url(#chartG)"/><polyline points="${poly}" fill="none" stroke="#71ab89" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>${xs.map((x,i)=>`<circle cx="${x}" cy="${ys[i]}" r="4" fill="#50886d" stroke="white" stroke-width="2"/>`).join('')}<text class="chart-label" x="3" y="43">${max.toFixed(1)}</text><text class="chart-label" x="15" y="173">0</text>${xs.map((x,i)=>`<text class="chart-label" x="${x}" y="194" text-anchor="middle">${E(String(rows[i].date).slice(5))}</text>`).join('')}</svg>`;}
 function settingsPage(){return `${heading('YOUR SPACE','让它更像你的校园生活。','个人偏好、数据管理与本地连接。所有演示数据均为虚构示例。')}
  <div class="settings-grid"><div class="grid-gap"><div class="card"><div class="card-heading">${I('sun',18)} 个性化外观</div><div class="setting-item"><div><div class="setting-label">外观模式</div><div class="setting-hint">跟随 iOS / macOS 系统或手动切换</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="theme" aria-haspopup="menu" aria-expanded="false">${state.prefs.theme==='system'?'跟随系统':state.prefs.theme==='light'?'浅色':'深色'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">玻璃交互音效</div><div class="setting-hint">滑过导航选项播放轻柔反馈音；不加载外部音频</div></div><button type="button" class="switch ${state.prefs.soundEffects===false?'':'on'}" role="switch" aria-checked="${state.prefs.soundEffects!==false}" aria-label="玻璃交互音效" data-action="toggleSound"></button></div><div class="setting-item"><div><div class="setting-label">触觉反馈</div><div class="setting-hint">${window.GZUCM_HAPTICS?.supported()?'支持震动的手机或平板可获得轻触反馈':'此浏览器不支持网页震动；设置仍可保留'}</div></div><button type="button" class="switch ${state.prefs.hapticEffects===false?'':'on'}" role="switch" aria-checked="${state.prefs.hapticEffects!==false}" aria-label="触觉反馈" data-action="toggleHaptics"></button></div><div class="setting-item"><div><div class="setting-label">默认启动页</div><div class="setting-hint">下次进入时打开的页面</div></div><button type="button" class="safari-select" data-action="settingChoice" data-choice="start" aria-haspopup="menu" aria-expanded="false">${({today:'今日',schedule:'课表',grades:'成绩',power:'电费'})[state.prefs.start]||'今日'}${I('chevronRight',14)}</button></div><div class="setting-item"><div><div class="setting-label">自定义课表背景</div><div class="setting-hint">仅存储在当前浏览器内</div></div><button class="btn small" data-action="wallpaper">${I('upload')} 选择图片</button></div><div class="setting-item"><div><div class="setting-label">背景透明度</div><div class="setting-hint">调整课表图片显示强度</div></div><input class="range" id="opacity-range" type="range" min="0" max="1" step="0.05" value="${state.prefs.wallOpacity}" aria-label="课表背景透明度" /></div>${state.prefs.wallpaper?`<button class="btn small ghost" data-action="clearWallpaper">移除课表背景</button>`:''}</div><div class="card"><div class="card-heading">${I('shield',18)} 隐私与安全</div><div class="note"><strong>数据与隐私</strong><p class="mb-0">${PUBLIC?'公开网站不默认保存学业数据到浏览器 localStorage；服务器内存短暂保存你的教务会话，学校密码仅在官方页面填写。云服务商可能处理访问信息，请勿在公共设备使用。':'私人版本使用浏览器 localStorage 缓存数据，并在本地 Node 服务进程内保存学校会话。'}</p></div><div class="setting-item"><div><div class="setting-label">清除本地数据</div><div class="setting-hint">恢复演示数据，不会删除官方账号信息</div></div><button class="btn small danger" data-action="reset">清除</button></div></div></div>

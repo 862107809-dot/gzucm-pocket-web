@@ -1651,6 +1651,49 @@
  .day-strip .day-tab{transition:none!important;}
 }
 
+
+/* Physical-centre anchoring: margin-auto fixes the Dock at the viewport
+ * centre before visual scaling. No translateX(-50%) participates in its
+ * transform composition; left and right edges grow by equal amounts. */
+@media(max-width:900px){
+ .bottom-nav{
+  left:0!important;
+  right:0!important;
+  margin-inline:auto!important;
+  transform:none!important;
+  transform-origin:50% 50%!important;
+  scale:1;
+ }
+ .bottom-nav .bottom-liquid-indicator{
+  transform-origin:50% 50%;
+  scale:1;
+  transition:
+   transform .65s var(--motion-fluid),
+   width .62s var(--motion-soft),
+   scale .30s var(--motion-press);
+ }
+ .bottom-nav.is-dock-pressed .bottom-liquid-indicator{
+  scale:1.085;
+ }
+ .bottom-nav.is-dock-dragging .bottom-liquid-indicator{
+  scale:1.105;
+ }
+ .bottom-nav.is-dock-releasing .bottom-liquid-indicator,
+ .bottom-nav.is-dock-settling .bottom-liquid-indicator{
+  animation:pocketDockLensReturn .55s var(--motion-fluid) both;
+ }
+ .bottom-nav .bottom-liquid-indicator.is-dragging,
+ .bottom-nav .bottom-liquid-indicator.is-instant{
+  transition:scale .30s var(--motion-press)!important;
+ }
+}
+@keyframes pocketDockLensReturn{
+ 0%{scale:1.085;}
+ 44%{scale:.987;}
+ 75%{scale:1.009;}
+ 100%{scale:1;}
+}
+
 /* Dock-matched horizontal selector rails.
  * The WHOLE frosted bar expands from its geometric centre on pointerdown.
  * The liquid lens follows the finger while the rail never reflows its hit area.
@@ -1728,6 +1771,50 @@
  transform-origin:center;
  transition:transform .10s ease-out;
 }
+
+/* Horizontal selectors share the Dock's center-growing optical capsule.
+ * A touch enlarges the whole segment's lens, without animating its width
+ * from the left edge or interfering with the finger-following translation. */
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight{
+ transform-origin:50% 50%;
+ scale:1;
+ transition:
+  transform .61s cubic-bezier(.20,.96,.32,1),
+  width .59s cubic-bezier(.22,1,.36,1),
+  height .59s cubic-bezier(.22,1,.36,1),
+  scale .30s var(--motion-press);
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-pressed
+ > .liquid-choice-highlight{scale:1.09;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-dragging
+ > .liquid-choice-highlight{scale:1.105;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-releasing
+ > .liquid-choice-highlight,
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-settling
+ > .liquid-choice-highlight{
+ animation:pocketRailLensReturn .56s var(--motion-fluid) both;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight.is-instant,
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight.is-dragging{
+ transition:scale .30s var(--motion-press)!important;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > button:active,
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > button.is-pressed{
+ transform:scale(1.075)!important;
+ filter:brightness(1.08);
+}
+@keyframes pocketRailLensReturn{
+ 0%{scale:1.09;}
+ 44%{scale:.988;}
+ 75%{scale:1.009;}
+ 100%{scale:1;}
+}
+
 @media(prefers-reduced-motion:reduce){
  :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail{
   scale:1!important;
@@ -1744,5 +1831,22 @@
  :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::before,
  :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail::after{
   transition:none!important;
+ }
+}
+
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav .bottom-liquid-indicator,
+ .bottom-nav.is-dock-pressed .bottom-liquid-indicator,
+ .bottom-nav.is-dock-dragging .bottom-liquid-indicator,
+ .bottom-nav.is-dock-releasing .bottom-liquid-indicator,
+ .bottom-nav.is-dock-settling .bottom-liquid-indicator,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail > .liquid-choice-highlight,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-pressed > .liquid-choice-highlight,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dragging > .liquid-choice-highlight,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-releasing > .liquid-choice-highlight,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling > .liquid-choice-highlight{
+  scale:1!important;
+  transition:none!important;
+  animation:none!important;
  }
 }

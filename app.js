@@ -129,6 +129,7 @@ function applyLanguage(){window.GZUCM_I18N?.apply(document.body,state.prefs.lang
 let previousBottomTab=null;
 let liquidMoveFrame=0;
 let liquidGestureSnap=false;
+let dockRemountPulse=false;
 /* Damped harmonic spring: responsive start, smooth velocity decay and a tiny
  * natural settle. Keyframed via Web Animations (available in modern Safari).
  * CSS cubic-bezier remains a fully functional fallback. */
@@ -477,7 +478,7 @@ function render(){
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav class="sidebar-nav-main" aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav class="sidebar-nav-account">${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
 function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn theme-trigger" type="button" title="${state.prefs.language==='en'?'Appearance':'外观模式'}" aria-label="${state.prefs.language==='en'?'Choose light or dark appearance':'选择浅色或深色模式'}" data-action="themeMenu" aria-haspopup="menu" aria-expanded="false">${I(state.prefs.theme==='dark'?'moon':state.prefs.theme==='light'?'sun':(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'moon':'sun'))}</button><button type="button" class="icon-btn settings-trigger" title="设置选项" aria-haspopup="menu" aria-expanded="false" aria-label="打开设置选项" data-action="settingsMenu">${I('settings')}</button></div></header>`;}
-function bottomNav(){return `<nav class="bottom-nav" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
+function bottomNav(){const settle=dockRemountPulse;dockRemountPulse=false;return `<nav class="bottom-nav${settle?' is-dock-settling':''}" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
 function heading(eyebrow,title,sub){return `<div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-sub">${sub}</p>`;}
 function sectionTitle(title,btn=''){return `<div class="section-heading"><h2>${title}</h2>${btn}</div>`;}
 function empty(title,subtitle,ic='calendar'){return `<div class="empty">${I(ic,36)}<strong>${E(title)}</strong><p>${E(subtitle)}</p></div>`;}
@@ -1290,7 +1291,8 @@ function bottomSwipeDown(event){
  const pressed=event.target.closest?.('.bottom-item');
  pressed?.classList?.add?.('is-pressed');
  const layout=bottomSwipeLayout(nav);
- if(!layout)return;
+ if(!layout){pressed?.classList?.remove?.('is-pressed');return;}
+ nav.classList?.add?.('is-dock-pressed');
  armLiquidSound();
  bottomSwipe={pointerId:event.pointerId,nav,glass,layout,pressed,
   startX:event.clientX,startY:event.clientY,
@@ -1301,9 +1303,15 @@ function bottomSwipeMove(event){
  if(!sw||sw.pointerId!==event.pointerId||sw.vertical)return;
  const dx=event.clientX-sw.startX,dy=event.clientY-sw.startY;
  if(!sw.dragging){
-  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.12){sw.vertical=true;return;}
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.12){
+   sw.vertical=true;
+   sw.nav.classList?.remove?.('is-dock-pressed','is-dock-dragging');
+   sw.pressed?.classList?.remove?.('is-pressed');
+   return;
+  }
   if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
   sw.dragging=true;
+  sw.nav.classList?.add?.('is-dock-dragging');
   sw.pressed?.classList?.remove?.('is-pressed');
   sw.glass.classList.add('is-instant','is-dragging');
   sw.glass.classList.remove('is-moving');
@@ -1328,6 +1336,7 @@ function bottomSwipeFinish(event,cancelled=false){
  const sw=bottomSwipe;
  if(!sw||sw.pointerId!==event.pointerId)return;
  bottomSwipe=null;
+ sw.nav.classList?.remove?.('is-dock-pressed','is-dock-dragging');
  sw.pressed?.classList?.remove?.('is-pressed');
  if(sw.frame)cancelAnimationFrame(sw.frame);
  sw.layout.tabs.forEach(tab=>tab.classList.remove('is-scrubbed'));
@@ -1350,6 +1359,7 @@ function bottomSwipeFinish(event,cancelled=false){
   return;
  }
  liquidGestureSnap=true;
+ dockRemountPulse=true;
  navigateBottomModule(next);
 }
 function bottomSwipeClickCapture(event){
@@ -1360,7 +1370,7 @@ function bottomSwipeClickCapture(event){
 }
 function handleClick(event){const target=event.target.closest('[data-view],[data-action],[data-day],[data-course],[data-grade-tab],[data-credit]');if(target&&!target.closest('.modal-card')&&target.dataset.action!=='close')recordDialogOrigin(target);if(!event.target.closest('#popover-root')&&!event.target.closest('[data-action="themeMenu"],[data-action="settingsMenu"],[data-action="settingChoice"]'))hideSafariMenu();if(!target){if(event.target.id==='modal-overlay'){window.GZUCM_HAPTICS?.pulse('close');closeModal();}return;}if(target.matches('a'))event.preventDefault();
  if(target.closest('.liquid-selector,.safari-floating-menu')&&target.matches('button')){armLiquidSound();playLiquidTick();}
- if(target.dataset.view){if(target.closest('.bottom-nav')){armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
+ if(target.dataset.view){if(target.closest('.bottom-nav')){dockRemountPulse=target.dataset.view!==state.view;armLiquidSound();playLiquidTick();}navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
  if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;render();return;}

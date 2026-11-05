@@ -806,7 +806,18 @@ function closeModal(immediate=false){
 let toastTimer=null;
 function toast(text){const root=$('#toast-root');root.innerHTML=`<div class="toast">${E(text)}</div>`;applyLanguage();clearTimeout(toastTimer);toastTimer=setTimeout(()=>root.innerHTML='',2800);}
 function showCourse(key){const s=(state.data.sessions||[]).find(x=>matchesKey(x,key));if(!s)return;openModal('课程详情',`<div class="course-detail-hero"><div class="tiny muted">${E(s.category||'课程')} · 第 ${s.week} 周</div><strong>${E(s.name)}</strong><p>${E(s.content||'教务系统暂无具体授课内容')}</p></div>${[['时间',`${courseDate(s)} ${dayNames[(s.weekday||1)-1]} · ${s.startTime||'--:--'}—${s.endTime||'--:--'}`],['授课教师',s.teachers||'未提供'],['上课地点',s.room||'未提供'],['教学环节',s.category||'未提供'],['教学模式',s.teachingMode||'未提供'],['课程代码',s.code||'未提供']].map(([k,v])=>`<div class="detail-line"><span class="detail-key">${k}</span><span class="detail-value">${E(v)}</span></div>`).join('')}`);}
-function editPowerModal(){const p=state.data.power||{};openModal('记录宿舍电量',`<form id="power-form" class="grid-gap"><label class="setting-label">宿舍名称<input name="room" class="text-input mt-12" value="${E(p.roomLabel||'')}" placeholder="例如：大学城某宿舍" maxlength="64"/></label><label class="setting-label">剩余电量（度）<input name="balance" class="text-input mt-12" type="number" min="0" max="999999" step="0.01" required value="${Number.isFinite(+p.balance)?E(p.balance):''}" /></label><label class="setting-label">今日用电量（度，可选）<input name="usage" class="text-input mt-12" type="number" min="0" max="99999" step="0.01" placeholder="例如 3.20" /></label><button type="submit" class="btn primary block">保存本地记录</button></form><div class="note mt-12">仅记录您从学校官网查询到的电量，不会向学校发送密码或写入学校系统。公开网站的手动记录保存在当前浏览器，不包含教务成绩。</div>`);}
+function editPowerModal(){
+ const current=state.data.power||{};
+ const end=iso(today());
+ const first=iso(addDays(today(),-90));
+ openModal('记录宿舍电量',`<form id="power-form" class="grid-gap">
+  <label class="setting-label">宿舍名称<input name="room" class="text-input mt-12" value="${E(current.roomLabel||'')}" placeholder="例如：大学城某宿舍" maxlength="64" required/></label>
+  <label class="setting-label">当前剩余电量（度）<input name="balance" class="text-input mt-12" type="number" min="0" max="1000000" step="0.01" required value="${Number.isFinite(+current.balance)?E(current.balance):''}"/></label>
+  <label class="setting-label">用电记录日期<input name="date" class="text-input mt-12" type="date" min="${first}" max="${end}" value="${end}" required/></label>
+  <label class="setting-label">该日实际用电量（度，可选）<input name="usage" class="text-input mt-12" type="number" min="0" max="1000000" step="0.01" placeholder="例如 3.20"/></label>
+  <button type="submit" class="btn primary block">保存本地记录</button>
+ </form><div class="note mt-12">可以补录最近90天内的每日用电量。至少录入近7天中的3天且余额不超过48小时，才能显示预计可用天数。这里保存的余额与明细属于手动记录，不会标记为学校实时数据。</div>`);
+}
 /* Safari-like anchored floating option menus. Non-modal: they never clear QR polling. */
 let safariMenuState={anchor:null,kind:''};
 function hideSafariMenu(focus=false){

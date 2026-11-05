@@ -1998,3 +1998,160 @@
 @media(prefers-reduced-motion:reduce){
  .switch[role="switch"].is-settling::after{animation:none!important;scale:1;}
 }
+
+
+/* MUSIC-STYLE HORIZONTAL SELECTORS v1
+ * Apple Music reference: stable shared rail, finger-following optical capsule,
+ * immediate preview highlight and short one-way landing after a swipe.
+ * Taps retain a light damped spring. No DOM layout changes while dragging. */
+@media(max-width:900px){
+ .bottom-nav{
+  transition:scale .16s cubic-bezier(.20,.72,.25,1.06),
+   border-color .23s ease,box-shadow .26s ease!important;
+ }
+ .bottom-nav.is-dock-pressed{scale:1.014;}
+ .bottom-nav.is-dock-dragging{scale:1.018;}
+ .bottom-nav.is-dock-releasing{animation-duration:.40s!important;}
+ .bottom-nav.is-dock-dropping{animation-duration:.29s!important;}
+ .bottom-nav.is-dock-settling{animation-duration:.38s!important;}
+ .bottom-nav .bottom-liquid-indicator{
+  transition:transform .38s cubic-bezier(.20,.86,.28,1),
+   width .33s cubic-bezier(.22,1,.36,1),
+   scale .17s ease-out;
+ }
+ .bottom-nav.is-dock-pressed .bottom-liquid-indicator{scale:1.05;}
+ .bottom-nav.is-dock-dragging .bottom-liquid-indicator{scale:1.085;}
+ .bottom-nav .bottom-liquid-indicator.is-dragging{
+  transition:none!important;
+ }
+ .bottom-nav.is-dock-dropping .bottom-liquid-indicator{
+  animation-duration:.29s!important;
+ }
+ .bottom-nav .bottom-item.is-scrubbed svg{
+  transform:translateY(-1px) scale(1.105);
+  transition:transform .15s cubic-bezier(.22,1,.36,1),
+   color .12s ease!important;
+ }
+ .bottom-nav .bottom-item.is-scrubbed span{
+  transition:color .12s ease!important;
+ }
+ .bottom-nav.is-dock-dragging .bottom-item.active:not(.is-scrubbed){
+  color:var(--muted)!important;
+ }
+ .bottom-nav.is-dock-dragging .bottom-item.active:not(.is-scrubbed) svg{
+  color:var(--muted)!important;
+  transform:translateY(0) scale(1);
+ }
+ .bottom-liquid-indicator.is-dropping{transition:none!important;}
+ /* A screen switch reads as a single light fade + small parallax, not a
+    second full-page spring fighting the Dock's moving lens. */
+ .page.page-enter{
+  animation:pocketMusicPageEnter .32s cubic-bezier(.20,.85,.30,1) both!important;
+ }
+}
+@keyframes pocketMusicPageEnter{
+ from{opacity:.12;transform:translateY(7px);}
+ to{opacity:1;transform:translateY(0);}
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail{
+ transition:scale .17s ease-out,box-shadow .23s ease,border-color .23s ease;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-pressed{scale:1.014;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dragging{scale:1.019;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-releasing{
+ animation-duration:.40s;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling{
+ animation-duration:.38s;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-dropping{
+ animation-duration:.29s;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight{
+ transition:transform .35s cubic-bezier(.20,.86,.28,1),
+  width .32s cubic-bezier(.22,1,.36,1),
+  height .32s cubic-bezier(.22,1,.36,1),
+  scale .17s ease-out;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-pressed
+ > .liquid-choice-highlight{scale:1.05;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-dragging
+ > .liquid-choice-highlight{scale:1.085;}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-dropping
+ > .liquid-choice-highlight{
+ transition:transform .27s cubic-bezier(.20,.86,.28,1),
+  width .27s cubic-bezier(.22,1,.36,1),
+  height .27s cubic-bezier(.22,1,.36,1)!important;
+ animation-duration:.29s!important;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > .liquid-choice-highlight.is-dragging{
+ transition:none!important;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail
+ > button.is-scrubbed{
+ transform:scale(1.04);
+ color:var(--accent)!important;
+}
+:is(.segmented,.schedule-view-switch).liquid-selector.is-rail-dragging
+ > button.active:not(.is-scrubbed){color:var(--muted)!important;}
+
+/* The weekday row is seven independent dates, but its active pill follows
+   the same swipe/thumb behavior; the grid always stays seven columns. */
+.day-strip.liquid-selector{
+ position:relative;
+ isolation:isolate;
+ touch-action:pan-y;
+}
+.day-strip.liquid-selector > .liquid-choice-highlight{
+ display:block!important;
+ position:absolute;
+ z-index:0;
+ pointer-events:none;
+ border-radius:inherit;
+ transition:transform .35s cubic-bezier(.20,.86,.28,1),
+  width .32s ease,height .32s ease,scale .18s ease-out;
+ transform-origin:center;
+}
+.day-strip.liquid-selector > .day-tab{
+ position:relative;
+ z-index:1;
+}
+.day-strip.liquid-selector.is-rail-pressed > .liquid-choice-highlight{scale:1.05;}
+.day-strip.liquid-selector.is-rail-dragging > .liquid-choice-highlight{scale:1.085;}
+.day-strip.liquid-selector.is-rail-dropping > .liquid-choice-highlight{
+ transition:transform .27s cubic-bezier(.20,.86,.28,1),
+  width .27s ease,height .27s ease!important;
+}
+.day-strip.liquid-selector > .liquid-choice-highlight.is-dragging{
+ transition:none!important;
+}
+.day-strip.liquid-selector.is-rail-dragging > .day-tab.active:not(.is-scrubbed){
+ color:var(--muted)!important;
+}
+.day-strip.liquid-selector > .day-tab.is-scrubbed{
+ color:var(--accent)!important;
+ transform:scale(1.04);
+}
+.page-schedule .schedule-view-switch{
+ view-transition-name:none; /* do not snapshot the moving control a second time */
+}
+::view-transition-group(schedule-mode-panel){animation-duration:.32s;}
+::view-transition-old(schedule-mode-panel){animation-duration:.22s;}
+::view-transition-new(schedule-mode-panel){animation-duration:.32s;}
+.schedule-mode-enter .schedule-transition-content{animation-duration:.32s;}
+.schedule-mode-enter .schedule-view-switch{animation-duration:.32s;}
+
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav .bottom-liquid-indicator,.bottom-nav .bottom-item,
+ :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail,
+ :is(.segmented,.schedule-view-switch).liquid-selector > .liquid-choice-highlight,
+ .day-strip.liquid-selector > .liquid-choice-highlight,
+ .day-strip.liquid-selector > .day-tab{
+  transition:none!important;animation:none!important;scale:1!important;
+ }
+ .page.page-enter,.schedule-mode-enter .schedule-transition-content{
+  animation:none!important;
+ }
+}

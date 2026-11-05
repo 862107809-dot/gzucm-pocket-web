@@ -1742,9 +1742,11 @@ function bottomSwipeFinish(event,cancelled=false){
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
  if(!sw.dragging){
   releaseBottomEdge(sw,false);
-  // A tap may confirm the selected glass, but never triggers a scale rebound.
+  // A direct Dock tap gives the whole rail one restrained non-linear return;
+  // actual horizontal scrubbing remains uninterrupted and does not bounce.
   if(!cancelled&&!sw.vertical){
    confirmGlassSelection(sw.glass);
+   animateDockRelease(sw.nav);
   }
   return;
  }
@@ -1779,8 +1781,8 @@ function bottomSwipeClickCapture(event){
  event.preventDefault();
  event.stopImmediatePropagation();
 }
-/* Unified no-bounce tactile feedback for non-popup interactive elements.
- * Use optical shadow/brightness on tap, never scale the content or trigger a spring.
+/* Gentle button-level non-linear press/release feedback.
+ * Never animate an outer card frame: only actual interactive controls rebound.
  * Pointer tracking yields immediately to page scrolling and liquid scrub gestures.
  * Dialogs and floating popovers retain their existing zoom/return animations. */
 let wholeSurfacePress=null;
@@ -1819,8 +1821,10 @@ function wholeSurfacePressDown(event){
  // generic whole-button animation on top of the dedicated switch physics.
  if(target.closest('.switch[role="switch"]'))return;
  let surface=target.closest(WHOLE_SURFACE_TARGET);
- if(!surface)surface=target.closest('.card');
+ // Never scale the outer frame of a course, overview, or decorative card.
+ // Only real controls (buttons/links) within those cards may rebound.
  if(!surface||!surface.closest?.('#app')||surface.closest(WHOLE_SURFACE_POPUP))return;
+ if(surface.matches?.('.card,.agenda-row,.hero-card,.calendar-visual,.month-calendar'))return;
  if(surface.closest('.bottom-nav'))return; // Dock scales on its own rail.
  if(surface.closest('.is-horizontal-rail'))return; // A horizontal bar scales as one piece.
  if(surface.matches?.(':disabled,[aria-disabled="true"],input,textarea,select'))return;

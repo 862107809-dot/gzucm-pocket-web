@@ -130,6 +130,8 @@ let previousBottomTab=null;
 let liquidMoveFrame=0;
 let liquidGestureSnap=false;
 let dockRemountPulse=false;
+let dockRemountDrop=false;
+let scheduleModeFallbackEntrance=false;
 /* Damped harmonic spring: responsive start, smooth velocity decay and a tiny
  * natural settle. Keyframed via Web Animations (available in modern Safari).
  * CSS cubic-bezier remains a fully functional fallback. */
@@ -156,10 +158,11 @@ function liquidSpringFrames(startX,startW,endX,endW,duration=540){
 }
 function alignBottomLiquid(previousTab,previousRect){
  const nav=document.querySelector('#app .bottom-nav');
- if(nav?.classList?.contains?.('is-dock-settling')){
+ if(nav?.classList?.contains?.('is-dock-settling')||nav?.classList?.contains?.('is-dock-dropping')){
   nav.addEventListener?.('animationend',event=>{
    if(event.animationName==='pocketDockSettle')nav.classList?.remove?.('is-dock-settling');
-  },{once:true});
+   if(event.animationName==='pocketDockDrop')nav.classList?.remove?.('is-dock-dropping');
+  });
  }
  const glass=nav?.querySelector('.bottom-liquid-indicator');
  const current=nav?.querySelector('.bottom-item.active');
@@ -174,10 +177,7 @@ function alignBottomLiquid(previousTab,previousRect){
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
- if(changed){
-  current.classList?.add?.('is-landing');
-  current.addEventListener?.('animationend',()=>current.classList?.remove?.('is-landing'),{once:true});
- }
+ // Only the glass lens travels; no independently outlined tab landing.
  const oldX=previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
  const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
@@ -584,7 +584,9 @@ function render(){
  const oldGlass=root.querySelector('.bottom-liquid-indicator');
  const oldRect=oldGlass?.getBoundingClientRect();
  const oldView=previousBottomTab;
- root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view} ${oldView===state.view?'page-stable':'page-enter'}" id="page-content">${page()}</div></main>${bottomNav()}`;
+ const modeEntrance=scheduleModeFallbackEntrance&&state.view==='schedule';
+ scheduleModeFallbackEntrance=false;
+ root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view} ${oldView===state.view?'page-stable':'page-enter'}${modeEntrance?' schedule-mode-enter':''}" id="page-content">${page()}</div></main>${bottomNav()}`;
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);
@@ -592,10 +594,27 @@ function render(){
  alignBottomLiquid(oldView,oldRect);
  previousBottomTab=state.view;
 }
+function transitionScheduleMode(afterRender){
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+ const update=()=>{render();afterRender?.();};
+ if(reduced||typeof document.startViewTransition!=='function'){
+  scheduleModeFallbackEntrance=!reduced;
+  update();
+  return;
+ }
+ try{
+  // Browser snapshots interpolate both the glass selector and timetable.
+  const transition=document.startViewTransition(update);
+  transition.finished?.catch?.(()=>{});
+ }catch{
+  scheduleModeFallbackEntrance=true;
+  update();
+ }
+}
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav class="sidebar-nav-main" aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav class="sidebar-nav-account">${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}
 function topbar(){return `<header class="topbar"><div class="top-left"><span class="top-kicker">GZUCM POCKET</span><button type="button" class="language-switch" data-action="toggleLanguage" aria-label="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}" title="${state.prefs.language==='en'?'Switch to Chinese':'切换至英文'}">${state.prefs.language==='en'?'ZH':'EN'}</button><div class="top-divider"></div><span class="top-date">${fmt(today(),{month:'long',day:'numeric',weekday:'long'})}</span></div><div class="top-actions"><span class="status-pill ${isDemo()?'demo':''}" title="${isDemo()?'虚构演示数据':state.connected?'已与本地服务连接':'本地已导入数据'}"><i></i>${isDemo()?'演示模式':state.connected?'已连接':'本地数据'}</span><button class="icon-btn" title="刷新数据" aria-label="刷新数据" data-action="refresh">${I('refresh')}</button><button class="icon-btn theme-trigger" type="button" title="${state.prefs.language==='en'?'Appearance':'外观模式'}" aria-label="${state.prefs.language==='en'?'Choose light or dark appearance':'选择浅色或深色模式'}" data-action="themeMenu" aria-haspopup="menu" aria-expanded="false">${I(state.prefs.theme==='dark'?'moon':state.prefs.theme==='light'?'sun':(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'moon':'sun'))}</button><button type="button" class="icon-btn settings-trigger" title="设置选项" aria-haspopup="menu" aria-expanded="false" aria-label="打开设置选项" data-action="settingsMenu">${I('settings')}</button></div></header>`;}
-function bottomNav(){const settle=dockRemountPulse;dockRemountPulse=false;return `<nav class="bottom-nav${settle?' is-dock-settling':''}" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
+function bottomNav(){const settle=dockRemountPulse,drop=dockRemountDrop;dockRemountPulse=false;dockRemountDrop=false;return `<nav class="bottom-nav${settle?' is-dock-settling':''}${drop?' is-dock-dropping':''}" aria-label="手机底部导航"><span class="bottom-liquid-indicator is-instant" aria-hidden="true"><span class="bottom-liquid-surface"></span></span>${navItem('today','今日','home','bottom-item')}${navItem('schedule','课表','calendar','bottom-item')}${navItem('grades','成绩','grades','bottom-item')}${navItem('power','电费','zap','bottom-item')}${navItem('settings','设置','settings','bottom-item')}</nav>`;}
 function heading(eyebrow,title,sub){return `<div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-sub">${sub}</p>`;}
 function sectionTitle(title,btn=''){return `<div class="section-heading"><h2>${title}</h2>${btn}</div>`;}
 function empty(title,subtitle,ic='calendar'){return `<div class="empty">${I(ic,36)}<strong>${E(title)}</strong><p>${E(subtitle)}</p></div>`;}
@@ -648,6 +667,7 @@ function schedulePage(){
  const sessions=selectedDaySessions(),start=dayDate(state.week,0),end=dayDate(state.week,6);
  return `${heading('YOUR TIMETABLE','把每一周，过得从容有序。',`${E(term().name)} · 每节课程的时间、地点与授课内容`)}
  ${scheduleViewSwitch()}
+ <div class="schedule-transition-content" data-schedule-content="week">
  <div class="weekbar"><div class="week-pick"><button class="icon-btn" aria-label="上一周" data-action="prevWeek" ${state.week<=1?'disabled':''}>${I('chevronLeft')}</button>
  <strong>第 ${state.week} 周</strong>
  <button class="icon-btn" aria-label="下一周" data-action="nextWeek" ${state.week>=(term().totalWeeks||19)+1?'disabled':''}>${I('chevronRight')}</button></div>
@@ -662,7 +682,7 @@ function schedulePage(){
   return `<button class="agenda-row" data-day="${day}" style="padding:10px 12px;align-items:center"><span class="tiny" style="width:38px">${label}</span><div class="progress-track" style="flex:1;margin:0"><div class="progress-fill" style="width:${Math.min(100,count/5*100)}%"></div></div><strong class="tiny">${count} 节</strong>${I('chevronRight',13)}</button>`}).join('')}</div>
  <div class="note mt-20">周日为每周第一天；学校的教学周编号仍按教务系统原始规则计算，课程日期不变。</div></section></div>
  ${sectionTitle('完整周视图',`<button class="small-action" data-action="appearance">${I('edit',13)} 外观设置</button>`)}
- ${card(calendarGrid(),'calendar-card')}`;
+ ${card(calendarGrid(),'calendar-card')}</div>`;
 }
 function calendarGrid(){
  const slots=[[1,2],[3,4],[6,7],[8,9],[12,13]];
@@ -716,6 +736,7 @@ function monthPage(){
    <span class="eyebrow">YOUR TIMETABLE</span>
    ${scheduleViewSwitch()}
   </div>
+  <div class="schedule-transition-content" data-schedule-content="month">
   <div class="month-toolbar"><div class="month-pick">
    <button type="button" class="icon-btn" aria-label="上个月" data-action="prevMonth">${I('chevronLeft')}</button>
    <strong>${fmt(first,{year:'numeric',month:'long'})}</strong>
@@ -729,6 +750,7 @@ function monthPage(){
    <div class="month-grid" style="--month-weeks:${count/7}">${weekdayNames.map((name,i)=>
     `<div class="month-weekday ${i===0?'sunday':''}">${name}</div>`).join('')}${grid}
    </div>
+  </div>
   </div>
  </section>`;
 }
@@ -1332,14 +1354,7 @@ async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch
 function navigateBottomModule(view){
  if(!['today','schedule','grades','power','settings'].includes(view))return;
  if(state.view===view){
-  // A repeated tap animates the whole selected tab without rebuilding the page.
-  const active=document.querySelector?.('.bottom-nav .bottom-item.active');
-  if(active&&!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
-   active.classList?.remove?.('is-landing');
-   void active.offsetWidth;
-   active.classList?.add?.('is-landing');
-   active.addEventListener?.('animationend',()=>active.classList?.remove?.('is-landing'),{once:true});
-  }
+  // A repeated tap uses only the Dock's own press-and-bounce feedback.
   return;
  }
  state.view=view;

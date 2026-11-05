@@ -726,6 +726,7 @@ function renderGradesContent(){
 function renderScheduleContent(confirm=false){
  const pageRoot=$('#page-content');
  if(!pageRoot||state.view!=='schedule'){render();return;}
+ const previousSelectors=snapshotLiquidSelectors(pageRoot);
  const selector=pageRoot.querySelector('.schedule-view-switch');
  pageRoot.innerHTML=schedulePage();
  const replacement=pageRoot.querySelector('.schedule-view-switch');
@@ -763,7 +764,7 @@ function renderScheduleContent(confirm=false){
    }
   }
  }
- enhanceLiquidSelectors(pageRoot);
+ enhanceLiquidSelectors(pageRoot,previousSelectors);
  window.GZUCM_I18N?.apply(pageRoot,state.prefs.language==='en'?'en':'zh');
 }
 /* Compositor-only shrink → expand handoff on every screen size.
@@ -1901,7 +1902,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
   armLiquidSound();playLiquidTick();
  }navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}
- if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);render();if(state.weekday===0)loadSundayWeek();return;}
+ if(target.dataset.day!==undefined){state.weekday=Number(target.dataset.day);renderScheduleContent();if(state.weekday===0)loadSundayWeek();return;}
  if(target.dataset.gradeTab){
   if(state.gradeTab!==target.dataset.gradeTab){state.gradeTab=target.dataset.gradeTab;renderGradesContent();}
   return;
@@ -1911,13 +1912,13 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
   return;
  }
  const act=target.dataset.action;
- switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;}
- case'thisWeek':state.week=weekNow();state.weekday=today().getDay();if(state.weekday===0)state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);render();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;
+ switch(act){case'prevWeek':case'nextWeek':{state.week=clamp(state.week+(act==='nextWeek'?1:-1),1,(term().totalWeeks||19)+1);renderScheduleContent();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;}
+ case'thisWeek':state.week=weekNow();state.weekday=today().getDay();if(state.weekday===0)state.week=clamp(calcWeek(addDays(today(),1)),1,(term().totalWeeks||19)+1);renderScheduleContent();if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();break;
  case'scheduleView':{const nextMode=target.dataset.mode==='month'?'month':'week';if(nextMode===state.scheduleMode)break;if(nextMode==='month'){const chosen=dayDate(state.week,state.weekday);state.monthSelected=iso(chosen);state.monthCursor=iso(new Date(chosen.getFullYear(),chosen.getMonth(),1));}else{const chosen=dt(state.monthSelected);state.weekday=chosen.getDay();state.week=clamp(calcWeek(state.weekday===0?addDays(chosen,1):chosen),1,(term().totalWeeks||19)+1);}state.scheduleMode=nextMode;if(nextMode==='month'){state.monthLoading=false;state.monthLoadError=0;}state.prefs.calendarView=nextMode;storePrefs();transitionScheduleMode(()=>{if(nextMode==='month')loadMonth();else{if(state.week<=term().totalWeeks)loadWeek(state.week);loadSundayWeek();}});break;}
- case'prevMonth':case'nextMonth':{const d=dt(state.monthCursor);d.setDate(1);d.setMonth(d.getMonth()+(act==='nextMonth'?1:-1));state.monthCursor=iso(d);state.monthSelected=iso(d);state.monthLoading=false;state.monthLoadError=0;render();loadMonth();break;}
+ case'prevMonth':case'nextMonth':{const d=dt(state.monthCursor);d.setDate(1);d.setMonth(d.getMonth()+(act==='nextMonth'?1:-1));state.monthCursor=iso(d);state.monthSelected=iso(d);state.monthLoading=false;state.monthLoadError=0;renderScheduleContent();loadMonth();break;}
  case'retryMonth':loadMonth();break;
- case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());state.monthLoading=false;state.monthLoadError=0;render();loadMonth();break;
- case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){const d=dt(raw);state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));state.monthLoading=false;state.monthLoadError=0;render();loadMonth();}else{document.querySelectorAll('.month-cell').forEach(cell=>{const selected=cell.dataset.date===raw;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));});openMonthDayDetail(raw);}break;}
+ case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());state.monthLoading=false;state.monthLoadError=0;renderScheduleContent();loadMonth();break;
+ case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){const d=dt(raw);state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));state.monthLoading=false;state.monthLoadError=0;renderScheduleContent();loadMonth();}else{document.querySelectorAll('.month-cell').forEach(cell=>{const selected=cell.dataset.date===raw;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));});openMonthDayDetail(raw);}break;}
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectGlass':selectGlass(target.dataset.value);break;case'selectScheduleLayout':selectScheduleLayout(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
  case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'pairPower':beginPowerPairing();break;case'refreshBridge':refreshPowerBridge();break;case'disconnectBridge':disconnectPowerBridge();break;case'copyPowerPair':navigator.clipboard?.writeText(target.dataset.code||'').then(()=>toast('配对码已复制'),()=>toast('请手动选择并复制'));break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;

@@ -1287,6 +1287,16 @@ function releaseBottomEdge(sw){
   setTimeout(()=>sw.glass.classList?.remove?.('is-edge-rebound'),360);
  }
 }
+function animateDockRelease(nav){
+ if(!nav)return;
+ nav.classList?.remove?.('is-dock-releasing');
+ // Same-tab taps are animated without rebuilding the entire page.
+ void nav.offsetWidth;
+ nav.classList?.add?.('is-dock-releasing');
+ nav.addEventListener?.('animationend',event=>{
+  if(event.animationName==='pocketDockRelease')nav.classList?.remove?.('is-dock-releasing');
+ },{once:true});
+}
 function bottomSwipeDown(event){
  const nav=event.target.closest?.('.bottom-nav');
  if(!nav||event.isPrimary===false||event.button>0||!nav.getClientRects().length)return;
@@ -1296,7 +1306,7 @@ function bottomSwipeDown(event){
  if(!glass||!active)return;
  // A touch-down immediately magnifies the entire rail, before the
  // layout work needed for optional horizontal scrubbing. Never wait for move.
- nav.classList?.remove?.('is-dock-settling');
+ nav.classList?.remove?.('is-dock-settling','is-dock-releasing');
  nav.classList?.add?.('is-dock-pressed');
  const pressed=event.target.closest?.('.bottom-item');
  pressed?.classList?.add?.('is-pressed');
@@ -1354,7 +1364,11 @@ function bottomSwipeFinish(event,cancelled=false){
  if(sw.frame)cancelAnimationFrame(sw.frame);
  sw.layout.tabs.forEach(tab=>tab.classList.remove('is-scrubbed'));
  try{if(sw.nav.hasPointerCapture?.(event.pointerId))sw.nav.releasePointerCapture(event.pointerId);}catch{}
- if(!sw.dragging){releaseBottomEdge(sw);return;}
+ if(!sw.dragging){
+  releaseBottomEdge(sw);
+  animateDockRelease(sw.nav);
+  return;
+ }
  if(event.cancelable)event.preventDefault();
  ignoreBottomClickUntil=Date.now()+420;
  // Commit the final finger position before the navigation re-renders.
@@ -1369,6 +1383,7 @@ function bottomSwipeFinish(event,cancelled=false){
    sw.glass.style.width=Math.max(12,active.offsetWidth-6)+'px';
    sw.glass.style.transform='translate3d('+(active.offsetLeft+3)+'px,0,0)';
   }
+  animateDockRelease(sw.nav);
   return;
  }
  liquidGestureSnap=true;

@@ -1111,7 +1111,7 @@ async function loadMonth(){
   if(failures)toast('部分教学周加载失败，可重新切换月份或重试');
  }
 }
-async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}state.connected=false;state.ecardReady=false;state.powerLastSync=0;state.powerLastAttempt=0;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
+async function logout(){try{await api('logout',{method:'POST',body:'{}'});}catch{}localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.connected=false;state.ecardReady=false;state.powerLastSync=0;state.powerLastAttempt=0;state.loadedWeeks.clear();if(PUBLIC){state.data=window.GZUCM_DEMO;localStorage.removeItem(DB);state.week=weekNow();}toast('已退出学校会话');render();}
 function navigateBottomModule(view){
  if(!['today','schedule','grades','power','settings'].includes(view))return;
  state.view=view;
@@ -1238,14 +1238,14 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  case'thisMonth':state.monthCursor=iso(new Date(today().getFullYear(),today().getMonth(),1));state.monthSelected=iso(today());state.monthLoading=false;state.monthLoadError=0;render();loadMonth();break;
  case'selectMonthDay':{const raw=target.dataset.date;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))break;state.monthSelected=raw;if(state.monthCursor.slice(0,7)!==raw.slice(0,7)){const d=dt(raw);state.monthCursor=iso(new Date(d.getFullYear(),d.getMonth(),1));state.monthLoading=false;state.monthLoadError=0;render();loadMonth();}else{document.querySelectorAll('.month-cell').forEach(cell=>{const selected=cell.dataset.date===raw;cell.classList.toggle('selected',selected);cell.setAttribute('aria-pressed',String(selected));});openMonthDayDetail(raw);}break;}
  case'ics':exportICS();break;case'themeMenu':toggleSafariMenu(target,'theme');break;case'settingsMenu':toggleSafariMenu(target,'settings');break;case'settingChoice':toggleSafariMenu(target,target.dataset.choice);break;case'selectTheme':selectTheme(target.dataset.value);break;case'selectStart':if(['today','schedule','grades','power'].includes(target.dataset.value)){state.prefs.start=target.dataset.value;storePrefs();render();toast('默认启动页已更新');}break;case'selectCampus':if(['undergrad','graduate'].includes(target.dataset.value)){state.data={...state.data,campus:target.dataset.value,demo:state.data.demo};if(!state.data.demo)store();render();toast(target.dataset.value==='graduate'?'研究生系统暂只支持导入数据':'已设为本科');}break;case'openSettings':state.view='settings';render();window.scrollTo({top:0,behavior:'smooth'});break;case'appearance':appearanceModal();break;case'editPower':editPowerModal();break;case'wallpaper':$('#wallpaper-file').click();break;case'clearWallpaper':state.prefs.wallpaper='';storePrefs();render();toast('已移除课表背景');break;
- case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
+ case'close':closeModal();break;case'reset':resetModal();break;case'resetConfirm':localStorage.removeItem(DB);localStorage.removeItem(POWER_DB);localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();closeModal();render();toast('已恢复演示数据');break;
  case'connect':hideSafariMenu();connectModal('qr');break;case'authPassword':connectModal('password');break;case'authQr':connectModal('qr');break;case'openOfficialLogin':openOfficialLogin();break;case'checkOfficialAuth':checkOfficialAuth();break;case'startQr':state.authMode='qr';startQr();break;case'syncPower':syncPower();break;case'copyQr':navigator.clipboard?.writeText(state.qrLink||'').then(()=>toast('链接已复制'),()=>toast('请手动复制链接'));break;
  case'toggleSound':state.prefs.soundEffects=state.prefs.soundEffects===false;storePrefs();if(state.prefs.soundEffects)armLiquidSound();render();break;
  case'toggleHaptics':window.GZUCM_HAPTICS?.pulse('toggle',true);state.prefs.hapticEffects=state.prefs.hapticEffects===false;storePrefs();render();break;
  case'toggleLanguage':toggleLanguage();break;
   case'refresh':if(state.connected)syncAcademic();else{connectModal();toast('需要先连接学校教务');}break;
  case'logout':logout();break;case'import':$('#import-file').click();break;case'export':exportData();break;
- case'demo':localStorage.removeItem(POWER_DB);state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();localStorage.removeItem(DB);render();toast('已切换到虚构演示数据');break;
+ case'demo':localStorage.removeItem(POWER_DB);localStorage.removeItem(LIVE_POWER_DB);state.powerSnapshots=[];state.data=window.GZUCM_DEMO;state.connected=false;state.week=weekNow();localStorage.removeItem(DB);render();toast('已切换到虚构演示数据');break;
  default:break;}}
 function toggleLanguage(){
  state.prefs.language=state.prefs.language==='en'?'zh':'en';

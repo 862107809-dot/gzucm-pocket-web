@@ -724,9 +724,74 @@ function renderScheduleContent(confirm=false){
  enhanceLiquidSelectors(pageRoot);
  window.GZUCM_I18N?.apply(pageRoot,state.prefs.language==='en'?'en':'zh');
 }
+/* Compositor-only shrink → expand handoff on every screen size.
+ * Old content contracts before the local DOM swap; the new timetable grows
+ * into place without full-page snapshots or any bouncing spring.
+ * Epoch cancellation prevents late animations from overwriting rapid taps. */
+let scheduleSwitchEpoch=0;
+let scheduleSwitchAnimation=null;
 function transitionScheduleMode(afterRender){
- renderScheduleContent(true);
- afterRender?.();
+ const epoch=++scheduleSwitchEpoch;
+ try{scheduleSwitchAnimation?.cancel?.();}catch{}
+ scheduleSwitchAnimation=null;
+ const pageRoot=$('#page-content');
+ const swap=()=>{
+  if(epoch!==scheduleSwitchEpoch||pageRoot?.isConnected===false)return false;
+  renderScheduleContent(true);
+  afterRender?.();
+  return true;
+ };
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+ if(!pageRoot||state.view!=='schedule'||reduced){swap();return;}
+ if(typeof pageRoot.animate!=='function'){
+  // Older embedded browsers still get an inexpensive scale-in CSS animation.
+  if(swap()){
+   pageRoot.classList?.remove?.('schedule-soft-arrival');
+   void pageRoot.offsetWidth;
+   pageRoot.classList?.add?.('schedule-soft-arrival');
+  }
+  return;
+ }
+ const width=pageRoot.getBoundingClientRect?.().width||pageRoot.clientWidth||0;
+ const scale=width>=900?.987:width>=600?.980:.973;
+ const outDuration=width>=900?80:95;
+ const inDuration=width>=900?165:width>=600?180:195;
+ const contracted='scale('+scale+')';
+ const incoming=[
+  {opacity:.12,transform:contracted},
+  {opacity:1,transform:'scale(1)'}
+ ];
+ const enter=()=>{
+  if(!swap())return;
+  if(pageRoot.isConnected===false)return;
+  try{
+   const animation=pageRoot.animate(incoming,{
+    duration:inDuration,easing:'cubic-bezier(.20,.82,.30,1)',fill:'both'
+   });
+   scheduleSwitchAnimation=animation;
+   Promise.resolve(animation.finished).then(()=>{
+    if(epoch===scheduleSwitchEpoch){
+     animation.cancel();
+     scheduleSwitchAnimation=null;
+    }
+   }).catch(()=>{});
+  }catch{
+   pageRoot.classList?.add?.('schedule-soft-arrival');
+  }
+ };
+ try{
+  const outgoing=pageRoot.animate([
+   {opacity:1,transform:'scale(1)'},
+   {opacity:.12,transform:contracted}
+  ],{duration:outDuration,easing:'cubic-bezier(.34,0,.75,.55)',fill:'forwards'});
+  scheduleSwitchAnimation=outgoing;
+  Promise.resolve(outgoing.finished).then(()=>{
+   if(epoch!==scheduleSwitchEpoch)return;
+   // Do not paint a reset frame between old/new halves of the transition.
+   outgoing.cancel();
+   enter();
+  }).catch(()=>{});
+ }catch{enter();}
 }
 function navItem(key,label,ico,cls='nav-item') {return `<button type="button" class="${cls} ${state.view===key?'active':''}" data-view="${key}" aria-label="${E(label)}" aria-current="${state.view===key?'page':'false'}">${I(ico)}<span>${label}</span>${cls==='nav-item'&&key==='power'&&state.data.power?.balance<10?'<i class="nav-chip"></i>':''}</button>`;}
 function sidebar(){return `<aside class="sidebar"><a href="/" class="brand" aria-label="广中医口袋首页" data-view="today"><div class="brand-mark"><img src="/assets/icon.svg" alt="" /></div><div><div class="brand-title">广中医口袋</div><div class="brand-sub">CAMPUS COMPANION</div></div></a><div class="side-label">校园空间 · CAMPUS</div><nav class="sidebar-nav-main" aria-label="主导航">${navItem('today','今日概览','home')}${navItem('schedule','我的课表','calendar')}${navItem('grades','学业成绩','grades')}${navItem('power','宿舍电费','zap')}</nav><div class="side-label">个人中心</div><nav class="sidebar-nav-account">${navItem('settings','偏好与设置','settings')}</nav><div class="side-spacer"></div><div class="sidebar-footer"><div class="privacy-mark">${I('shield',16)}<strong>你的校园，你的数据</strong></div><p class="tiny">非官方独立项目 · 学校密码仅在校方官网输入。演示内容均为虚构。</p></div></aside>`;}

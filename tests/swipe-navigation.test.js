@@ -156,18 +156,30 @@ test('vertical scrolling is never converted to bottom tab swipe',()=>{
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
 });
-test('tap without dragging delegates to existing click handler and instantly rebounds the entire Dock',()=>{
+test('tap without dragging leaves Dock stationary, keeps optical confirmation and delegates to click',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
- assert.ok(h.navClasses.has('is-dock-pressed'),'touch-down must enlarge the Dock immediately');
+ assert.ok(h.navClasses.has('is-dock-pressed'),'touch-down still tracks gesture');
  assert.equal(h.navClasses.has('is-dock-dragging'),false);
  h.output.bottomSwipeFinish(h.event(46,20));
  assert.equal(h.state.view,'today');
  assert.equal(h.counts().renders,0);
- assert.ok(h.navClasses.has('is-dock-releasing'),'tap must spring back even without horizontal movement');
- assert.match(css,/@keyframes pocketDockRelease/);
+ assert.equal(h.navClasses.has('is-dock-releasing'),false,'simple tap must not start a rail rebound');
+ assert.ok(h.classes.has('is-confirmed'),'tap keeps a non-bouncing shadow cue');
+ assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.bottom-nav:is\(\.is-dock-releasing,\.is-dock-settling\)/);
 });
-test('a Dock swipe lowers smoothly while a tap still springs',()=>{
+test('ordinary Dock click switches view without a rail spring, while drag still requests a landing',()=>{
+ const h=harness();
+ h.output.navigateBottomModule('grades');
+ assert.equal(h.state.view,'grades');
+ assert.equal(h.counts().renders,1);
+ assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:false});
+ assert.match(app,/const frames=liquidDropFrames\(startX,startW,targetX,targetW\)/);
+ assert.doesNotMatch(app,/const frames=fromSwipe\?[\s\S]*?liquidSpringFrames/);
+ assert.match(css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1')),/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface\{\s*animation:none!important;/);
+});
+
+test('a Dock swipe still lowers smoothly while taps have no bounce',()=>{
  const h=harness();
  h.output.bottomSwipeDown(h.event(46,20));
  h.output.bottomSwipeMove(h.event(85,20));

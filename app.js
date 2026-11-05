@@ -168,7 +168,10 @@ function alignBottomLiquid(previousTab,previousRect){
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
  liquidGestureSnap=false;
- if(changed)current.classList?.add?.('is-landing');
+ if(changed){
+  current.classList?.add?.('is-landing');
+  current.addEventListener?.('animationend',()=>current.classList?.remove?.('is-landing'),{once:true});
+ }
  const oldX=previousRect?.width?previousRect.left-navRect.left
    :previous?.offsetLeft+inset;
  const oldW=previousRect?.width||Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
@@ -1217,6 +1220,7 @@ function navigateBottomModule(view){
    active.classList?.remove?.('is-landing');
    void active.offsetWidth;
    active.classList?.add?.('is-landing');
+   active.addEventListener?.('animationend',()=>active.classList?.remove?.('is-landing'),{once:true});
   }
   return;
  }

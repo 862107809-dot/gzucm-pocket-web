@@ -14,10 +14,10 @@ test('optical material sheet is layered after app layout styles and cached for P
  const base=html.indexOf('/styles.css?v=');
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
- assert.ok(cache.includes('/liquid-material.css?v=20261105-optics-auto2'));
- assert.ok(cache.includes('gzucm-pocket-web-v43-20261105-glass-status3'));
- assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-status3'));
- assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-status3'));
+ assert.ok(cache.includes('/liquid-material.css?v=20261105-glass-choices1'));
+ assert.ok(cache.includes('gzucm-pocket-web-v44-20261105-glass-choices1'));
+ assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-choices1'));
+ assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-choices1'));
 });
 
 test('HTTP static whitelist serves both automatic glass resources',()=>{
@@ -57,6 +57,12 @@ test('dark appearance and accessibility have separate optical fallbacks',()=>{
  assert.match(material,/@supports not \(\(-webkit-backdrop-filter:blur\(1px\)\)/);
  assert.match(material,/\.bottom-liquid-surface::before,\.bottom-liquid-surface::after,[\s\S]*?display:none!important/);
  assert.match(material,/:focus-visible\{\s*outline:2px solid var\(--accent\)/);
+});
+
+test('glass selector uses the requested names, saved prefs, and real runtime status',()=>{
+ for(const label of ['增强液态','液态玻璃','毛玻璃'])assert.ok(app.includes(label),label);
+ for(const token of ["glassMode:'enhanced'","data-choice=\"glass\"","case'selectGlass':selectGlass","storePrefs();","setMode?.(value)"])assert.ok(app.includes(token),token);
+ assert.ok(material.includes('data-glass-preference="smooth"'));
 });
 
 test('visual design change does not rewrite timing or gesture handling',()=>{

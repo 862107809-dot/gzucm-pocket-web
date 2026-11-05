@@ -510,6 +510,11 @@ function liquidPointerMove(event){
 function liquidPointerFinish(event,cancelled=false){
  const p=liquidSelectorPointer;
  if(!p||p.pointerId!==event.pointerId)return;
+ // Apply the same Dock release-direction lock to fast grade/week/month flicks.
+ // Avoid accidentally treating a missed last move event as a tap.
+ if(!cancelled&&!p.dragging&&!p.scroll&&
+    (Math.abs(event.clientX-p.x)>=(p.pointerType==='mouse'?5:10)||
+     Math.abs(event.clientY-p.y)>=8))liquidPointerMove(event);
  liquidSelectorPointer=null;
  if(p.raf)cancelAnimationFrame(p.raf);
  try{if(p.group.hasPointerCapture?.(event.pointerId))p.group.releasePointerCapture(event.pointerId);}catch{}
@@ -1766,6 +1771,11 @@ function bottomSwipeMove(event){
 function bottomSwipeFinish(event,cancelled=false){
  const sw=bottomSwipe;
  if(!sw||sw.pointerId!==event.pointerId)return;
+ // Fast flicks can dispatch pointerup before another pointermove. Reconcile
+ // the final coordinate before deciding tap versus horizontal scrub.
+ if(!cancelled&&!sw.dragging&&!sw.vertical&&
+    (Math.abs(event.clientX-sw.startX)>=(sw.pointerType==='mouse'?5:10)||
+     Math.abs(event.clientY-sw.startY)>=8))bottomSwipeMove(event);
  bottomSwipe=null;
  sw.nav.classList?.remove?.('is-dock-pressed','is-dock-dragging');
  sw.pressed?.classList?.remove?.('is-pressed');

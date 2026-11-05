@@ -17,27 +17,30 @@ function durationFor(selector,property){
 function animationDuration(selector){
  return durationFor(selector,'animation');
 }
-test('full-surface press is instant while visible release lasts over half a second',()=>{
- assert.ok(animationDuration('#app .pocket-full-press')>=300);
- assert.ok(animationDuration('#app .pocket-full-release')>=500);
- assert.ok(animationDuration('#app .pocket-full-card.pocket-full-release')>=500);
- assert.match(css,/@keyframes pocketFullSurfacePress\{\s*0%\{scale:1\.065;/);
+test('ordinary button and card taps use only shadow/brightness with no rebound',()=>{
+ const final=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
+ assert.ok(final.length>1000);
+ assert.match(final,/#app \.pocket-full-press,[\s\S]*?animation:none!important;\s*scale:1!important;\s*transform:none!important;/);
+ assert.match(final,/#app \.pocket-full-release,[\s\S]*?animation:none!important;/);
+ assert.match(final,/#app \.pocket-full-card\.pocket-full-release/);
+ assert.match(final,/transition:filter \.16s ease-out,box-shadow \.18s ease-out/);
+ assert.match(final,/\.bottom-item:not\(\.is-scrubbed\):is\(:active,\.is-pressed\)/);
+ assert.match(final,/\.bottom-item\.is-landing\{/);
+ assert.match(final,/animation:none!important;/);
 });
-test('entire centered Dock and horizontal selectors use calm springs',()=>{
- assert.ok(animationDuration('.bottom-nav.is-dock-releasing')>=480);
- assert.ok(animationDuration('.bottom-nav.is-dock-settling')>=500);
- assert.ok(animationDuration(':is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-releasing')>=500);
- assert.ok(animationDuration(':is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail.is-rail-settling')>=550);
- assert.match(css,/\.bottom-nav\{\s*scale:1;\s*transform-origin:center center/);
- assert.match(css,/\.liquid-selector\.is-horizontal-rail\{[^}]*transform-origin:center center/s);
- // A centered transform-origin alone was not enough with left:50% / translateX(-50%).
- // The fixed Dock is now centered at rest with equal auto margins, and its
- // selected capsule scales independently from its own geometric center.
- assert.match(css,/\.bottom-nav\{\s*left:0!important;\s*right:0!important;\s*margin-inline:auto!important;\s*transform:none!important;/);
- assert.match(css,/\.bottom-nav\.is-dock-pressed \.bottom-liquid-indicator\{\s*scale:1\.085;/);
- assert.match(css,/@keyframes pocketDockLensReturn/);
- assert.match(css,/@keyframes pocketRailLensReturn/);
+test('Dock and segmented click travel is monotone, while swipe and switch retain motion',()=>{
+ const final=css.slice(css.indexOf('/* NO-BOUNCE CLICK FEEDBACK v1'));
+ assert.match(final,/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface\{\s*animation:none!important;/);
+ assert.match(final,/\.bottom-nav:is\(\.is-dock-releasing,\.is-dock-settling\)/);
+ assert.match(final,/\.liquid-selector:is\(\.is-rail-releasing,\.is-rail-settling\)/);
+ assert.match(final,/\.bottom-nav\.is-dock-dragging \.bottom-item\.is-scrubbed/);
+ assert.match(app,/const frames=liquidDropFrames\(startX,startW,targetX,targetW\)/);
+ assert.match(app,/pendingBottomSwipeGeometry/);
+ assert.match(css,/@keyframes pocketDockGlassReturn/);
+ assert.match(css,/@keyframes pocketNaturalConfirmation/);
+ assert.match(css,/@keyframes pocketSwitchThumbBounce/);
 });
+
 test('page, popover, and dialog are animated long enough to see their transitions',()=>{
  assert.ok(animationDuration('.page.page-enter')>=580);
  assert.ok(animationDuration('.safari-floating-menu')>=450);

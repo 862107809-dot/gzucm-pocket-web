@@ -119,7 +119,7 @@ function playLiquidTick(index=0){
   oscillator.onended=()=>{oscillator.disconnect();volume.disconnect();};
  }catch{}
 }
-function applyTheme(){document.documentElement.dataset.theme=state.prefs.theme==='system'?'':state.prefs.theme;const dark=state.prefs.theme==='dark'||(state.prefs.theme==='system'&&window.matchMedia?.('(prefers-color-scheme: dark)').matches);const meta=$('meta[name="theme-color"]');if(meta)meta.content=dark?'#101d19':'#edf2eb';}
+function applyTheme(){document.documentElement.dataset.theme=state.prefs.theme==='system'?'':state.prefs.theme;const dark=state.prefs.theme==='dark'||(state.prefs.theme==='system'&&window.matchMedia?.('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.activeTheme=dark?'dark':'light';const meta=$('meta[name="theme-color"]');if(meta)meta.content=dark?'#101d19':'#edf2eb';}
 function currentSessions(week=state.week,weekday=null){return (state.data.sessions||[]).filter(s=>Number(s.week)===Number(week)&&(weekday===null||Number(s.weekday)===weekday)).sort((a,b)=>Number(a.startUnit)-Number(b.startUnit));}
 const colorIndex = s => Number.isFinite(+s.tone)?(+s.tone)%9:Math.abs([...(s.name||'')].reduce((a,c)=>a+c.charCodeAt(0),0))%9;
 const palette=['#81bca1','#85a8d0','#dfba88','#b5a1d5','#d9979a','#7ebdb3','#85a8d0','#dfba88','#b5a1d5'];
@@ -579,10 +579,11 @@ function liquidSwitchFinish(event,cancelled=false){
  try{if(p.button.hasPointerCapture?.(event.pointerId))p.button.releasePointerCapture(event.pointerId);}catch{}
  clearLiquidSwitchGesture(p.button);
  if(p.scroll||cancelled)return;
- if(!p.dragging)return; // Native click / keyboard path handles simple taps.
+ // Commit at pointerup for taps AND drags. Leaving it to click makes the
+ // stretched thumb briefly shrink in the old state before it moves.
  if(event.cancelable)event.preventDefault();
  ignoreLiquidSwitchClickUntil=Date.now()+350;
- const on=p.position>=7;
+ const on=p.dragging?p.position>=7:!p.startOn;
  commitLiquidSwitch(p.button,on);
 }
 function guardLiquidSwitchClick(event){

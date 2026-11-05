@@ -319,6 +319,7 @@
  global.GZUCM_GLASS_OPTICS={
   refresh:schedule,
   status:()=>({mode:engine,backdrop,webgl:engine==='webgl',
+   gpuSurfaces:Array.from(live.values()).filter(item=>!!item.gl).length,
    surfaces:live.size}),
   detect:()=>({backdrop:cssBackdrop(),svg:svgSupported(),
    webgl:!brokenGL&&webglSupported()}),

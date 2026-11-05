@@ -132,7 +132,7 @@ test('desktop Mac and wide iPad use a short shrink-then-expand visual handoff',a
  assert.equal(h.calls.some(x=>x[0]==='sync'),true);
 });
 
-test('tablet and phone get responsive zoom amplitudes without overshooting 100%',()=>{
+test('tablet and phone get responsive zoom amplitudes without overshooting 100%',async()=>{
  for(const [width,expected,duration] of [[780,'scale(0.98)',180],[390,'scale(0.973)',195]]){
   const h=harness('month',true,width,true);
   h.f.transitionScheduleMode();
@@ -186,7 +186,7 @@ test('older iPad browsers use a CSS zoom-in fallback instead of direct content j
  assert.equal(h.page.updates,1);
  assert.match(app,/schedule-soft-arrival/);
  assert.match(css,/\.page\.page-schedule\.schedule-soft-arrival/);
- assert.match(css,/scheduleSoftArrival \.18s/);
+ assert.match(css,/\.page\.page-schedule\.schedule-soft-arrival\{animation-duration:\.18s!important;\}/);
 });
 
 test('timetable optimization leaves all three glass options, weeks and month grid intact',()=>{

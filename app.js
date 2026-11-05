@@ -435,7 +435,7 @@ function liquidSwitchFinish(event,cancelled=false){
  const on=event.clientX>=r.left+r.width/2;
  const key=p.button.dataset?.action==='toggleHaptics'?'hapticEffects':'soundEffects';
  if(on!==(state.prefs[key]!==false)){
-  window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
+  if(typeof window!=='undefined')window.GZUCM_HAPTICS?.pulse('toggle',key==='hapticEffects');
   state.prefs[key]=on;
   storePrefs();
   if(on&&key==='soundEffects'){armLiquidSound();playLiquidTick();}

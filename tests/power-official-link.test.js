@@ -17,7 +17,7 @@ test('all official electricity-query controls link directly to the school portal
 });
 
 test('web electricity query states its limits immediately next to the button',()=>{
- assert.match(page,/<div class="power-official-query">[\s\S]*?class="power-query-hint">当前网页暂不支持直接抓取官方电费数据<\/span>/);
+ assert.match(page,/<div class="power-official-query">[\s\S]*?class="power-query-hint">点击可显示官方数据（在学校官网查看）；当前网页暂不支持直接抓取官方电费数据<\/span>/);
  assert.match(css,/#app \.power-official-query\{/);
  assert.match(css,/#app \.power-query-hint\{/);
 });

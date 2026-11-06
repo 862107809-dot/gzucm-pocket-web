@@ -65,36 +65,24 @@ function harness(){
   frame:()=>{const next=frame;frame=null;next?.();},
   counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
 }
-test('mobile Dock occupies its own bottom row instead of covering scrolled cards',()=>{
- const section=css.slice(css.indexOf('/* NON-OVERLAPPING MOBILE DOCK v1'));
- assert.ok(section.length>1100,'dedicated Dock layout must be present');
- assert.match(section,/@media\(max-width:900px\)/);
- assert.match(section,/#app\.app-shell\{\s*display:flex;\s*flex-direction:column;/);
- assert.match(section,/height:100dvh/);
- assert.match(section,/padding-bottom:calc\(12px \+ env\(safe-area-inset-bottom,0px\)\)/);
- assert.match(section,/#app\.app-shell > \.content-area\{\s*flex:1 1 auto;\s*min-height:0;/);
- assert.match(section,/overflow-y:auto/);
- assert.match(section,/#app\.app-shell > \.bottom-nav\{\s*position:relative!important;/);
- assert.match(section,/flex:0 0 72px/);
- assert.match(section,/bottom:auto!important/);
- assert.match(section,/margin:15px auto 0!important/);
- assert.match(section,/align-self:center/);
- // The fixed-position style remains available on older desktop/alternative
- // layouts, but is explicitly overridden at the mobile breakpoint.
- assert.match(css,/@media\(max-width:900px\)[^\n]*\{\.app-shell\{display:block/);
- assert.match(css,/@media\(min-width:901px\)/);
+test('original floating Dock remains fixed and does not move into a layout row',()=>{
+ const restored=css.slice(css.indexOf('/* RESTORED FLOATING DOCK + END-OF-PAGE CLEARANCE v2'));
+ assert.ok(restored.length>400);
+ assert.match(css,/@media\(max-width:900px\)\{\.app-shell\{display:block;padding:16px 18px 120px/);
+ assert.match(css,/\.bottom-nav\{position:fixed;left:50%;transform:translateX\(-50%\);bottom:calc\(10px \+ env\(safe-area-inset-bottom\)\)/);
+ assert.doesNotMatch(restored,/(?:position:relative|display:flex|overflow:hidden|height:100dvh)/);
+ assert.doesNotMatch(css,/NON-OVERLAPPING MOBILE DOCK v1/);
 });
 
-test('content scroll isolation keeps sticky header and Dock gesture hit targets separate',()=>{
- const section=css.slice(css.indexOf('/* NON-OVERLAPPING MOBILE DOCK v1'));
- assert.match(section,/overscroll-behavior-y:contain/);
- assert.match(section,/-webkit-overflow-scrolling:touch/);
- assert.match(section,/scrollbar-width:none/);
- assert.match(section,/padding-bottom:14px/);
- assert.match(section,/overflow:visible/);
- assert.match(app,/root\.innerHTML=\`\$\{sidebar\(\)\}<main class="content-area">/);
- assert.match(app,/\$\{bottomNav\(\)\}\`;/);
- assert.match(app,/\.bottom-nav/);
+test('at maximum mobile scroll the last card clears the fixed Dock with safe-area spacing',()=>{
+ const restored=css.slice(css.indexOf('/* RESTORED FLOATING DOCK + END-OF-PAGE CLEARANCE v2'));
+ assert.match(restored,/@media\(max-width:900px\)/);
+ assert.match(restored,/#app\.app-shell\{\s*padding-bottom:calc\(136px \+ env\(safe-area-inset-bottom,0px\)\);/);
+ assert.match(restored,/html\{\s*scroll-padding-bottom:calc\(136px \+ env\(safe-area-inset-bottom,0px\)\);/);
+ // 136px padding minus 72px Dock and 10px offset leaves 54px clear of
+ // its rim, independent of the current device safe-area inset.
+ assert.equal(136-72-10,54);
+ assert.doesNotMatch(restored,/\.content-area\{\s*overflow-y:auto/);
 });
 test('compact navigation adapts to iPad portrait, landscape, Mac and desktop widths',()=>{
  const responsive=css.slice(css.indexOf('/* CROSS-DEVICE COMPACT NAVIGATION v1'));

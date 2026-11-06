@@ -217,5 +217,5 @@ test('Safari-style damping is physically nonlinear with a subtle overshoot',()=>
  const increments=travel.slice(1).map((x,i)=>x-travel[i]);
  assert.ok(Math.abs(increments[2]-increments[10])>.5,'Spring must not move at constant speed');
  assert.match(app,/typeof glass\.animate==='function'/);
- assert.match(app,/glass\.animate\(frames,\{duration,fill:'none'\}\)/);
+ assert.match(app,/glass\.animate\(frames,\{duration,fill:'none',easing:'linear'\}\)/);
 });

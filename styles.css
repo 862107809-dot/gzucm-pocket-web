@@ -3009,3 +3009,28 @@
   color:var(--accent)!important;
  }
 }
+
+/* DIRECT OFFICIAL POWER QUERY v1
+ * The website opens the school's electricity page, rather than implying
+ * that an unavailable web-only API refresh updated local data. */
+#app .power-official-query{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:8px 12px;
+}
+#app .power-official-query .hero-button{
+ flex:0 0 auto;
+ white-space:nowrap;
+}
+#app .power-query-hint{
+ display:inline-block;
+ max-width:220px;
+ font-size:11px;
+ line-height:1.45;
+ color:rgba(236,250,241,.94);
+}
+@media(max-width:600px){
+ #app .power-official-query{align-items:flex-start;}
+ #app .power-query-hint{max-width:none;}
+}

@@ -385,6 +385,7 @@ test('swiping to another Dock module commits the lens without bouncing the whole
  h.output.bottomSwipeFinish(h.event(265,20));
  assert.equal(h.state.view,'grades');
  assert.deepEqual(h.output.getDockFlags(),{pulse:false,drop:false});
+ assert.equal(h.classes.has('is-dragging'),false,'persistent Dock must release drag-only magnification');
  assert.match(app,/dockRemountDrop=false; \/\/ swipe changes the lens only/);
 });
 test('dragged Dock buttons never render their own borders or outlines',()=>{

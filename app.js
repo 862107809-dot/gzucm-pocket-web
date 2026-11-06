@@ -748,7 +748,9 @@ function render(){
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);
  restoreSurfaceBounce(root);
- alignBottomLiquid(oldView,oldRect,oldInlineGeometry);
+ // Power/grade background data can rerender while a Dock glide is still
+ // running. Never cancel or re-align that glass when the module is unchanged.
+ if(!oldDock||oldView!==state.view)alignBottomLiquid(oldView,oldRect,oldInlineGeometry);
  previousBottomTab=state.view;
  if(state.view==='settings')updateGlassModeIndicator();
 }

@@ -110,8 +110,21 @@ test('Dock stays within its border at rest, expands only while dragged, then con
  assert.match(section,/#app \.bottom-nav\.is-dock-pressed \.bottom-liquid-indicator\{\s*scale:1!important;/);
  assert.match(section,/@keyframes pocketDockGlassReturn\{\s*0%\{inset:-10px -13px;\}\s*100%\{inset:0;\}/);
  assert.match(section,/\.bottom-nav\.is-dock-releasing,[\s\S]*?animation:pocketDockClickConfirm/);
- assert.match(app,/if\(shouldConfirm\)confirmGlassSelection\(glass\)/);
+ assert.match(app,/if\(shouldConfirm&&!changed&&!fromSwipe\)confirmGlassSelection\(glass\)/);
  assert.match(app,/pocketDockSoftDrop'\].includes\(event.animationName\)/);
+});
+
+test('Dock survives page repaint and a power refresh never restarts a running glide',()=>{
+ const pageRender=app.slice(app.indexOf('function render(){'),app.indexOf('/* Grade and credit selectors'));
+ assert.match(pageRender,/if\(oldDock\)\{/);
+ assert.match(pageRender,/oldDock\.insertAdjacentHTML\('beforebegin',contentMarkup\)/);
+ assert.match(pageRender,/button\.classList\.toggle\('active',selected\)/);
+ assert.match(pageRender,/if\(!oldDock\|\|oldView!==state\.view\)alignBottomLiquid\(/);
+ assert.match(app,/dockRemountPulse=false; \/\/ the mounted Dock already received finger-up feedback/);
+ assert.match(app,/glass\._dockGlideAnimation\?\.cancel\?\.\(\)/);
+ assert.match(app,/if\(shouldConfirm&&!changed&&!fromSwipe\)confirmGlassSelection\(glass\)/);
+ assert.match(css,/PERSISTENT DOCK \/ NO TOUCH GREY FLASH v4/);
+ assert.match(css,/#app \.bottom-nav\.is-dock-dragging \.bottom-item\.active:not\(\.is-scrubbed\)/);
 });
 
 test('same-tab swipe confirms with a shadow without navigation or stale glass state',()=>{

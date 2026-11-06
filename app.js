@@ -1955,7 +1955,10 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
  }
  if(target.dataset.view){if(target.closest('.bottom-nav')){
   dockRemountPulse=false; // the mounted Dock already received finger-up feedback
-  if(target.dataset.view===state.view)confirmGlassSelection(target.closest('.bottom-nav')?.querySelector('.bottom-liquid-indicator'));
+  // Pointer-up already confirmed repeat taps; only keyboard/AT clicks (detail=0)
+  // need a confirmation here. Never restart the same shadow pulse twice.
+  if(target.dataset.view===state.view&&event.detail===0)
+   confirmGlassSelection(target.closest('.bottom-nav')?.querySelector('.bottom-liquid-indicator'));
   armLiquidSound();playLiquidTick();
  }navigateBottomModule(target.dataset.view);return;}
  if(target.dataset.course){showCourse(target.dataset.course);return;}

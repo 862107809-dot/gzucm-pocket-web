@@ -60,7 +60,8 @@ function harness(){
    );
  const event=(x,y,id=7)=>({pointerId:id,isPrimary:true,button:0,clientX:x,clientY:y,
   cancelable:true,preventDefault(){this.prevented=true;},
-  target:{closest:sel=>sel==='.bottom-nav'?nav:null}});
+  target:{closest:sel=>sel==='.bottom-nav'?nav:
+    sel==='.bottom-item'?tabs[Math.min(4,Math.max(0,Math.floor(x/100)))]:null}});
  return {state,glass,classes,nav,navClasses,navVars,tabClasses,tabs,event,output,
   frame:()=>{const next=frame;frame=null;next?.();},
   counts:()=>({renders,closed,scheduleLoads,captured,tones,armed,transformOnRender})};
@@ -351,6 +352,13 @@ test('tap without dragging gently springs the entire Dock while preserving optic
  assert.equal(h.navClasses.has('is-dock-releasing'),true,'simple tap gives the Dock a gentle spring');
  assert.ok(h.classes.has('is-confirmed'),'tap keeps a non-bouncing shadow cue');
  assert.match(css.slice(css.indexOf('/* GENTLE BUTTON AND RAIL SPRINGS v1')),/\.bottom-nav\.is-dock-releasing,/);
+});
+test('switching Dock tabs does not flash the outgoing glass confirmation',()=>{
+ const h=harness();
+ h.output.bottomSwipeDown(h.event(245,20));
+ h.output.bottomSwipeFinish(h.event(245,20));
+ assert.equal(h.classes.has('is-confirmed'),false,'only repeat taps should bloom');
+ assert.ok(h.navClasses.has('is-dock-releasing'),'tap keeps one gentle rail spring');
 });
 test('ordinary Dock click switches view without a rail spring, while drag still requests a landing',()=>{
  const h=harness();

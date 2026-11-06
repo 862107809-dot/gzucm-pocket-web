@@ -1096,7 +1096,7 @@ function powerPage(){
    <div class="power-foot"><span>${E(statusText)}</span>
     <div class="power-official-query">
      <a class="hero-button" href="${officialPowerUrl}" target="_blank" rel="noopener noreferrer" aria-label="打开学校官方电费查询页面（新标签页）">${I('link',14)} 刷新官方数据</a>
-     <span class="power-query-hint">当前网页暂不支持直接抓取官方电费数据</span>
+     <span class="power-query-hint">点击可显示官方数据（在学校官网查看）；当前网页暂不支持直接抓取官方电费数据</span>
     </div>
    </div>
   </div>

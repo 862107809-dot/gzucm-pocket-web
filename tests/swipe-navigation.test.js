@@ -227,7 +227,7 @@ test('preserves real finger-up anchor through Dock DOM remount even without a dr
 });
 
 test('Dock material keeps a slower, soft optical feel with accessibility fallback',()=>{
- const tail=css.slice(css.indexOf('/* DOCK SOFT LIQUID GLASS MOTION v3 */'));
+ const tail=css.slice(css.indexOf('/* DOCK SOFT LIQUID GLASS MOTION v3'));
  assert.ok(tail.length>1200);
  assert.match(tail,/--pocket-dock-tap-time:\.54s/);
  assert.match(tail,/--pocket-dock-glide-time:\.50s/);

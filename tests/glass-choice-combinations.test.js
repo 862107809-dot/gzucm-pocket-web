@@ -106,7 +106,7 @@ test('real browser computed-style matrix: 3 glass modes × light/dark menu and c
      const rect=choice.getBoundingClientRect();
      const hit=document.elementFromPoint(rect.left+rect.width*.55,rect.top+rect.height*.52);
      const checks={
-       menuLensNoBlur:lens.backdropFilter==='none'&&lens.webkitBackdropFilter==='none',
+       menuLensNoBlur:lens.backdropFilter==='none'&&(!lens.webkitBackdropFilter||lens.webkitBackdropFilter==='none'),
        railLensNoBlur:s('.liquid-choice-highlight').backdropFilter==='none',
        dockLensNoBlur:s('.bottom-liquid-surface').backdropFilter==='none',
        labelAboveLens:Number(button.zIndex)>Number(lens.zIndex),

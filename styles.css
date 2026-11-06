@@ -2905,3 +2905,81 @@
   scroll-padding-bottom:calc(136px + env(safe-area-inset-bottom,0px));
  }
 }
+
+
+/* DOCK SOFT LIQUID GLASS MOTION v3
+ * A restrained, Apple-like optical response: the pressed Dock and selected
+ * square breathe together; the capsule travels on one slow, monotone curve.
+ * No layout animation, extra active-tile fill, second spring or gray flash.
+ * Swipes use the browser's native display-vsync interpolation. */
+:root{
+ --pocket-dock-press-time:.28s;
+ --pocket-dock-tap-time:.54s;
+ --pocket-dock-glide-time:.50s;
+ --pocket-dock-release-time:.42s;
+ --pocket-dock-fluid:cubic-bezier(.20,.80,.26,1);
+}
+:root[data-motion-rate="economy"]{
+ --pocket-dock-tap-time:.44s;
+ --pocket-dock-glide-time:.39s;
+ --pocket-dock-release-time:.34s;
+}
+@keyframes pocketDockSoftLiquidTap{
+ 0%{scale:1.018;}
+ 56%{scale:.998;}
+ 82%{scale:1.003;}
+ 100%{scale:1;}
+}
+@media(max-width:900px){
+ #app .bottom-nav{
+  transition:scale var(--pocket-dock-press-time) var(--pocket-dock-fluid),
+   border-color .25s ease-out,box-shadow .27s ease-out!important;
+ }
+ #app .bottom-nav:is(.is-dock-releasing,.is-dock-settling){
+  animation:pocketDockSoftLiquidTap var(--pocket-dock-tap-time)
+   cubic-bezier(.20,.78,.26,1) both!important;
+ }
+ /* Drag releases return to 1 smoothly, with no overshoot. */
+ #app .bottom-nav.is-dock-dropping{
+  animation:none!important;
+  scale:1!important;
+  transition:scale var(--pocket-dock-release-time)
+   var(--pocket-dock-fluid)!important;
+ }
+ #app .bottom-nav .bottom-liquid-indicator{
+  transition:transform var(--pocket-dock-glide-time) var(--pocket-dock-fluid),
+   width var(--pocket-dock-glide-time) var(--pocket-dock-fluid),
+   scale var(--pocket-dock-press-time) var(--pocket-dock-fluid)!important;
+ }
+ #app .bottom-nav .bottom-liquid-indicator.is-instant,
+ #app .bottom-nav .bottom-liquid-indicator.is-dragging{
+  transition:none!important;
+ }
+ #app .bottom-nav .bottom-liquid-indicator.is-moving .bottom-liquid-surface,
+ #app .bottom-nav .bottom-liquid-indicator.is-dropping .bottom-liquid-surface{
+  animation:none!important;
+ }
+ #app .bottom-nav .bottom-item{
+  transition:scale .34s cubic-bezier(.20,.90,.32,1),
+   color .31s ease-out,filter .26s ease-out!important;
+ }
+ #app .bottom-nav .bottom-item.active,
+ #app .bottom-nav .bottom-item.active:active{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+ }
+ #app .bottom-nav .bottom-item.is-scrubbed{
+  transition:scale .20s cubic-bezier(.20,.80,.30,1),
+   color .20s ease-out!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #app .bottom-nav,
+ #app .bottom-nav .bottom-liquid-indicator,
+ #app .bottom-nav .bottom-item,
+ #app .bottom-nav:is(.is-dock-releasing,.is-dock-settling,.is-dock-dropping){
+  animation:none!important;
+  transition:none!important;
+ }
+}

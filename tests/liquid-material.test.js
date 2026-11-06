@@ -16,7 +16,7 @@ test('optical material sheet is layered after app layout styles and cached for P
  const glass=html.indexOf('/liquid-material.css?v=');
  assert.ok(base>0&&glass>base,'visual material overrides must follow the original styles');
  assert.ok(cache.includes('/liquid-material.css?v=20261105-grey-choice2'));
- assert.ok(cache.includes('gzucm-pocket-web-v68-20261106-power-direct-portal5'));
+ assert.ok(cache.includes('gzucm-pocket-web-v69-20261106-power-direct-portal5'));
  assert.ok(html.includes('/glass-renderer.js?v=20261105-glass-gesture-opt1'));
  assert.ok(cache.includes('/glass-renderer.js?v=20261105-glass-gesture-opt1'));
  assert.ok(html.includes('/glass-effects.js?v=20261105-glass-gesture-opt1'));

@@ -1854,6 +1854,9 @@ function bottomSwipeFinish(event,cancelled=false){
  }
  pendingBottomSwipeGeometry={x:Math.max(sw.layout.first,Math.min(sw.layout.last,
   bottomSwipeLocalX(sw,event.clientX)-sw.layout.width/2)),width:sw.layout.width};
+ // The rail is now persistent: retire gesture-only magnification before the
+ // lens starts its one-way drop, or the new tab inherits is-dragging forever.
+ sw.glass.classList.remove('is-dragging');
  liquidGestureSnap=true;
  dockRemountPulse=false;
  dockRemountDrop=false; // swipe changes the lens only, not the rail spring

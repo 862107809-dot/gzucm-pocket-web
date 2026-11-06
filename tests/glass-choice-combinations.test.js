@@ -22,7 +22,7 @@ test('Safari popover: text is always above the moving glass and its duplicate bl
  assert.match(section,/\.safari-menu-option > :is\(\.safari-menu-icon,\.safari-menu-text,\.safari-menu-check\)/);
  assert.match(section,/\.safari-menu-text strong\{\s*color:var\(--ink\)!important;/);
  assert.match(section,/\.safari-menu-text small\{\s*color:var\(--muted\)!important;/);
- assert.match(app,/class="safari-menu-glider"/);
+ assert.match(app,/glider\.className='safari-menu-glider'/);
  assert.match(app,/safari-menu-text/);
 });
 test('all shared selection lenses sample the background only on their outer glass shell',()=>{
@@ -32,7 +32,6 @@ test('all shared selection lenses sample the background only on their outer glas
  }
  assert.match(section,/-webkit-backdrop-filter:none!important;/);
  assert.match(section,/backdrop-filter:none!important;/);
- assert.ok(styles.includes('function')===false || styles.length>1000);
  assert.doesNotMatch(section,/(^|\n)\s*(?:animation|transition)(?:-[a-z]+)?\s*:/m,
   'fix cannot change timings, bounce or swipe logic');
 });

@@ -1068,6 +1068,7 @@ function gradeRows(){if(state.gradeTab==='course'){
  const rows=state.data.fitness||[];return rows.length?rows.map(g=>`<div class="grade-row"><div class="grade-left"><strong>${E(g.term||'体测')}</strong><span>${E(g.level)}</span><div class="course-detail-row">${(g.items||[]).map(x=>`<span class="course-tag">${E(x.label)} ${E(x.value)}</span>`).join('')}</div></div><div><div class="score">${E(g.total)}</div><div class="score-sub">体测总分</div></div></div>`).join(''):empty('暂无体测记录','导入自己的体测数据后即可查看');}
 function creditBreakdown(){const grades=(state.data.grades||[]).filter(g=>g.passed);const total=grades.reduce((a,g)=>a+(+g.credit||0),0);const elective=grades.filter(g=>!countedGrade(g));const categorised=new Map();(state.creditMode==='total'?grades:elective).forEach(g=>{const c=state.creditMode==='total'?(g.category||'未分类'):(g.classify||'未分类');categorised.set(c,(categorised.get(c)||0)+(+g.credit||0));});const entries=[...categorised].sort((a,b)=>b[1]-a[1]);return `<div class="card-heading"><span>学分构成</span><span class="segmented"><button data-credit="total" class="${state.creditMode==='total'?'active':''}">总学分</button><button data-credit="elective" class="${state.creditMode==='elective'?'active':''}">公选 / 任选</button></span></div><div class="metric-value">${(state.creditMode==='total'?total:elective.reduce((a,g)=>a+(+g.credit||0),0)).toFixed(1)}<span class="tiny muted"> 学分</span></div><div class="overview-list mt-20">${entries.map(([name,credit],idx)=>`<div><div class="overview-item"><span class="overview-dot" style="background:${palette[idx%9]}"></span><span class="overview-name">${E(name)}</span><span class="overview-count">${credit.toFixed(1)}</span></div><div class="progress-track"><div class="progress-fill" style="background:${palette[idx%9]};width:${Math.min(100,credit/(state.creditMode==='elective'?Math.max(4,...entries.map(x=>x[1])):Math.max(total,1))*100)}%"></div></div></div>`).join('')||empty('暂无学分','')}</div>`;}
 function powerPage(){
+ const officialPowerUrl='https://ecard.gzucm.edu.cn/user/powerfee/index';
  const p=powerInfo(),data=p.data,days=p.recent7||[];
  const live=data?.source==='ecard-live',pageBalance=data?.source==='ecard-page';
  const manual=data?.source==='manual';
@@ -1093,7 +1094,10 @@ function powerPage(){
    <div class="power-label">${E(data?.roomLabel||'尚未绑定宿舍')}</div>
    <div class="tiny" style="opacity:.86;margin-top:12px">上次更新：${E(stamp)}</div></div>
    <div class="power-foot"><span>${E(statusText)}</span>
-    <button type="button" class="hero-button" data-action="syncPower">${I('refresh',14)} ${state.powerStatus==='loading'?'正在同步…':'刷新官方电量'}</button>
+    <div class="power-official-query">
+     <a class="hero-button" href="${officialPowerUrl}" target="_blank" rel="noopener noreferrer" aria-label="打开学校官方电费查询页面（新标签页）">${I('link',14)} 刷新官方数据</a>
+     <span class="power-query-hint">当前网页暂不支持直接抓取官方电费数据</span>
+    </div>
    </div>
   </div>
   <section class="card">
@@ -1125,12 +1129,12 @@ function powerPage(){
  <div class="card mt-20"><div class="card-heading">${I('shield',18)} 查询与数据来源</div>
   <p class="muted tiny">${E(statusText)}。本站 Cookie 与学校一卡通 Cookie 不同；只有后台持有经校方授权的有效一卡通会话，才能自动读取官方数据。不会在本站收集学校密码或要求粘贴原始 Cookie。</p>
   <div class="inline" style="gap:10px;flex-wrap:wrap">
-   <button class="btn primary" type="button" data-action="syncPower">${I('refresh',15)} 查询实时电量</button>
+   <a class="btn primary" href="${officialPowerUrl}" target="_blank" rel="noopener noreferrer">${I('link',15)} 前往官网查询实时电量</a>
    <button class="btn" type="button" data-action="editPower">${I('edit',14)} 记录用电</button>
-   <a class="btn" href="https://ecard.gzucm.edu.cn/user/powerfee/index" target="_blank" rel="noopener noreferrer">${I('link',15)} 学校官方电费页</a>
+   <span class="tiny muted">网站暂无法自动抓取官方电费数据；需以官网结果为准。</span>
   </div>
  </div>
- ${sectionTitle('近7天用电趋势',`<button class="small-action" data-action="syncPower">刷新数据 ${I('refresh',14)}</button>`)}
+ ${sectionTitle('近7天用电趋势',`<a class="small-action" href="${officialPowerUrl}" target="_blank" rel="noopener noreferrer">前往官网查询 ${I('link',14)}</a>`)}
  <div class="two-col">
   ${card('<div class="card-heading">每日用电折线 <span class="muted tiny">单位：度</span></div>'+powerChart(days),'trend-card')}
   ${card('<div class="card-heading">用电明细 <span class="muted tiny">最近 '+days.length+' 天</span></div>'+
@@ -1545,7 +1549,7 @@ async function syncPower(automatic=false){
   if(!state.ecardReady){
    state.powerError='当前网站没有可用的一卡通授权会话；请在学校官网查看实时电量，或记录自己的查询结果。';
    if(state.view==='power')render();
-   if(!automatic)powerHelp(state.powerError);
+   if(!automatic)toast(state.powerError);
    return;
   }
  }
@@ -1592,8 +1596,7 @@ async function syncPower(automatic=false){
   state.powerError=e.message||'电费查询失败';
   if(e.status===428||e.status===401)state.ecardReady=false;
   if(state.view==='power')render();
-  if(!automatic&&e.status!==429)powerHelp(state.powerError);
-  else if(!automatic)toast(state.powerError);
+  if(!automatic)toast(state.powerError);
  }finally{
   state.powerStatus='idle';
   if(state.view==='power')render();

@@ -1043,3 +1043,55 @@ body{
  -webkit-backdrop-filter:none!important;
  backdrop-filter:none!important;
 }
+
+/* GLASS SELECTION FOREGROUND SAFETY v3
+ * A WebKit backdrop-filter on a MOVING, positioned selection lens can be
+ * composited over its sibling text even when the text has higher z-index.
+ * The surrounding glass shell still samples/blurs the background. Keep the
+ * moving lens purely translucent (pigment + rim), and paint labels above it.
+ * Shared by all three optical engines and both effective appearance themes. */
+:root .safari-floating-menu{
+ isolation:isolate;
+}
+:root .safari-floating-menu .safari-menu-glider,
+:root[data-glass-engine] .safari-floating-menu .safari-menu-glider,
+:root[data-active-theme] .safari-floating-menu .safari-menu-glider{
+ z-index:0;
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+ filter:none!important;
+}
+:root .safari-floating-menu .safari-menu-option{
+ position:relative;
+ z-index:2;
+ opacity:1;
+ filter:none!important;
+}
+:root .safari-floating-menu .safari-menu-option > :is(.safari-menu-icon,.safari-menu-text,.safari-menu-check){
+ position:relative;
+ z-index:2;
+ opacity:1;
+}
+:root .safari-floating-menu .safari-menu-option .safari-menu-text strong{
+ color:var(--ink)!important;
+ opacity:1!important;
+}
+:root .safari-floating-menu .safari-menu-option .safari-menu-text small{
+ color:var(--muted)!important;
+ opacity:1!important;
+}
+/* The same WebKit double-blur fault can affect moving choices in segmented
+ * controls, timetable rails, weekday strip, sidebar and floating Dock.
+ * Keep their optical tint/rim and all existing transforms/gesture durations. */
+:root .liquid-selector > .liquid-choice-highlight,
+:root[data-glass-engine] .liquid-selector > .liquid-choice-highlight,
+:root .bottom-nav .bottom-liquid-surface,
+:root[data-glass-engine] .bottom-nav .bottom-liquid-surface{
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+:root .liquid-selector > :is(button,.nav-item),
+:root .bottom-nav .bottom-item{
+ position:relative;
+ z-index:2;
+}

@@ -179,6 +179,69 @@ test('fast vertical pointer-up without a move never changes Dock tab',()=>{
  assert.equal(h.navClasses.has('is-dock-releasing'),false);
 });
 
+test('tap navigation slows to a smooth 500ms glide while a swipe uses 420ms without overshoot',()=>{
+ const glide=app.slice(app.indexOf('function alignBottomLiquid('),app.indexOf('/* The same touch-following glass selection'));
+ assert.match(glide,/const fromSwipe=!!pendingBottomSwipeGeometry\|\|nav\.classList\?\.contains\?\.\('is-dock-dropping'\)===true/);
+ assert.match(glide,/const duration=fromSwipe\?\(economy\?340:420\):\(economy\?390:500\)/);
+ assert.match(glide,/glass\.animate\(frames,\{duration,fill:'none',easing:'linear'\}\)/);
+ assert.match(glide,/glass\.classList\.remove\('is-dropping','is-moving'\)/);
+ assert.match(app,/easing:'cubic-bezier\(\.20,\.82,\.30,1\)'/);
+ assert.doesNotMatch(glide,/liquidSpringFrames\(/,'Dock travel should not overshoot');
+});
+
+test('preserves real finger-up anchor through Dock DOM remount even without a drop class',()=>{
+ const code=app.slice(app.indexOf('function liquidDropFrames('),app.indexOf('/* The same touch-following glass selection'));
+ let played=null;
+ const classes=new Set();
+ const glass={
+  style:{},isConnected:true,
+  classList:{add:(...items)=>items.forEach(x=>classes.add(x)),remove:(...items)=>items.forEach(x=>classes.delete(x))},
+  offsetWidth:94,
+  animate:(frames,options)=>{played={frames,options};return {finished:Promise.resolve()};}
+ };
+ const current={offsetLeft:200,offsetWidth:100};
+ const previous={offsetLeft:0,offsetWidth:100};
+ const nav={
+  classList:{contains:()=>false},
+  getBoundingClientRect:()=>({left:40,width:500}),
+  querySelector:sel=>sel==='.bottom-liquid-indicator'?glass:
+   sel==='.bottom-item.active'?current:previous
+ };
+ const document={documentElement:{dataset:{motionRate:'high'}},
+  querySelector:()=>nav};
+ const output=new Function('document','window','state','confirmGlassSelection',
+  'requestAnimationFrame','cancelAnimationFrame',
+  'let liquidMoveFrame=0,liquidGestureSnap=true;\n'+
+  'let pendingBottomSwipeGeometry={x:210,width:94};\n'+code+
+  'return {alignBottomLiquid,getPending:()=>pendingBottomSwipeGeometry};')(
+  document,{matchMedia:()=>({matches:false})},{view:'grades'},
+  ()=>{},cb=>{cb();return 1;},()=>{}
+ );
+ output.alignBottomLiquid('today',{left:44,width:94},{x:3,width:94});
+ assert.ok(played,'glide should start');
+ assert.equal(played.options.duration,420);
+ assert.match(played.frames[0].transform,/translate3d\(210\.00px/);
+ assert.match(played.frames[1].transform,/translate3d\(203\.00px/);
+ assert.equal(output.getPending(),null);
+ assert.ok(classes.has('is-dropping'),'swipe is a one-way drop, not a tap spring');
+});
+
+test('Dock material keeps a slower, soft optical feel with accessibility fallback',()=>{
+ const tail=css.slice(css.indexOf('/* DOCK SOFT LIQUID GLASS MOTION v3 */'));
+ assert.ok(tail.length>1200);
+ assert.match(tail,/--pocket-dock-tap-time:\.54s/);
+ assert.match(tail,/--pocket-dock-glide-time:\.50s/);
+ assert.match(tail,/--pocket-dock-release-time:\.42s/);
+ assert.match(tail,/@keyframes pocketDockSoftLiquidTap/);
+ assert.match(tail,/\.bottom-nav:is\(\.is-dock-releasing,\.is-dock-settling\)/);
+ assert.match(tail,/\.bottom-nav\.is-dock-dropping\{\s*animation:none!important;/);
+ assert.match(tail,/\.bottom-liquid-indicator\.is-instant,/);
+ assert.match(tail,/\.bottom-liquid-indicator\.is-moving \.bottom-liquid-surface,/);
+ assert.match(tail,/prefers-reduced-motion:reduce/);
+ assert.match(css,/RESTORED FLOATING DOCK \+ END-OF-PAGE CLEARANCE v2/,
+  'original floating Dock and bottom clearance must remain untouched');
+});
+
 test('native compositor interpolates Dock glide across high-refresh screens without 40-step sampling',()=>{
  const code=app.slice(app.indexOf('function liquidDropFrames('),app.indexOf('function alignBottomLiquid('));
  assert.match(code,/easing:'cubic-bezier\(\.20,\.82,\.30,1\)'/);

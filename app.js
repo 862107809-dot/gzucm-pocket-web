@@ -216,8 +216,12 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
   Math.max(12,(previous?.offsetWidth||current.offsetWidth)-inset*2);
  const startX=Number.isFinite(oldX)?oldX:targetX;
  const startW=Number.isFinite(oldW)?oldW:targetW;
+ glass._dockGlideAnimation?.cancel?.();
+ glass._dockGlideAnimation=null;
  glass.classList.add('is-instant');
- if(shouldConfirm)confirmGlassSelection(glass);
+ // The finger-up handler already confirms taps; do not replay the bloom
+ // after a module change, which flashes on Safari's glass backing layer.
+ if(shouldConfirm&&!changed&&!fromSwipe)confirmGlassSelection(glass);
  glass.style.width=(changed?startW:targetW)+'px';
  glass.style.transform='translate3d('+(changed?startX:targetX)+'px,0,0)';
  if(!changed)return;
@@ -240,9 +244,17 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
    try{
     // CSS holds the final coordinates. The compositor interpolates every
     // frame; only cleanup state changes at completion, not the material.
-    glass.animate(frames,{duration,fill:'none',easing:'linear'}).finished.then(()=>{
+    const animation=glass.animate(frames,{duration,fill:'none',easing:'linear'});
+    glass._dockGlideAnimation=animation;
+    animation.finished.then(()=>{
+     if(glass._dockGlideAnimation!==animation)return;
+     glass._dockGlideAnimation=null;
      glass.classList.remove('is-dropping','is-moving');
-    },()=>{glass.classList.remove('is-dropping','is-moving');});
+    },()=>{
+     if(glass._dockGlideAnimation!==animation)return;
+     glass._dockGlideAnimation=null;
+     glass.classList.remove('is-dropping','is-moving');
+    });
     return;
    }catch{glass.classList.remove('is-instant');}
   }
@@ -704,11 +716,34 @@ function render(){
  const oldRect=oldGlass?.getBoundingClientRect();
  // CSS transforms reflect layout-space translation; screen rects are enlarged by touch scale.
  const oldMatch=oldGlass?.style?.transform?.match?.(/translate3d\((-?[0-9.]+)px, *(-?[0-9.]+)px,/);
- const oldInlineGeometry=oldMatch?{x:Number(oldMatch[1]),width:parseFloat(oldGlass?.style?.width)||0}:null;
+ const oldDock=root.querySelector('.bottom-nav');
+ const dockRect=oldDock?.getBoundingClientRect();
+ const dockScale=dockRect?.width&&oldDock.offsetWidth?dockRect.width/oldDock.offsetWidth:1;
+ // For consecutive taps, restart from the compositor's current visible position.
+ const oldVisualGeometry=oldRect&&dockRect?{
+  x:(oldRect.left-dockRect.left)/dockScale,width:oldRect.width/dockScale
+ }:null;
+ const oldInlineGeometry=oldGlass?._dockGlideAnimation?.playState==='running'
+  ?oldVisualGeometry
+  :(oldMatch?{x:Number(oldMatch[1]),width:parseFloat(oldGlass?.style?.width)||0}:oldVisualGeometry);
  const oldView=previousBottomTab;
  const modeEntrance=scheduleModeFallbackEntrance&&state.view==='schedule';
  scheduleModeFallbackEntrance=false;
- root.innerHTML=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view} ${oldView===state.view?'page-stable':'page-enter'}${modeEntrance?' schedule-mode-enter':''}" id="page-content">${page()}</div></main>${bottomNav()}`;
+ const contentMarkup=`${sidebar()}<main class="content-area">${topbar()}<div class="page page-${state.view} ${oldView===state.view?'page-stable':'page-enter'}${modeEntrance?' schedule-mode-enter':''}" id="page-content">${page()}</div></main>`;
+ if(oldDock){
+  // Preserve the same fixed Dock node through navigation: remounting a
+  // backdrop-filter layer causes Safari to flash and restart the rail spring.
+  for(const child of [...root.children])if(child!==oldDock)child.remove();
+  oldDock.insertAdjacentHTML('beforebegin',contentMarkup);
+  for(const button of oldDock.querySelectorAll('.bottom-item')){
+   const selected=button.dataset.view===state.view;
+   button.classList.toggle('active',selected);
+   button.setAttribute('aria-current',selected?'page':'false');
+  }
+  dockRemountPulse=false;dockRemountDrop=false;
+ }else{
+  root.innerHTML=contentMarkup+bottomNav();
+ }
  document.title=state.prefs.language==='en'?`${({today:'Today',schedule:'Timetable',grades:'Grades',power:'Electricity',settings:'Settings'})[state.view]} · GZUCM Pocket`:`${({today:'今日',schedule:'课表',grades:'成绩',power:'电费',settings:'设置'})[state.view]} · 广中医口袋`;
  applyLanguage();
  enhanceLiquidSelectors(root,previousLiquidSelectors);
@@ -1912,7 +1947,7 @@ function handleClick(event){const target=event.target.closest('[data-view],[data
   if(group&&target.classList.contains('active'))confirmGlassSelection(group.querySelector('.liquid-choice-highlight'));
  }
  if(target.dataset.view){if(target.closest('.bottom-nav')){
-  dockRemountPulse=target.dataset.view!==state.view; // new Dock retains gentle tap feedback
+  dockRemountPulse=false; // the mounted Dock already received finger-up feedback
   if(target.dataset.view===state.view)confirmGlassSelection(target.closest('.bottom-nav')?.querySelector('.bottom-liquid-indicator'));
   armLiquidSound();playLiquidTick();
  }navigateBottomModule(target.dataset.view);return;}

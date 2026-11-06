@@ -201,7 +201,9 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
  const targetX=current.offsetLeft+inset;
  const targetW=Math.max(12,current.offsetWidth-inset*2);
  const previous=previousTab?nav.querySelector('.bottom-item[data-view="'+previousTab+'"]'):null;
- const fromSwipe=nav.classList?.contains?.('is-dock-dropping')===true;
+ // A released swipe crosses a DOM remount. The landing geometry is the
+ // authoritative gesture signal; the newly rendered Dock has no old class.
+ const fromSwipe=!!pendingBottomSwipeGeometry||nav.classList?.contains?.('is-dock-dropping')===true;
  const swipeAnchor=fromSwipe?pendingBottomSwipeGeometry:null;
  pendingBottomSwipeGeometry=null;
  const changed=!!(previousTab&&(previousTab!==state.view||liquidGestureSnap)&&!motionReduced);
@@ -227,16 +229,20 @@ function alignBottomLiquid(previousTab,previousRect,previousGeometry=null){
   liquidMoveFrame=0;
   if(!glass.isConnected)return;
   if(typeof glass.animate==='function'){
-   const duration=fromSwipe?290:330;
-   const frames=liquidDropFrames(startX,startW,targetX,targetW); // smooth, monotone for taps and swipes
+   // Measured-duration optical glide: slow enough to follow visually,
+   // but always monotone after a drag (never overshoots or springs).
+   const economy=document.documentElement?.dataset?.motionRate==='economy';
+   const duration=fromSwipe?(economy?340:420):(economy?390:500);
+   const frames=liquidDropFrames(startX,startW,targetX,targetW); // native vsync interpolation
    glass.classList.add('is-instant');
    glass.style.width=targetW+'px';
    glass.style.transform='translate3d('+targetX+'px,0,0)';
    try{
-    // Physically nonlinear sample positions. WAAPI is only the time clock.
-    glass.animate(frames,{duration,fill:'none'}).finished.then(()=>{
-     glass.classList.remove('is-dropping');
-    },()=>{glass.classList.remove('is-dropping');});
+    // CSS holds the final coordinates. The compositor interpolates every
+    // frame; only cleanup state changes at completion, not the material.
+    glass.animate(frames,{duration,fill:'none',easing:'linear'}).finished.then(()=>{
+     glass.classList.remove('is-dropping','is-moving');
+    },()=>{glass.classList.remove('is-dropping','is-moving');});
     return;
    }catch{glass.classList.remove('is-instant');}
   }

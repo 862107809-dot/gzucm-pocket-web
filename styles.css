@@ -2983,3 +2983,29 @@
   transition:none!important;
  }
 }
+
+/* PERSISTENT DOCK / NO TOUCH GREY FLASH v4
+ * Keep the original glass material and motion. A scrub must never dim the
+ * previously selected glyph while the new selection is being committed.
+ * Safari's native tap tint and focus/active paint must not compete with the
+ * travelling lens. These are color-only overrides; no geometry changes. */
+@media(max-width:900px){
+ #app .bottom-nav,
+ #app .bottom-nav .bottom-item{
+  -webkit-tap-highlight-color:transparent;
+ }
+ #app .bottom-nav .bottom-item:is(:active,.is-pressed,.active){
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+ }
+ #app .bottom-nav .bottom-item.active,
+ #app .bottom-nav.is-dock-dragging .bottom-item.active:not(.is-scrubbed),
+ #app .bottom-nav .bottom-item.active:active{
+  color:var(--accent)!important;
+ }
+ #app .bottom-nav .bottom-item.active svg,
+ #app .bottom-nav.is-dock-dragging .bottom-item.active:not(.is-scrubbed) svg{
+  color:var(--accent)!important;
+ }
+}

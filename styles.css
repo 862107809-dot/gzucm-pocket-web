@@ -2892,53 +2892,16 @@
 }
 
 
-/* NON-OVERLAPPING MOBILE DOCK v1
- * A fixed, overlaying Dock covered the lower portion of course/grade cards
- * while scrolling. Reserve a true layout row for the Dock instead: only
- * the content region scrolls; no card can pass behind the navigation.
- * The glass rim and magnification remain visible inside a separate gutter.
- * Landscape tablets and desktop retain their existing sidebar layout. */
+/* RESTORED FLOATING DOCK + END-OF-PAGE CLEARANCE v2
+ * Restore the ORIGINAL fixed floating Dock, body/page scroll and interaction.
+ * Only reserve more room AFTER the final content card. At maximum scroll
+ * the last card clears the 72px Dock, its safe-area offset, and ~54px air.
+ * Do not put the Dock into a separate layout row or trap page scrolling. */
 @media(max-width:900px){
- html,body{
-  height:100%;
-  overflow:hidden;
- }
  #app.app-shell{
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-  height:100vh;
-  height:100dvh;
-  overflow:hidden;
-  padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  padding-bottom:calc(136px + env(safe-area-inset-bottom,0px));
  }
- #app.app-shell > .content-area{
-  flex:1 1 auto;
-  min-height:0;
-  width:100%;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior-y:contain;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  padding-bottom:14px;
- }
- #app.app-shell > .content-area::-webkit-scrollbar{
-  display:none;
- }
- #app.app-shell > .bottom-nav{
-  position:relative!important;
-  flex:0 0 72px;
-  height:72px;
-  bottom:auto!important;
-  top:auto!important;
-  left:auto!important;
-  right:auto!important;
-  transform:none!important;
-  margin:15px auto 0!important;
-  align-self:center;
-  /* The glass capsule can protrude within the reserved gap, never
-   * into a content card or past the viewport's safe-area boundary. */
-  overflow:visible;
+ html{
+  scroll-padding-bottom:calc(136px + env(safe-area-inset-bottom,0px));
  }
 }

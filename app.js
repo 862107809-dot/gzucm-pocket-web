@@ -1829,7 +1829,9 @@ function bottomSwipeFinish(event,cancelled=false){
   // A direct Dock tap gives the whole rail one restrained non-linear return;
   // actual horizontal scrubbing remains uninterrupted and does not bounce.
   if(!cancelled&&!sw.vertical){
-   confirmGlassSelection(sw.glass);
+   // A tab change already animates the glass across the rail; the old-tab
+   // confirmation bloom would otherwise visibly flash mid-flight.
+   if(sw.pressed?.dataset?.view===state.view)confirmGlassSelection(sw.glass);
    animateDockRelease(sw.nav);
   }
   return;

@@ -3034,3 +3034,110 @@
  #app .power-official-query{align-items:flex-start;}
  #app .power-query-hint{max-width:none;}
 }
+
+/* DOCK-PARITY RAILS 2026-11-07
+ * Final interaction layer: one scale model across schedule week/month,
+ * grade/credit segmented bars and the seven-day strip.
+ * Prior one-off overrides made the base stay still or enlarged edge pills
+ * beyond the glass track. This layer restores Dock-sized touch feedback
+ * without changing hitboxes, theme materials or the optical renderer. */
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail{
+ --rail-grow-origin:50% 50%;
+ --rail-lens-origin:50% 50%;
+ transform-origin:var(--rail-grow-origin)!important;
+ scale:1;
+ transition:scale .29s cubic-bezier(.22,1,.36,1),
+  border-color .25s ease,box-shadow .29s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch).liquid-selector.is-horizontal-rail{
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+ padding-inline:9px!important;
+}
+@media(max-width:600px){
+ #app .page-schedule .schedule-fixed-header .schedule-view-switch.liquid-selector.is-horizontal-rail{
+  padding-inline:7px!important;
+ }
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed{
+ scale:1.018!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging{
+ scale:1.027!important;
+}
+@keyframes pocketRailDockTap{
+ 0%{scale:1.018}
+ 42%{scale:.995}
+ 76%{scale:1.003}
+ 100%{scale:1}
+}
+/* Tap only: the rail has a gentle spring. */
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-releasing,.is-rail-settling){
+ animation:pocketRailDockTap .48s cubic-bezier(.22,.78,.24,1) both!important;
+}
+/* Swipe only: a one-way put-down, no overshoot or second spring. */
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping{
+ animation:none!important;
+ scale:1!important;
+ transition:scale .28s cubic-bezier(.22,1,.36,1),
+  box-shadow .28s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > .liquid-choice-highlight{
+ transform-origin:var(--rail-lens-origin)!important;
+ transition:scale .31s cubic-bezier(.22,1,.36,1),
+  transform .38s cubic-bezier(.20,.86,.28,1),
+  width .34s cubic-bezier(.22,1,.36,1),
+  height .34s cubic-bezier(.22,1,.36,1)!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed > .liquid-choice-highlight{
+ scale:1.085!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > .liquid-choice-highlight{
+ scale:1.105!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector:is(.is-rail-releasing,.is-rail-settling) > .liquid-choice-highlight{
+ animation:none!important;
+ scale:1!important;
+ transition:scale .43s cubic-bezier(.18,.68,.26,1.12),
+  transform .38s cubic-bezier(.20,.86,.28,1)!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping > .liquid-choice-highlight{
+ animation:none!important;
+ scale:1!important;
+ transition:scale .28s cubic-bezier(.22,1,.36,1),
+  transform .34s cubic-bezier(.22,1,.36,1)!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > button{
+ transform-origin:center center;
+ transition:scale .28s cubic-bezier(.22,1,.36,1),color .18s ease!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > button:first-of-type{
+ transform-origin:left center;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > button:last-of-type{
+ transform-origin:right center;
+}
+/* Finger-down enlarges that button; scrub enlarges the finger's choice. */
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-pressed > button.is-pressed{
+ transform:none!important;
+ scale:1.045!important;
+ filter:none!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dragging > button.is-scrubbed{
+ transform:none!important;
+ scale:1.065!important;
+ filter:none!important;
+}
+#app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-rail-dropping > button{
+ transition:scale .24s cubic-bezier(.22,1,.36,1),color .18s ease!important;
+}
+@media(prefers-reduced-motion:reduce){
+ #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail,
+ #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail:is(.is-rail-pressed,.is-rail-dragging,.is-rail-releasing,.is-rail-settling,.is-rail-dropping),
+ #app :is(.segmented,.schedule-view-switch,.day-strip).liquid-selector.is-horizontal-rail > :is(button,.liquid-choice-highlight){
+  animation:none!important;
+  transition:none!important;
+  scale:1!important;
+ }
+}

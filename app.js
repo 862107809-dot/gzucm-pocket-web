@@ -283,6 +283,23 @@ function confirmGlassSelection(glass){
 function isHorizontalLiquidRail(group,menu){
  return !menu&&!group.matches?.('.sidebar nav');
 }
+/* Group-only animationend: a bubbling capsule shadow event must not
+ * prematurely clear (or permanently retain) the Dock-style tap return. */
+const liquidRailAnimationHandlers=new WeakMap();
+function clearRailTapAfterAnimation(group,className){
+ const prior=liquidRailAnimationHandlers.get(group);
+ if(prior)group.removeEventListener('animationend',prior);
+ const onEnd=event=>{
+  if(event.target!==group)return;
+  if(!['pocketRailDockTap','pocketRailRelease','pocketRailSoftSpring',
+   'pocketRailSettle','pocketDockClickConfirm'].includes(event.animationName))return;
+  group.classList.remove(className);
+  group.removeEventListener('animationend',onEnd);
+  liquidRailAnimationHandlers.delete(group);
+ };
+ group.addEventListener('animationend',onEnd);
+ liquidRailAnimationHandlers.set(group,onEnd);
+}
 function releaseHorizontalLiquidRail(p,cancelled=false){
  if(!p?.rail)return;
  const group=p.group;
@@ -302,10 +319,7 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
  group.classList.add(className);
- group.addEventListener?.('animationend',event=>{
-  if(['pocketRailRelease','pocketDockClickConfirm','pocketRailSoftSpring'].includes(event.animationName))group.classList.remove('is-rail-releasing');
-  if(['pocketRailDrop','pocketDockDragReturn','pocketRailSoftDrop'].includes(event.animationName))group.classList.remove('is-rail-dropping');
- },{once:true});
+ clearRailTapAfterAnimation(group,'is-rail-releasing');
 }
 function liquidSelectorId(group){
  if(group.classList.contains('schedule-view-switch'))return 'schedule-mode';
@@ -416,10 +430,7 @@ function enhanceLiquidSelectors(root,previous=new Map()){
    // Only a tap can bounce a remounted rail. A drag lands its glass lens
    // directly via the existing FLIP, without replaying a container spring.
    group.classList.add('is-rail-settling');
-   group.addEventListener?.('animationend',event=>{
-    if(['pocketRailSettle','pocketRailSoftSpring'].includes(event.animationName))
-     group.classList.remove('is-rail-settling');
-   },{once:true});
+   clearRailTapAfterAnimation(group,'is-rail-settling');
   }
  }
  pendingHorizontalRailLanding=null;

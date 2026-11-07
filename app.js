@@ -290,7 +290,14 @@ function releaseHorizontalLiquidRail(p,cancelled=false){
  group.style?.setProperty?.('--rail-edge-energy','0');
  p.glass.style?.setProperty?.('--rail-edge-shift','0px');
  p.glass.style?.setProperty?.('--rail-edge-scale','1');
- if(cancelled||p.dragging)return; // swipes settle without a second rail animation
+ if(cancelled)return;
+ if(p.dragging){
+  // Drag release is monotone: return directly to resting size, never spring.
+  group.classList.remove('is-rail-releasing','is-rail-settling');
+  group.classList.add('is-rail-dropping');
+  setTimeout(()=>group.classList?.remove?.('is-rail-dropping'),340);
+  return;
+ }
  const className='is-rail-releasing'; // taps alone receive the gentle spring
  group.classList.remove('is-rail-releasing','is-rail-dropping');
  void group.offsetWidth;
@@ -312,6 +319,22 @@ function liquidSelectorId(group){
 }
 function liquidSelectorButtons(group){
  return [...group.children].filter(el=>el.tagName==='BUTTON');
+}
+/* The same inside-edge anchoring as the Dock keeps enlarged capsules contained. */
+function syncRailLensOrigin(group,button){
+ if(!group?.classList?.contains('is-horizontal-rail')||!button)return;
+ const buttons=liquidSelectorButtons(group),index=buttons.indexOf(button);
+ const origin=index===0?'0% 50%':index===buttons.length-1?'100% 50%':'50% 50%';
+ group.style.setProperty('--rail-lens-origin',origin);
+}
+function syncRailGrowOrigin(group,rect){
+ const box=rect||group.getBoundingClientRect();
+ const viewport=document.documentElement.clientWidth||window.innerWidth;
+ const edge=Math.max(12,box.width*.065);
+ const right=viewport-box.right<edge,left=box.left<edge;
+ const side=right&&!left?'right':left&&!right?'left':'center';
+ group.style.setProperty('--rail-grow-origin',side==='right'?'100% 50%':side==='left'?'0% 50%':'50% 50%');
+ return side;
 }
 function liquidSelectorActive(group){
  const buttons=liquidSelectorButtons(group);
@@ -359,7 +382,11 @@ function enhanceLiquidSelectors(root,previous=new Map()){
   if(!id||!active)continue;
   group.classList.add('liquid-selector');
   const rail=isHorizontalLiquidRail(group,false);
-  if(rail)group.classList.add('is-horizontal-rail');
+  if(rail){
+   group.classList.add('is-horizontal-rail');
+   syncRailGrowOrigin(group);
+   syncRailLensOrigin(group,active);
+  }
   // A preserved mode selector already owns its moving glass; never insert
   // a second lens or rebuild its gesture state during a local calendar swap.
   if(group.querySelector(':scope > .liquid-choice-highlight'))continue;
@@ -423,14 +450,17 @@ function placeLiquidPointerGlass(pointer,x,y){
  const limit=pointer.vertical?pointer.lastTop:pointer.lastLeft;
  const index=pointer.buttons.indexOf(target);
  const measure=pointer.boxes?.[index];
+ if(pointer.rail)syncRailLensOrigin(pointer.group,target);
  const width=measure?.width??target.offsetWidth;
  const height=measure?.height??target.offsetHeight;
  const size=pointer.vertical?height:width;
- // Invert the known rail scale using only the pointerdown snapshot.
- // Reading a live DOMRect every rAF tick caused repeated Safari layouts.
+ // Dock-matched drag scale, inverted about the correct rail anchor.
+ // No live DOMRect reads during rAF (avoids iOS Safari layout thrashing).
  const rect=pointer.groupRect;
- const scale=pointer.rail&&pointer.baseWidth?1.026:1;
- const localX=rect.width/2+(x-(rect.left+rect.width/2))/scale;
+ const scale=pointer.rail&&pointer.baseWidth?1.027:1;
+ const anchor=pointer.railOrigin==='right'?pointer.baseWidth:
+  pointer.railOrigin==='left'?0:pointer.baseWidth/2;
+ const localX=pointer.rail?anchor+(x-rect.left-anchor)/scale:x-rect.left;
  const raw=(pointer.vertical?y-rect.top:localX)-size/2+
   (pointer.vertical?pointer.group.scrollTop:0);
  const pos=Math.max(base,Math.min(limit,raw));
@@ -463,15 +493,18 @@ function liquidPointerDown(event){
  if(!glass)return;
  armLiquidSound();
  const vertical=!!menu||group.matches('.sidebar nav');
- // Cache hit rectangles before changing the whole bar's visual size.
- const bounds=buttons.map(button=>button.getBoundingClientRect());
  const rail=isHorizontalLiquidRail(group,!!menu);
+ // A preceding tap may still be settling: sample the unscaled coordinates.
+ if(rail)group.classList.remove('is-rail-releasing','is-rail-settling','is-rail-dropping');
+ const bounds=buttons.map(button=>button.getBoundingClientRect());
  const pressed=rail?buttons.find(button=>button.contains(event.target)):null;
  const groupRect=group.getBoundingClientRect();
+ const railOrigin=rail?syncRailGrowOrigin(group,groupRect):'center';
+ if(rail)syncRailLensOrigin(group,liquidSelectorActive(group));
  liquidSelectorPointer={group,glass,buttons,pointerId:event.pointerId,
   pointerType:event.pointerType||'touch',
   x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,
-  vertical,dragging:false,scroll:false,groupRect,
+  vertical,dragging:false,scroll:false,groupRect,railOrigin,
   baseWidth:group.offsetWidth||0,
   boxes:buttons.map(button=>({x:button.offsetLeft,y:button.offsetTop,
    width:button.offsetWidth,height:button.offsetHeight})),
@@ -555,7 +588,7 @@ function liquidPointerFinish(event,cancelled=false){
  // Keep a single continuous finger-up glass position for the next view.
  // No spring is created on an actual drag; CSS scale eases back to 1.
  placeLiquidPointerGlass(p,event.clientX,event.clientY);
- releaseHorizontalLiquidRail(p,true);
+ releaseHorizontalLiquidRail(p,false);
  if(p.rail)
   pendingHorizontalRailLanding={id:liquidSelectorId(p.group),at:Date.now(),dragged:true};
  const nearest=liquidNearestCached(p,event.clientX,event.clientY).button;
@@ -788,6 +821,7 @@ function renderScheduleContent(confirm=false){
   // location, never animate from a stale offscreen or stretched snapshot.
   const lens=selector.querySelector('.liquid-choice-highlight');
   const active=selector.querySelector('button.active');
+  if(active)syncRailLensOrigin(selector,active);
   if(lens&&active){
    const target={x:active.offsetLeft,y:active.offsetTop,
     width:active.offsetWidth,height:active.offsetHeight};
